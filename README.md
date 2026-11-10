@@ -1,11 +1,11 @@
 # Elite Explorer Copilot
 
-<img width="676" height="592" alt="004" src="https://github.com/user-attachments/assets/888acb31-c510-4106-a684-85e7227622d5" />
+<img width="1902" height="1066" alt="0004" src="https://github.com/user-attachments/assets/fa6a6093-fbbc-47c4-931e-40daed0f5860" />
 
 > Real-time space exploration, exobiology, and planetary surface navigation copilot for **Elite Dangerous**, connected directly to your local game logs (`Journal` + `Status.json` + `NavRoute.json`) and community networks (**EDSM**, **EDDN**, **Spansh**, and **INARA**).
 
 ---
-<img width="1902" height="1066" alt="0004" src="https://github.com/user-attachments/assets/fa6a6093-fbbc-47c4-931e-40daed0f5860" />
+<img width="1908" height="1066" alt="001" src="https://github.com/user-attachments/assets/ca5025aa-7df1-4d71-8fb7-be84548f4340" />
 ---
 <img width="1905" height="1065" alt="002" src="https://github.com/user-attachments/assets/809c7930-f137-4f99-97ed-1eb8f8535de0" />
 ---
