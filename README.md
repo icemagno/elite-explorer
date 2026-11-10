@@ -5,7 +5,7 @@
 > Real-time space exploration, exobiology, and planetary surface navigation copilot for **Elite Dangerous**, connected directly to your local game logs (`Journal` + `Status.json` + `NavRoute.json`) and community networks (**EDSM**, **EDDN**, **Spansh**, and **INARA**).
 
 ---
-<img width="1908" height="1066" alt="001" src="https://github.com/user-attachments/assets/3a08a342-6511-46e6-98c5-6543cecde46e" />
+<img width="1902" height="1066" alt="004" src="https://github.com/user-attachments/assets/1cf697d5-d580-4603-ad71-4101531016bf" />
 ---
 <img width="1905" height="1065" alt="002" src="https://github.com/user-attachments/assets/809c7930-f137-4f99-97ed-1eb8f8535de0" />
 ---
