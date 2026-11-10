@@ -118,32 +118,6 @@ public class SurfaceFeatureService {
                 "poi-guardian-ruins-1", "Guardian Ruins Complex Gamma", "GUARDIAN", "Ruínas Antigas",
                 -34.8210, -16.8920, "Synuefe GT-H b43-1 C 4", "Ruínas com Obeliscos Alpha e Dados Culturais Guardiões"
         ));
-
-        // Sistema de Exploração Synuefe OF-L d9-72 3 a
-        addLegendary("synuefe of-l d9-72 3 a", new SurfaceFeatureDTO(
-                "poi-synuefe-mining", "Local de Extração Mineral A-14", "EXTRACTION", "Mineração de Solo",
-                -8.4500, -75.3200, "Synuefe OF-L d9-72 3 a", "Mina de Superfície • Extração de Bauxita e Minérios Raros"
-        ));
-        addLegendary("synuefe of-l d9-72 3 a", new SurfaceFeatureDTO(
-                "poi-synuefe-crash", "Destroços de Anaconda Caída (Crash Site)", "CRASH_SITE", "Destroços de Nave",
-                12.8000, 140.2500, "Synuefe OF-L d9-72 3 a", "Nave de Grande Porte Abatida • Cargas Espalhadas e Dados"
-        ));
-        addLegendary("synuefe of-l d9-72 3 a", new SurfaceFeatureDTO(
-                "poi-synuefe-distress", "Sinalizador de Emergência (Distress Beacon)", "DISTRESS_BEACON", "Sinal de Socorro",
-                -48.2000, 112.4500, "Synuefe OF-L d9-72 3 a", "Transmissão Automática de Socorro em Frequência de Emergência"
-        ));
-        addLegendary("synuefe of-l d9-72 3 a", new SurfaceFeatureDTO(
-                "poi-synuefe-colony", "Colônia de Pesquisa Bio-Externa", "RESEARCH", "Laboratório Bio",
-                22.4500, -45.1200, "Synuefe OF-L d9-72 3 a", "Assentamento Científico • Laboratório Bio e Amostragem"
-        ));
-        addLegendary("synuefe of-l d9-72 3 a", new SurfaceFeatureDTO(
-                "poi-synuefe-geo", "Campo de Fumarolas de Silicato (Rutênio)", "GEO_SITE", "Gêiseres Vulcânicos",
-                -38.1200, 85.3400, "Synuefe OF-L d9-72 3 a", "Fumarolas Vulcânicas • Materiais Grau 4: Rutênio"
-        ));
-        addLegendary("synuefe of-l d9-72 3 a", new SurfaceFeatureDTO(
-                "poi-synuefe-agri", "Complexo Agrícola Hidropônico Ceres", "AGRICULTURE", "Cultivo Hidropônico",
-                35.8000, 20.1500, "Synuefe OF-L d9-72 3 a", "Estufas Atmosféricas de Cultivo e Suprimentos Alimentares"
-        ));
     }
 
     private void addLegendary(String bodyKey, SurfaceFeatureDTO dto) {
@@ -237,30 +211,6 @@ public class SurfaceFeatureService {
         }
 
         saveFeaturesToCache();
-    }
-
-    public synchronized void pinFeatureAtLocation(String bodyName, String featureId, String name, double lat, double lon) {
-        if (bodyName == null || bodyName.isBlank()) return;
-        String key = cleanKey(bodyName);
-        List<SurfaceFeatureDTO> list = featuresByBody.computeIfAbsent(key, k -> new ArrayList<>());
-
-        Optional<SurfaceFeatureDTO> existing = list.stream()
-                .filter(f -> (featureId != null && f.getId().equals(featureId)) || (name != null && f.getName().equalsIgnoreCase(name)))
-                .findFirst();
-
-        if (existing.isPresent()) {
-            SurfaceFeatureDTO dto = existing.get();
-            dto.setLatitude(lat);
-            dto.setLongitude(lon);
-            dto.setGpsConfirmed(true);
-            dto.setDiscoveredByPlayer(true);
-            dto.setSubType(dto.getSubType().replace(" (DSS)", "").replace(" • Sem GPS", ""));
-            dto.setDescription("Marcado manualmente pelo Comandante (GPS real)");
-            saveFeaturesToCache();
-            log.info("📌 [SURFACE FEATURE] POI marcado manualmente: {} em {} [Lat: {}, Lon: {}]", dto.getName(), bodyName, lat, lon);
-        } else if (name != null && !name.isBlank()) {
-            recordKnownPointOfInterest(name, name, bodyName, lat, lon, "");
-        }
     }
 
     public synchronized void recordDssSignalCounts(String bodyName, Integer bio, Integer geo, Integer human, Integer mining) {
@@ -435,12 +385,6 @@ public class SurfaceFeatureService {
                 }
             }
         }
-    }
-
-    private double generatePseudoCoord(String seed, double min, double max) {
-        int hash = Math.abs(seed.hashCode());
-        double normalized = (hash % 10000) / 10000.0;
-        return Math.round((min + normalized * (max - min)) * 10000.0) / 10000.0;
     }
 
     private String cleanKey(String str) {

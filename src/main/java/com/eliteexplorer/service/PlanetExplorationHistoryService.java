@@ -156,7 +156,8 @@ public class PlanetExplorationHistoryService {
                 String variant = root.path("Variant_Localised").asText(root.path("Variant").asText(""));
                 recordOrganicScan(null, systemAddress > 0 ? systemAddress : null, bodyId >= 0 ? bodyId : null, scanType, genus, species, variant, timestamp);
             }
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            log.debug("Linha de histórico ignorada ao processar evento: {}", e.getMessage());
         }
     }
 

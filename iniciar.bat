@@ -17,8 +17,31 @@ set "JAR_PATH=%~dp0elite-explorer-1.0.0.jar"
 if not exist "%JAR_PATH%" set "JAR_PATH=%~dp0target\elite-explorer-1.0.0.jar"
 
 if not exist "%JAR_PATH%" (
+    if exist "%~dp0pom.xml" (
+        where mvn >nul 2>nul
+        if errorlevel 1 (
+            echo [ERRO] Arquivo elite-explorer-1.0.0.jar nao encontrado e Maven ^(mvn^) nao esta no PATH.
+            echo Instale o Maven ou coloque o .jar pre-compilado na pasta do projeto.
+            pause
+            exit /b 1
+        )
+        echo [INFO] Arquivo .jar nao encontrado. Compilando o projeto com Maven...
+        pushd "%~dp0"
+        call mvn package -DskipTests
+        if errorlevel 1 (
+            popd
+            echo.
+            echo [ERRO] Falha ao compilar o projeto.
+            pause
+            exit /b 1
+        )
+        popd
+        set "JAR_PATH=%~dp0target\elite-explorer-1.0.0.jar"
+    )
+)
+
+if not exist "%JAR_PATH%" (
     echo [ERRO] Arquivo elite-explorer-1.0.0.jar nao encontrado.
-    echo Gere o build antes com: mvn package -DskipTests
     pause
     exit /b 1
 )

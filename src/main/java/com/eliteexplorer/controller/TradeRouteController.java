@@ -208,49 +208,6 @@ public class TradeRouteController {
         return ResponseEntity.ok(journalWatcherService.getPlanetaryStatus());
     }
 
-    // Simulação de telemetria planetária para testes visuais do HUD 2.5D
-    @PostMapping("/player/simulate-surface")
-    public ResponseEntity<PlanetaryStatusDTO> simulateSurface(
-            @RequestParam(defaultValue = "Synuefe OF-L d9-72 3 a") String body,
-            @RequestParam(defaultValue = "-14.2854") Double lat,
-            @RequestParam(defaultValue = "102.4419") Double lon,
-            @RequestParam(defaultValue = "120.0") Double alt,
-            @RequestParam(defaultValue = "184.0") Double heading,
-            @RequestParam(defaultValue = "0.38") Double gravity,
-            @RequestParam(defaultValue = "Fina de Dióxido de Carbono") String atm,
-            @RequestParam(defaultValue = "false") Boolean landed
-    ) {
-        return ResponseEntity.ok(journalWatcherService.simulatePlanetaryStatus(body, lat, lon, alt, heading, gravity, atm, landed));
-    }
-
-    // Simulação de escaneamento de amostra biológica para testes visuais de exobiologia
-    @PostMapping("/player/simulate-bioscan")
-    public ResponseEntity<PlanetaryStatusDTO> simulateBioScan(
-            @RequestParam(required = false) Integer sampleNumber,
-            @RequestParam(required = false) String scanType,
-            @RequestParam(defaultValue = "Stratum") String genus,
-            @RequestParam(defaultValue = "Stratum Tectonicas") String species,
-            @RequestParam(required = false) Double lat,
-            @RequestParam(required = false) Double lon
-    ) {
-        return ResponseEntity.ok(journalWatcherService.simulateBioScan(sampleNumber, scanType, genus, species, lat, lon));
-    }
-
-    // Limpar bio-amostras ativas
-    @PostMapping("/player/clear-biosamples")
-    public ResponseEntity<PlanetaryStatusDTO> clearBioSamples() {
-        return ResponseEntity.ok(journalWatcherService.clearBioSamples());
-    }
-
-    // Marcar manualmente um sinal/POI de superfície nas coordenadas GPS atuais da nave
-    @PostMapping("/player/pin-feature")
-    public ResponseEntity<PlanetaryStatusDTO> pinSurfaceFeature(
-            @RequestParam(required = false) String id,
-            @RequestParam(required = false) String name
-    ) {
-        return ResponseEntity.ok(journalWatcherService.pinSurfaceFeature(id, name));
-    }
-
     // Mapa 3D do Sistema Estelar (Orrery 3D - Estrelas, Planetas e Luas)
     @GetMapping("/system/orrery")
     public ResponseEntity<com.eliteexplorer.dto.SystemOrreryDTO> getSystemOrrery(

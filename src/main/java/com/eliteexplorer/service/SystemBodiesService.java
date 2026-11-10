@@ -126,6 +126,30 @@ public class SystemBodiesService {
         return empty;
     }
 
+    /**
+     * Busca metadados físicos de um corpo celeste apenas no cache local (memória ou disco).
+     */
+    public CelestialBodyDTO findBody(String systemName, String bodyName) {
+        if (systemName == null || systemName.isBlank() || bodyName == null || bodyName.isBlank()) {
+            return null;
+        }
+        String key = systemName.toLowerCase().trim();
+        SystemOrreryDTO dto = orreryCache.get(key);
+        if (dto == null) {
+            dto = loadFromDisk(key);
+            if (dto != null) {
+                orreryCache.put(key, dto);
+            }
+        }
+        if (dto == null || dto.getBodies() == null) {
+            return null;
+        }
+        return dto.getBodies().stream()
+                .filter(b -> bodyName.equalsIgnoreCase(b.getName()))
+                .findFirst()
+                .orElse(null);
+    }
+
     private void ensureMainStar(SystemOrreryDTO dto, String systemName) {
         if (dto == null) return;
         boolean hasStar = dto.getBodies().stream().anyMatch(b -> (b.getBodyId() != null && b.getBodyId() == 0) || "Star".equalsIgnoreCase(b.getType()));
@@ -236,7 +260,9 @@ public class SystemBodiesService {
                 try {
                     java.time.format.DateTimeFormatter dtf = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(java.time.ZoneOffset.UTC);
                     dto.setScanTimeMs(java.time.Instant.from(dtf.parse(b.path("updateTime").asText())).toEpochMilli());
-                } catch (Exception ignored) {}
+                } catch (Exception e) {
+                    log.debug("Ignorando updateTime inválido no EDSM para {}: {}", dto.getName(), e.getMessage());
+                }
             }
             dto.setRotationalPeriod(b.path("rotationalPeriod").asDouble(0.0));
             dto.setRotationalPeriodTidallyLocked(b.path("rotationalPeriodTidallyLocked").asBoolean(false));
@@ -394,7 +420,9 @@ public class SystemBodiesService {
                 try {
                     java.time.Instant inst = java.time.Instant.parse(root.path("timestamp").asText());
                     body.setScanTimeMs(inst.toEpochMilli());
-                } catch (Exception ignored) {}
+                } catch (Exception e) {
+                    log.debug("Ignorando timestamp inválido no Scan para {}: {}", body.getName(), e.getMessage());
+                }
             }
             if (root.has("OrbitalPeriod")) body.setOrbitalPeriod(root.path("OrbitalPeriod").asDouble() / 86400.0); // seg -> dias
             if (root.has("RotationPeriod")) body.setRotationalPeriod(root.path("RotationPeriod").asDouble() / 86400.0);

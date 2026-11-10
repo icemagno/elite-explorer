@@ -33,20 +33,20 @@ let isUserInteractingWithCamera = false;
 let lastSurfaceData = {
     onPlanetSurface: false,
     inPlanetaryOrbit: false,
-    landed: true,
+    landed: false,
     inSrv: false,
     onFoot: false,
-    currentSystem: 'Synuefe OF-L d9-72',
-    bodyName: 'Synuefe OF-L d9-72 3 a',
-    latitude: -14.2854,
-    longitude: 102.4419,
+    currentSystem: '',
+    bodyName: '',
+    latitude: null,
+    longitude: null,
     altitude: 0.0,
-    heading: 184.0,
-    surfaceGravity: 0.38,
-    atmosphereType: 'Fina de Dióxido de Carbono (0.02 atm)',
+    heading: 0.0,
+    surfaceGravity: null,
+    atmosphereType: '',
     planetRadius: 2100000.0,
-    touchdownLat: -14.2854,
-    touchdownLong: 102.4419,
+    touchdownLat: null,
+    touchdownLong: null,
     distanceToTouchdown: 0.0
 };
 
@@ -956,10 +956,12 @@ function updateSurfaceTelemetry(data) {
     const atmEl = document.getElementById('surfaceAtmosphereText');
     const pressEl = document.getElementById('surfacePressureText');
 
-    if (planetEl) planetEl.textContent = data.bodyName || 'Planeta Desconhecido';
-    if (gravEl) gravEl.textContent = `${(data.surfaceGravity || 0.0).toFixed(2)} G`;
+    if (planetEl) planetEl.textContent = data.bodyName || 'Aguardando corpo...';
+    if (gravEl) gravEl.textContent = (data.surfaceGravity !== null && data.surfaceGravity !== undefined && data.surfaceGravity > 0)
+        ? `${data.surfaceGravity.toFixed(2)} G`
+        : '---';
     if (atmEl) {
-        let atm = data.atmosphereType || 'Vácuo / Sem atmosfera';
+        let atm = data.atmosphereType || 'Sem atmosfera';
         if (atm.includes('(') && atm.includes('atm')) {
             const match = atm.match(/\(([^)]+)\)/);
             if (match && pressEl) {
@@ -967,7 +969,10 @@ function updateSurfaceTelemetry(data) {
             }
             atm = atm.replace(/\s*\([^)]+\)/, '').trim();
         } else if (pressEl) {
-            pressEl.textContent = (atm === 'None' || atm === 'Vácuo / Sem atmosfera') ? '0.00 atm' : '0.02 atm';
+            const lowerAtm = atm.toLowerCase();
+            pressEl.textContent = (lowerAtm === 'none' || lowerAtm === 'no atmosphere' || lowerAtm.includes('sem atmosfera') || lowerAtm.includes('vácuo'))
+                ? '0.00 atm'
+                : '---';
         }
         atmEl.textContent = atm;
     }

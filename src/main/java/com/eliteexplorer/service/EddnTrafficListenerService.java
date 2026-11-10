@@ -57,7 +57,8 @@ public class EddnTrafficListenerService {
         if (zContext != null) {
             try {
                 zContext.close();
-            } catch (Exception ignored) {
+            } catch (Exception e) {
+                log.debug("Erro ao encerrar contexto ZMQ do EDDN: {}", e.getMessage());
             }
         }
         if (listenerThread != null) {
@@ -201,7 +202,8 @@ public class EddnTrafficListenerService {
                 knownCommanders.entrySet().removeIf(e -> (now - e.getValue().timestamp) > 1200000);
             }
 
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            log.debug("Mensagem EDDN ignorada ao processar tráfego: {}", e.getMessage());
         }
     }
 
@@ -223,31 +225,6 @@ public class EddnTrafficListenerService {
             }
         }
         return list;
-    }
-
-    public TrafficEventDTO simulateTraffic(String type, String systemName, Double x, Double y, Double z) {
-        PlayerStatus player = journalWatcherService.getPlayerStatus();
-        String sys = (systemName != null && !systemName.isBlank()) ? systemName : player.getCurrentSystem();
-        double posX = (x != null) ? x : (player.getPosX() != null ? player.getPosX() : 0.0);
-        double posY = (y != null) ? y : (player.getPosY() != null ? player.getPosY() : 0.0);
-        double posZ = (z != null) ? z : (player.getPosZ() != null ? player.getPosZ() : 0.0);
-
-        String eventType = "OUT".equalsIgnoreCase(type) || "JUMP_OUT".equalsIgnoreCase(type) ? "JUMP_OUT" : "JUMP_IN";
-
-        TrafficEventDTO simulated = new TrafficEventDTO(
-                UUID.randomUUID().toString(),
-                eventType,
-                sys,
-                posX,
-                posY,
-                posZ,
-                System.currentTimeMillis(),
-                "CMDR Simulado",
-                "SIMULATION"
-        );
-        recordTrafficEvent(simulated);
-        log.info("🧪 [TRAFFIC TEST] Evento simulado gerado: {} em '{}' [{}, {}, {}]", eventType, sys, posX, posY, posZ);
-        return simulated;
     }
 
     private double calculateDistance(double x1, double y1, double z1, double x2, double y2, double z2) {

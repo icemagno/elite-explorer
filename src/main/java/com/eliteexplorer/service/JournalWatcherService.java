@@ -256,6 +256,19 @@ public class JournalWatcherService {
             }
 
             switch (event) {
+                case "LoadGame" -> {
+                    String cmdr = root.path("Commander").asText("");
+                    if (!cmdr.isBlank()) {
+                        status.setCommander(cmdr);
+                        edsmSyncService.setCommanderName(cmdr);
+                        eddnPublisherService.setCommanderName(cmdr);
+                    }
+                    String ship = root.path("Ship").asText("");
+                    if (!ship.isBlank()) status.setShipRaw(ship);
+                    String shipName = root.path("ShipName").asText("");
+                    if (!shipName.isBlank()) status.setShipName(shipName);
+                    edsmSyncService.setGameVersion(root.path("gameversion").asText(""), root.path("build").asText(""));
+                }
                 case "Commander" -> {
                     String cmdr = root.path("Name").asText("");
                     if (!cmdr.isBlank()) {
@@ -439,6 +452,7 @@ public class JournalWatcherService {
                     if (!body.isBlank()) {
                         planetHistoryService.recordApproachOrBody(starSystem, systemAddress > 0 ? systemAddress : null, body, bodyId >= 0 ? bodyId : null);
                         surfaceFeatureService.syncPlanetaryStatusSignals(ps, starSystem, body);
+                        enrichPlanetaryBodyInfo(ps);
                     }
                     if (isLiveUpdate) {
                         sseNotificationService.broadcastEvent("surface_status", ps);
@@ -509,6 +523,14 @@ public class JournalWatcherService {
                 }
                 case "Scan" -> {
                     systemBodiesService.recordJournalScan(root);
+                    PlanetaryStatusDTO ps = planetaryStatusRef.get();
+                    String scannedBody = root.path("BodyName").asText("");
+                    if (!scannedBody.isBlank() && scannedBody.equalsIgnoreCase(ps.getBodyName())) {
+                        enrichPlanetaryBodyInfo(ps);
+                        if (isLiveUpdate) {
+                            sseNotificationService.broadcastEvent("surface_status", ps);
+                        }
+                    }
                 }
                 case "LeaveBody" -> {
                     PlanetaryStatusDTO ps = planetaryStatusRef.get();
@@ -684,7 +706,8 @@ public class JournalWatcherService {
                     log.info("Bio-amostra registrada do Journal: #{} ({}) - {} em lat={}, lon={}", sampleNum, scanType, species, lat, lon);
                 }
             }
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            log.debug("Linha do journal ignorada ({}): {}", e.getMessage(), line);
         }
     }
 
@@ -835,6 +858,11 @@ public class JournalWatcherService {
         ps.setGlideMode(false);
         ps.setInSrv(false);
         ps.setOnFoot(false);
+        ps.setBodyName("");
+        ps.setBodyId(null);
+        ps.setSurfaceGravity(null);
+        ps.setAtmosphereType("");
+        ps.setPlanetRadius(null);
         ps.setLatitude(null);
         ps.setLongitude(null);
         ps.setAltitude(null);
@@ -842,6 +870,33 @@ public class JournalWatcherService {
         ps.setTouchdownLat(null);
         ps.setTouchdownLong(null);
         ps.setDistanceToTouchdown(null);
+    }
+
+    private void enrichPlanetaryBodyInfo(PlanetaryStatusDTO ps) {
+        if (ps == null || ps.getBodyName() == null || ps.getBodyName().isBlank()) return;
+        com.eliteexplorer.dto.CelestialBodyDTO body = systemBodiesService.findBody(ps.getCurrentSystem(), ps.getBodyName());
+        if (body == null) return;
+
+        if ((ps.getSurfaceGravity() == null || ps.getSurfaceGravity() <= 0) && body.getGravity() != null && body.getGravity() > 0) {
+            ps.setSurfaceGravity(body.getGravity());
+        }
+        if ((ps.getPlanetRadius() == null || ps.getPlanetRadius() <= 0) && body.getRadius() != null && body.getRadius() > 0) {
+            ps.setPlanetRadius(body.getRadius() * 1000.0);
+        }
+        if (ps.getAtmosphereType() == null || ps.getAtmosphereType().isBlank()) {
+            String atm = body.getAtmosphereType();
+            Double press = body.getSurfacePressure();
+            if (atm == null || atm.isBlank() || "No atmosphere".equalsIgnoreCase(atm) || "None".equalsIgnoreCase(atm)) {
+                ps.setAtmosphereType("Sem atmosfera (0.00 atm)");
+            } else if (press != null && press > 0) {
+                String pressFormatted = press >= 0.01
+                        ? String.format(java.util.Locale.US, "%.2f atm", press)
+                        : String.format(java.util.Locale.US, "%.4f atm", press);
+                ps.setAtmosphereType(atm + " (" + pressFormatted + ")");
+            } else {
+                ps.setAtmosphereType(atm);
+            }
+        }
     }
 
     private boolean isOrbitalStation(String stationType) {
@@ -913,16 +968,25 @@ public class JournalWatcherService {
                 if (root.has("Heading")) {
                     ps.setHeading(root.path("Heading").asDouble(0.0));
                 }
-            }
-            if (root.has("PlanetRadius")) {
-                ps.setPlanetRadius(root.path("PlanetRadius").asDouble());
-            }
-            if (root.has("Gravity")) {
-                ps.setSurfaceGravity(root.path("Gravity").asDouble());
-            }
-            if (root.has("BodyName")) {
-                String bName = root.path("BodyName").asText("");
-                if (!bName.isBlank()) ps.setBodyName(bName);
+                if (root.has("PlanetRadius")) {
+                    double pr = root.path("PlanetRadius").asDouble(0.0);
+                    if (pr > 0) ps.setPlanetRadius(pr);
+                }
+                if (root.has("Gravity")) {
+                    double g = root.path("Gravity").asDouble(0.0);
+                    if (g > 0) ps.setSurfaceGravity(g);
+                }
+                if (root.has("BodyName")) {
+                    String bName = root.path("BodyName").asText("");
+                    if (!bName.isBlank()) {
+                        if (!bName.equalsIgnoreCase(ps.getBodyName())) {
+                            ps.setSurfaceGravity(null);
+                            ps.setAtmosphereType("");
+                        }
+                        ps.setBodyName(bName);
+                    }
+                }
+                enrichPlanetaryBodyInfo(ps);
             }
 
             // Distância até o ponto de pouso / nave estacionada
@@ -943,27 +1007,19 @@ public class JournalWatcherService {
                     ps.setDistanceToTouchdown(0.0);
                     disembarkedCalibrated = true;
                 } else if (ps.getTouchdownLat() != null && ps.getTouchdownLong() != null && ps.getLatitude() != null && ps.getLongitude() != null) {
-                    double R = (ps.getPlanetRadius() != null && ps.getPlanetRadius() > 0) ? ps.getPlanetRadius() : 2100000.0;
-                    double dLat = Math.toRadians(ps.getLatitude() - ps.getTouchdownLat());
-                    double dLon = Math.toRadians(ps.getLongitude() - ps.getTouchdownLong());
-                    double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                               Math.cos(Math.toRadians(ps.getTouchdownLat())) * Math.cos(Math.toRadians(ps.getLatitude())) *
-                               Math.sin(dLon / 2) * Math.sin(dLon / 2);
-                    double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-                    ps.setDistanceToTouchdown(R * c);
+                    double radius = (ps.getPlanetRadius() != null && ps.getPlanetRadius() > 0) ? ps.getPlanetRadius() : 2100000.0;
+                    ps.setDistanceToTouchdown(calculateSurfaceDistanceMeters(
+                            ps.getLatitude(), ps.getLongitude(), ps.getTouchdownLat(), ps.getTouchdownLong(), radius
+                    ));
                 }
             }
 
             // Distância até a última bio-amostra escaneada (para aferição de diversidade genética)
             if (ps.getLastBioSample() != null && ps.getLatitude() != null && ps.getLongitude() != null) {
-                double R = (ps.getPlanetRadius() != null && ps.getPlanetRadius() > 0) ? ps.getPlanetRadius() : 2100000.0;
-                double dLat = Math.toRadians(ps.getLatitude() - ps.getLastBioSample().getLatitude());
-                double dLon = Math.toRadians(ps.getLongitude() - ps.getLastBioSample().getLongitude());
-                double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                           Math.cos(Math.toRadians(ps.getLastBioSample().getLatitude())) * Math.cos(Math.toRadians(ps.getLatitude())) *
-                           Math.sin(dLon / 2) * Math.sin(dLon / 2);
-                double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-                double distToBio = R * c;
+                double radius = (ps.getPlanetRadius() != null && ps.getPlanetRadius() > 0) ? ps.getPlanetRadius() : 2100000.0;
+                double distToBio = calculateSurfaceDistanceMeters(
+                        ps.getLatitude(), ps.getLongitude(), ps.getLastBioSample().getLatitude(), ps.getLastBioSample().getLongitude(), radius
+                );
                 ps.setDistanceToLastBioSample(distToBio);
                 ps.setGeneticDiversityReached(distToBio >= ps.getLastBioSample().getMinColonyDistance());
             }
@@ -976,7 +1032,8 @@ public class JournalWatcherService {
 
             ps.setLastUpdateTimestamp(System.currentTimeMillis());
             sseNotificationService.broadcastEvent("surface_status", ps);
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            log.warn("Falha ao processar Status.json: {}", e.getMessage());
         }
     }
 
@@ -984,141 +1041,28 @@ public class JournalWatcherService {
         return planetaryStatusRef.get();
     }
 
-    public synchronized PlanetaryStatusDTO simulatePlanetaryStatus(String bodyName, Double lat, Double lon, Double alt, Double heading, Double gravity, String atm, Boolean landed) {
-        PlanetaryStatusDTO ps = planetaryStatusRef.get();
-        ps.setOnPlanetSurface(true);
-        ps.setInPlanetaryOrbit(true);
-        ps.setCurrentSystem(playerStatusRef.get().getCurrentSystem());
-        if (bodyName != null && !bodyName.isBlank()) ps.setBodyName(bodyName);
-        if (lat != null) ps.setLatitude(lat);
-        if (lon != null) ps.setLongitude(lon);
-        if (alt != null) ps.setAltitude(alt);
-        if (heading != null) ps.setHeading(heading);
-        if (gravity != null) ps.setSurfaceGravity(gravity);
-        if (atm != null && !atm.isBlank()) ps.setAtmosphereType(atm);
-        if (landed != null) ps.setLanded(landed);
-        if (ps.getTouchdownLat() == null) {
-            ps.setTouchdownLat(ps.getLatitude());
-            ps.setTouchdownLong(ps.getLongitude());
-        }
-        double R = (ps.getPlanetRadius() != null && ps.getPlanetRadius() > 0) ? ps.getPlanetRadius() : 2100000.0;
-        if (ps.getTouchdownLat() != null && ps.getLatitude() != null) {
-            double dLat = Math.toRadians(ps.getLatitude() - ps.getTouchdownLat());
-            double dLon = Math.toRadians(ps.getLongitude() - ps.getTouchdownLong());
-            double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                       Math.cos(Math.toRadians(ps.getTouchdownLat())) * Math.cos(Math.toRadians(ps.getLatitude())) *
-                       Math.sin(dLon / 2) * Math.sin(dLon / 2);
-            double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            ps.setDistanceToTouchdown(R * c);
-        }
-        if (ps.getLastBioSample() != null && ps.getLatitude() != null && ps.getLongitude() != null) {
-            double dLat = Math.toRadians(ps.getLatitude() - ps.getLastBioSample().getLatitude());
-            double dLon = Math.toRadians(ps.getLongitude() - ps.getLastBioSample().getLongitude());
-            double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                       Math.cos(Math.toRadians(ps.getLastBioSample().getLatitude())) * Math.cos(Math.toRadians(ps.getLatitude())) *
-                       Math.sin(dLon / 2) * Math.sin(dLon / 2);
-            double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            double distToBio = R * c;
-            ps.setDistanceToLastBioSample(distToBio);
-            ps.setGeneticDiversityReached(distToBio >= ps.getLastBioSample().getMinColonyDistance());
-        }
-
-        if (!ps.getBodyName().isBlank()) {
-            if (ps.getSurfaceFeatures().isEmpty()) {
-                ps.setSurfaceFeatures(surfaceFeatureService.getFeaturesForBody(ps.getCurrentSystem(), ps.getBodyName()));
-            }
-            updateSurfaceFeatureDistances(ps);
-        }
-
-        ps.setLastUpdateTimestamp(System.currentTimeMillis());
-        log.info("Telemetria planetária simulada: Body={}, Lat={}, Lon={}, Alt={}, Heading={}",
-                ps.getBodyName(), ps.getLatitude(), ps.getLongitude(), ps.getAltitude(), ps.getHeading());
-        return ps;
-    }
-
-    public synchronized PlanetaryStatusDTO simulateBioScan(Integer sampleNumber, String scanType, String genus, String species, Double lat, Double lon) {
-        PlanetaryStatusDTO ps = planetaryStatusRef.get();
-        String g = (genus != null && !genus.isBlank()) ? genus : "Stratum";
-        String sp = (species != null && !species.isBlank()) ? species : "Stratum Tectonicas";
-
-        int sNum = (sampleNumber != null && sampleNumber >= 1 && sampleNumber <= 3) ? sampleNumber : (ps.getActiveBioSamples().size() + 1);
-        if (sNum > 3) sNum = 1;
-
-        String sType = (scanType != null && !scanType.isBlank()) ? scanType : (sNum == 1 ? "Log" : (sNum == 2 ? "Sample" : "Analyse"));
-
-        double sampleLat = (lat != null) ? lat : (ps.getLatitude() != null ? ps.getLatitude() : -14.2854);
-        double sampleLon = (lon != null) ? lon : (ps.getLongitude() != null ? ps.getLongitude() : 102.4419);
-
-        double minColony = BioSampleDTO.getOfficialColonyDistance(g);
-        long baseVal = BioSampleDTO.getOfficialBaseValue(sp, g);
-
-        BioSampleDTO sample = new BioSampleDTO(sNum, sType, g, sp, "", sampleLat, sampleLon, System.currentTimeMillis(), baseVal, minColony);
-
-        if (sNum == 1) {
-            ps.getActiveBioSamples().clear();
-        }
-        ps.getActiveBioSamples().add(sample);
-        ps.setLastBioSample(sample);
-
-        if (ps.getLatitude() != null && ps.getLongitude() != null) {
-            double R = (ps.getPlanetRadius() != null && ps.getPlanetRadius() > 0) ? ps.getPlanetRadius() : 2100000.0;
-            double dLat = Math.toRadians(ps.getLatitude() - sample.getLatitude());
-            double dLon = Math.toRadians(ps.getLongitude() - sample.getLongitude());
-            double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                       Math.cos(Math.toRadians(sample.getLatitude())) * Math.cos(Math.toRadians(ps.getLatitude())) *
-                       Math.sin(dLon / 2) * Math.sin(dLon / 2);
-            double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            double distToBio = R * c;
-            ps.setDistanceToLastBioSample(distToBio);
-            ps.setGeneticDiversityReached(distToBio >= sample.getMinColonyDistance());
-        }
-
-        ps.setLastUpdateTimestamp(System.currentTimeMillis());
-        log.info("Bio-amostra simulada: #{} [{}], {}, DistMin={}m", sNum, sType, sp, minColony);
-        return ps;
-    }
-
-    public synchronized PlanetaryStatusDTO clearBioSamples() {
-        PlanetaryStatusDTO ps = planetaryStatusRef.get();
-        ps.getActiveBioSamples().clear();
-        ps.setLastBioSample(null);
-        ps.setDistanceToLastBioSample(null);
-        ps.setGeneticDiversityReached(null);
-        ps.setLastUpdateTimestamp(System.currentTimeMillis());
-        log.info("Bio-amostras ativas limpas pelo usuário");
-        return ps;
-    }
-
-    public synchronized PlanetaryStatusDTO pinSurfaceFeature(String featureId, String name) {
-        PlanetaryStatusDTO ps = planetaryStatusRef.get();
-        if (!ps.getBodyName().isBlank() && ps.getLatitude() != null && ps.getLongitude() != null) {
-            surfaceFeatureService.pinFeatureAtLocation(ps.getBodyName(), featureId, name, ps.getLatitude(), ps.getLongitude());
-            surfaceFeatureService.syncPlanetaryStatusSignals(ps, ps.getCurrentSystem(), ps.getBodyName());
-            updateSurfaceFeatureDistances(ps);
-            ps.setLastUpdateTimestamp(System.currentTimeMillis());
-            sseNotificationService.broadcastEvent("surface_status", ps);
-        }
-        return ps;
-    }
-
     private void updateSurfaceFeatureDistances(PlanetaryStatusDTO ps) {
         if (ps == null || ps.getSurfaceFeatures() == null) return;
         Double pLat = ps.getLatitude();
         Double pLon = ps.getLongitude();
-        double R = (ps.getPlanetRadius() != null && ps.getPlanetRadius() > 0) ? ps.getPlanetRadius() : 2100000.0;
+        double radius = (ps.getPlanetRadius() != null && ps.getPlanetRadius() > 0) ? ps.getPlanetRadius() : 2100000.0;
 
         for (SurfaceFeatureDTO sf : ps.getSurfaceFeatures()) {
             if (!sf.isGpsConfirmed() || sf.getLatitude() == null || sf.getLongitude() == null || pLat == null || pLon == null) {
                 sf.setDistanceMeters(null);
                 continue;
             }
-            double dLat = Math.toRadians(pLat - sf.getLatitude());
-            double dLon = Math.toRadians(pLon - sf.getLongitude());
-            double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                       Math.cos(Math.toRadians(sf.getLatitude())) * Math.cos(Math.toRadians(pLat)) *
-                       Math.sin(dLon / 2) * Math.sin(dLon / 2);
-            double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            sf.setDistanceMeters(R * c);
+            sf.setDistanceMeters(calculateSurfaceDistanceMeters(pLat, pLon, sf.getLatitude(), sf.getLongitude(), radius));
         }
+    }
+
+    private double calculateSurfaceDistanceMeters(double lat1, double lon1, double lat2, double lon2, double radiusMeters) {
+        double dLat = Math.toRadians(lat1 - lat2);
+        double dLon = Math.toRadians(lon1 - lon2);
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                   Math.cos(Math.toRadians(lat2)) * Math.cos(Math.toRadians(lat1)) *
+                   Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return radiusMeters * c;
     }
 }
