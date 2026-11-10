@@ -19,7 +19,7 @@
   - **Stratum Tectonicas Radar:** highlights nearby systems with confirmed or likely *Stratum Tectonicas* candidates (via Spansh + local cache).
   - **Procedural Void Hunter:** detects unexplored gaps around the galactic cube.
   - **Safe Docking & Live Traffic:** lists stations/ports in the current system and streams live Commander traffic via **EDDN** (ZeroMQ + SSE).
-- **🪐 3D Star System — Orrery (`/system-orrery.html`):**
+- **🪐 3D Star System — Orrery:**
   - Interactive 3D orbital map showing the primary star, planets, moons, rings, surface materials, DSS signals (Bio/Geo), and landable bodies.
   - Automatically switches back to the System view when leaving planetary orbit/atmosphere.
 - **🎯 2.5D Planetary Surface HUD (`Columbus View`):**
