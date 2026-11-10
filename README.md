@@ -5,11 +5,12 @@
 > Real-time space exploration, exobiology, and planetary surface navigation copilot for **Elite Dangerous**, connected directly to your local game logs (`Journal` + `Status.json` + `NavRoute.json`) and community networks (**EDSM**, **EDDN**, **Spansh**, and **INARA**).
 
 ---
-
 <img width="1908" height="1066" alt="001" src="https://github.com/user-attachments/assets/3a08a342-6511-46e6-98c5-6543cecde46e" />
-
+---
 <img width="1905" height="1065" alt="002" src="https://github.com/user-attachments/assets/809c7930-f137-4f99-97ed-1eb8f8535de0" />
+---
 <img width="1907" height="1070" alt="003" src="https://github.com/user-attachments/assets/eac04c8f-a04c-4d34-86da-296bd72b8319" />
+---
 
 ## Key Features
 
@@ -30,7 +31,6 @@
   - Optional telemetry/discovery sync to **EDSM** and privacy-sanitized journal publishing to **EDDN**.
   - Auxiliary views for INARA trade loops (`/trade.html`) and outbound trade opportunities (`/copilot.html`).
 
----
 
 ## Prerequisites
 
@@ -38,13 +38,11 @@
 - **Elite Dangerous** running on the same machine (automatically reads `%USERPROFILE%\Saved Games\Frontier Developments\Elite Dangerous`), or a custom path passed via `--elite.journal.dir`.
 - **Maven** (only needed if building from source).
 
----
 
 ## Java
 
 https://download.oracle.com/java/27/latest/jdk-27_windows-x64_bin.zip
 
----
 
 ## Quick Start (Easy Setup — `iniciar.bat`)
 
@@ -62,8 +60,6 @@ https://download.oracle.com/java/27/latest/jdk-27_windows-x64_bin.zip
    http://localhost:8080
    ```
 
----
-
 ## Build from Source
 
 ```powershell
@@ -76,7 +72,6 @@ To launch manually with command-line parameters:
 java -jar target/elite-explorer-1.0.0.jar --edsm.commander.name="YOUR_NAME" --edsm.api.key="YOUR_KEY"
 ```
 
----
 
 ## Project Structure
 
@@ -104,7 +99,6 @@ java -jar target/elite-explorer-1.0.0.jar --edsm.commander.name="YOUR_NAME" --ed
     └── test/java/com/eliteexplorer/service/     # INARA parser & client tests
 ```
 
----
 
 ## Technical Notes
 
