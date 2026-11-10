@@ -40,6 +40,12 @@
 
 ---
 
+## Java
+
+https://download.oracle.com/java/27/latest/jdk-27_windows-x64_bin.zip
+
+---
+
 ## Quick Start (Easy Setup — `iniciar.bat`)
 
 1. Open [`iniciar.bat`](iniciar.bat) in Notepad (or any text editor).
