@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elite Explorer Copilot - Explorador de Galáxia 3D & Caçador de Vazios</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #03070d;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #d8e5f2;
+        }
+
+        #viewport-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        #three-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* Top Navigation Bar */
+        .top-nav-bar {
+            position: absolute;
+            top: 15px;
+            left: 20px;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            pointer-events: auto;
+        }
+
+        .hud-interactive {
+            pointer-events: auto;
+        }
+
+        .hud-panel-glass {
+            background: rgba(8, 16, 28, 0.85);
+            border: 1px solid rgba(0, 212, 255, 0.35);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7), inset 0 0 15px rgba(0, 212, 255, 0.08);
+            backdrop-filter: blur(8px);
+            border-radius: 6px;
+            padding: 12px 18px;
+        }
+
+        .nav-btn {
+            background: rgba(12, 25, 45, 0.85);
+            border: 1px solid rgba(0, 212, 255, 0.4);
+            color: #7ad1f5;
+            padding: 7px 15px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .nav-btn:hover, .nav-btn.active {
+            background: rgba(0, 212, 255, 0.25);
+            border-color: #00d4ff;
+            color: #ffffff;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+        }
+
+        .coords-badge {
+            font-family: 'Consolas', monospace;
+            font-size: 13px;
+            color: #2bfca8;
+            background: rgba(8, 22, 25, 0.85);
+            border: 1px solid rgba(43, 252, 168, 0.45);
+            box-shadow: 0 0 12px rgba(43, 252, 168, 0.15), inset 0 0 8px rgba(43, 252, 168, 0.08);
+            backdrop-filter: blur(8px);
+            padding: 7px 14px;
+            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+
+        /* Left HUD Column (Target Details & Stations) */
+        .hud-left-column {
+            position: absolute;
+            top: 65px;
+            left: 20px;
+            width: 330px;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
+            max-height: calc(100vh - 120px);
+        }
+
+        .hud-left-column > * {
+            pointer-events: auto;
+        }
+
+        /* Right HUD Column (Top 5 Stratum Radar) */
+        .hud-right-column {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            width: 280px;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
+            max-height: calc(100vh - 80px);
+        }
+
+        .hud-right-column > * {
+            pointer-events: auto;
+        }
+
+        /* Left Details Card (Pinned Selection) */
+        #selected-target-card {
+            width: 100%;
+            box-sizing: border-box;
+            display: none;
+            border-left: 3px solid #00d4ff;
+            animation: fadeIn 0.2s ease-out;
+            max-height: 48vh;
+            overflow-y: auto;
+        }
+
+        /* Left Stations Card */
+        #current-stations-card {
+            width: 100%;
+            box-sizing: border-box;
+            border-left: 3px solid #ffaa33;
+            max-height: calc(100vh - 160px);
+            overflow-y: auto;
+        }
+
+        /* Right Stratum Radar Card */
+        #stratum-radar-card {
+            width: 100%;
+            box-sizing: border-box;
+            border-top: 2px solid #2bfca8;
+            max-height: calc(100vh - 100px);
+            overflow-y: auto;
+        }
+
+        .card-header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+
+        .close-card-btn {
+            background: transparent;
+            border: none;
+            color: #8da4be;
+            cursor: pointer;
+            font-size: 16px;
+            line-height: 1;
+            padding: 2px 6px;
+        }
+
+        .close-card-btn:hover {
+            color: #ff4466;
+        }
+
+        .copy-btn {
+            background: rgba(0, 212, 255, 0.2);
+            border: 1px solid #00d4ff;
+            color: #fff;
+            padding: 4px 10px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 6px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.2s;
+        }
+
+        .copy-btn:hover {
+            background: rgba(0, 212, 255, 0.4);
+            box-shadow: 0 0 8px rgba(0, 212, 255, 0.5);
+        }
+
+        /* Custom HUD Scrollbars */
+        #stratum-radar-card::-webkit-scrollbar,
+        #current-stations-card::-webkit-scrollbar,
+        #selected-target-card::-webkit-scrollbar {
+            width: 4px;
+        }
+        #stratum-radar-card::-webkit-scrollbar-thumb,
+        #current-stations-card::-webkit-scrollbar-thumb,
+        #selected-target-card::-webkit-scrollbar-thumb {
+            background: rgba(0, 212, 255, 0.4);
+            border-radius: 2px;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Horizontal Footer Legend */
+        .bottom-legend-hud {
+            position: absolute;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            padding: 8px 20px;
+            border-radius: 20px;
+            white-space: nowrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: #d8e5f2;
+        }
+
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        /* Tooltip */
+        #system-tooltip {
+            position: absolute;
+            z-index: 20;
+            display: none;
+            pointer-events: none;
+            background: rgba(4, 11, 20, 0.92);
+            border: 1px solid #00d4ff;
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.4);
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-family: 'Consolas', monospace;
+            font-size: 12px;
+            color: #fff;
+            transform: translate(-50%, -120%);
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(0, 212, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #00d4ff;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+    <!-- Import Three.js e OrbitControls via CDN confiável -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+    <div id="viewport-container">
+        <canvas id="three-canvas"></canvas>
+    </div>
+
+    <!-- Top Left Live Coordinates Badge -->
+    <div class="top-nav-bar">
+        <div id="playerCoordsDisplay" class="coords-badge">
+            Sincronizando com Journal...
+        </div>
+        <a href="/system-orrery.html" class="coords-badge" style="background: rgba(255,170,0,0.12); border-color: rgba(255,170,0,0.5); color: #ffaa00; text-decoration: none; cursor: pointer; font-weight: bold; transition: all 0.2s;" title="Abrir o Mapa 3D do Sistema Estelar (Orrery 3D)">
+            🪐 Sistema 3D (Orrery)
+        </a>
+    </div>
+
+    <!-- Left HUD Column (Target Details & Stations) -->
+    <div class="hud-left-column">
+        <!-- Selected Target Card (Pinned Selection) -->
+        <div id="selected-target-card" class="hud-panel-glass">
+            <div class="card-header-row">
+                <span id="targetCardBadge" style="font-size: 11px; background: rgba(0,212,255,0.2); color: #00d4ff; padding: 2px 6px; border-radius: 3px; font-weight: bold; letter-spacing: 0.5px;">ALVO FIXADO</span>
+                <button id="btnCloseCard" class="close-card-btn" title="Fechar">✕</button>
+            </div>
+            <div id="targetCardContent">
+                <!-- Conteúdo dinâmico via JS -->
+            </div>
+        </div>
+
+        <!-- Left: Current System Stations (Safe Docking / Night Rest) -->
+        <div id="current-stations-card" class="hud-panel-glass">
+            <div class="card-header-row" style="margin-bottom: 4px;">
+                <div>
+                    <span style="font-size: 11px; background: rgba(255,170,51,0.2); color: #ffaa33; padding: 2px 6px; border-radius: 3px; font-weight: bold; letter-spacing: 0.5px;">⚓ ANCORAGEM SEGURA</span>
+                    <div id="stationsSystemTitle" style="font-size: 13px; font-weight: bold; color: #fff; margin-top: 3px;">Sistema Atual</div>
+                </div>
+                <span id="stationsCountBadge" style="font-size: 10px; color: #8da4be; font-family: monospace;">0 docas</span>
+            </div>
+            <div id="currentStationsList" style="display: flex; flex-direction: column; gap: 5px; margin-top: 6px;">
+                <div style="color: #6a88a8; font-size: 11px; font-style: italic;">Consultando estações do sistema...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right HUD Column (Filter Toggle & Top 5 Stratum Radar) -->
+    <div class="hud-right-column">
+        <!-- Population Filter Toggle -->
+        <div class="hud-panel-glass" style="display: flex; align-items: center; justify-content: space-between; padding: 7px 12px;">
+            <div style="font-size: 11px; font-weight: bold; color: #a4bedc; letter-spacing: 0.5px; text-transform: uppercase;">
+                FILTRO ESTELAR
+            </div>
+            <button id="btnToggleHabited" style="background: rgba(12, 25, 45, 0.85); border: 1px solid rgba(0, 212, 255, 0.35); color: #8da4be; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; transition: all 0.2s;" title="Alternar entre exibir todos os sistemas ou apenas habitados">
+                🌐 Todos
+            </button>
+        </div>
+
+        <!-- Top 5 Stratum Radar -->
+        <div id="stratum-radar-card" class="hud-panel-glass">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <div style="font-size: 11px; font-weight: bold; color: #2bfca8; letter-spacing: 0.5px; text-transform: uppercase;">
+                    🪐 TOP 5 STRATUM PRÓXIMAS
+                </div>
+                <span id="radarCountBadge" style="font-size: 10px; color: #8da4be; font-family: monospace;">0 no cubo</span>
+            </div>
+            <div id="stratumRadarList" style="display: flex; flex-direction: column; gap: 6px;">
+                <div style="color: #6a88a8; font-size: 11px; font-style: italic; padding: 4px 0;">Varrendo arredores...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Horizontal Footer Legend -->
+    <div class="bottom-legend-hud hud-panel-glass">
+        <div class="legend-item">
+            <div class="legend-color" style="background: #2bfca8; box-shadow: 0 0 6px #2bfca8;"></div>
+            <span>Posição Atual (Sua Nave)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: linear-gradient(to right, #ff4422, #ff9933, #ffe066, #ffffee, #ccf0ff, #3377ff);"></div>
+            <span>Estrelas KGBFOAM (Combustível)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #8da4be;"></div>
+            <span>Outras Estrelas (Não-reabastecíveis)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: rgba(255, 68, 68, 0.4); border: 1px solid #ff4444; border-radius: 3px;"></div>
+            <span>Vazio Anômalo (Provável Sistema Inédito)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="border: 2px solid #2bfca8; background: transparent; border-radius: 50%; box-shadow: 0 0 5px #2bfca8;"></div>
+            <span>Presença Confirmada</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="border: 2px solid #ffcc44; background: transparent; border-radius: 50%;"></div>
+            <span>Potencial Inédito (1st)</span>
+        </div>
+    </div>
+
+    <!-- Hover Tooltip -->
+    <div id="system-tooltip"></div>
+
+    <script src="/js/explorer.js"></script>
+</body>
+</html>
