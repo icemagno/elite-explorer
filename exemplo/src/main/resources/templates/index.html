@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title th:text="#{landing.title}">QuaTime • Início</title>
+    <base href="/clock/">
+    <link rel="icon" type="image/png" href="images/logo-image.png">
+
+    <!-- Fontes e Ícones -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <style>
+        :root {
+            --bg-primary: #140E0F;
+            --bg-card: #0d1527;
+            --text-primary: #ffffff;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --gold: #f59e0b;
+            --gold-glow: rgba(245, 158, 11, 0.35);
+            --green: #10b981;
+            --green-glow: rgba(16, 185, 129, 0.35);
+            --blue: #3b82f6;
+            --blue-glow: rgba(59, 130, 246, 0.35);
+            --border-subtle: rgba(255, 255, 255, 0.08);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-primary);
+            background-image: 
+                radial-gradient(circle at 50% 20%, rgba(245, 158, 11, 0.08) 0%, transparent 60%),
+                radial-gradient(circle at 80% 80%, rgba(16, 185, 129, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 20% 80%, rgba(59, 130, 246, 0.05) 0%, transparent 50%);
+            min-height: 100vh;
+            min-height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: var(--text-primary);
+            padding: 30px 20px;
+            overflow-x: hidden;
+        }
+
+        .landing-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            max-width: 440px;
+            text-align: center;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(14px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 1. Logotipo do Jogo no Centro (Emblema) */
+        .emblem-wrapper {
+            position: relative;
+            margin-bottom: 18px;
+            display: inline-block;
+        }
+
+        .emblem-wrapper::before {
+            content: '';
+            position: absolute;
+            inset: -15px;
+            background: radial-gradient(circle, var(--gold-glow) 0%, transparent 70%);
+            border-radius: 50%;
+            z-index: 0;
+            animation: pulse-glow 3s infinite ease-in-out;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { transform: scale(0.95); opacity: 0.6; }
+            50% { transform: scale(1.1); opacity: 1; }
+        }
+
+        .landing-emblem {
+            position: relative;
+            z-index: 1;
+            width: 135px;
+            height: 135px;
+            object-fit: contain;
+            filter: drop-shadow(0 10px 25px rgba(0, 0, 0, 0.6));
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .landing-emblem:hover {
+            transform: scale(1.06) rotate(2deg);
+        }
+
+        /* 2. Logomarca Escrita (logo-novo.png) Embaixo */
+        .brand-logo-wrapper {
+            margin-bottom: 8px;
+        }
+
+        .landing-brand-text {
+            width: 230px;
+            max-width: 80vw;
+            height: auto;
+            object-fit: contain;
+            filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
+        }
+
+        .landing-subtitle {
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 2.5px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 30px;
+        }
+
+        /* 3. Seletor de Idioma via Bandeiras Interativas */
+        .landing-flags-section {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .landing-flags-prompt {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+        }
+
+        .landing-flags-grid {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .btn-flag-lang {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 14px 20px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 16px;
+            color: #ffffff;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            text-decoration: none;
+        }
+
+        .btn-flag-lang:hover {
+            background: rgba(245, 158, 11, 0.08);
+            border-color: var(--gold);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px var(--gold-glow);
+        }
+
+        .btn-flag-lang:active {
+            transform: translateY(1px);
+        }
+
+        .flag-icon-box {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            border-radius: 6px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+            line-height: 0;
+        }
+
+        .flag-svg {
+            display: block;
+            width: 44px;
+            height: 31px;
+            border-radius: 4px;
+        }
+
+        .flag-text-box {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            flex: 1;
+        }
+
+        .flag-lang-name {
+            font-size: 16px;
+            font-weight: 800;
+            color: var(--text-primary);
+            line-height: 1.2;
+        }
+
+        .flag-lang-sub {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .flag-arrow {
+            font-size: 14px;
+            color: var(--text-muted);
+            transition: transform 0.2s ease, color 0.2s ease;
+        }
+
+        .btn-flag-lang:hover .flag-arrow {
+            color: var(--gold);
+            transform: translateX(4px);
+        }
+
+        @media (max-width: 400px) {
+            .landing-emblem {
+                width: 115px;
+                height: 115px;
+            }
+            .landing-brand-text {
+                width: 190px;
+            }
+            .btn-flag-lang {
+                padding: 12px 16px;
+                gap: 12px;
+            }
+            .flag-svg {
+                width: 38px;
+                height: 27px;
+            }
+            .flag-lang-name {
+                font-size: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <main class="landing-container">
+        <!-- 1. Logotipo do Jogo no Centro -->
+        <div class="emblem-wrapper">
+            <img src="images/logo-image.png" alt="QuaTime Emblem" class="landing-emblem">
+        </div>
+
+        <!-- 2. Logomarca Escrita (logo-novo.png) Embaixo -->
+        <div class="brand-logo-wrapper">
+            <img src="images/logo-novo.png" alt="QuaTime" class="landing-brand-text">
+        </div>
+
+        <p class="landing-subtitle" data-i18n="app.subtitle" th:text="#{app.subtitle}">Xadrez Para Quatro Jogadores</p>
+
+        <!-- 3. Seletor de Idioma via Bandeiras (Entrada no Sistema) -->
+        <div class="landing-flags-section">
+            <span class="landing-flags-prompt" data-i18n="landing.select_language" th:text="#{landing.select_language}">Selecione o idioma para começar:</span>
+            
+            <div class="landing-flags-grid">
+                <!-- 1. Brasil (Português) -->
+                <button type="button" class="btn-flag-lang" onclick="selectLanguageAndEnter('pt')" title="Português (Brasil)">
+                    <div class="flag-icon-box">
+                        <svg class="flag-svg" viewBox="0 0 720 504">
+                            <rect width="720" height="504" fill="#009c3b" rx="24"/>
+                            <polygon points="360,63 657,252 360,441 63,252" fill="#ffdf00"/>
+                            <circle cx="360" cy="252" r="126" fill="#002776"/>
+                            <path d="M 234,252 A 130,130 0 0,0 486,238" stroke="#ffffff" stroke-width="14" fill="none"/>
+                        </svg>
+                    </div>
+                    <div class="flag-text-box">
+                        <span class="flag-lang-name">Português</span>
+                        <span class="flag-lang-sub">Brasil</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right flag-arrow"></i>
+                </button>
+
+                <!-- 2. United States (English) -->
+                <button type="button" class="btn-flag-lang" onclick="selectLanguageAndEnter('en')" title="English (US)">
+                    <div class="flag-icon-box">
+                        <svg class="flag-svg" viewBox="0 0 720 504">
+                            <clipPath id="us-clip"><rect width="720" height="504" rx="24"/></clipPath>
+                            <g clip-path="url(#us-clip)">
+                                <rect width="720" height="504" fill="#b22234"/>
+                                <path d="M0,38.7h720M0,116.3h720M0,193.8h720M0,271.4h720M0,349h720M0,426.5h720" stroke="#ffffff" stroke-width="38.7"/>
+                                <rect width="288" height="271.4" fill="#3c3b6e"/>
+                                <g fill="#ffffff">
+                                    <circle cx="48" cy="45" r="9"/><circle cx="112" cy="45" r="9"/><circle cx="176" cy="45" r="9"/><circle cx="240" cy="45" r="9"/>
+                                    <circle cx="80" cy="90" r="9"/><circle cx="144" cy="90" r="9"/><circle cx="208" cy="90" r="9"/>
+                                    <circle cx="48" cy="135" r="9"/><circle cx="112" cy="135" r="9"/><circle cx="176" cy="135" r="9"/><circle cx="240" cy="135" r="9"/>
+                                    <circle cx="80" cy="180" r="9"/><circle cx="144" cy="180" r="9"/><circle cx="208" cy="180" r="9"/>
+                                    <circle cx="48" cy="225" r="9"/><circle cx="112" cy="225" r="9"/><circle cx="176" cy="225" r="9"/><circle cx="240" cy="225" r="9"/>
+                                </g>
+                            </g>
+                        </svg>
+                    </div>
+                    <div class="flag-text-box">
+                        <span class="flag-lang-name">English</span>
+                        <span class="flag-lang-sub">United States</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right flag-arrow"></i>
+                </button>
+
+                <!-- 3. España / Latam (Español) -->
+                <button type="button" class="btn-flag-lang" onclick="selectLanguageAndEnter('es')" title="Español">
+                    <div class="flag-icon-box">
+                        <svg class="flag-svg" viewBox="0 0 720 504">
+                            <clipPath id="es-clip"><rect width="720" height="504" rx="24"/></clipPath>
+                            <g clip-path="url(#es-clip)">
+                                <rect width="720" height="504" fill="#aa151b"/>
+                                <rect y="126" width="720" height="252" fill="#f1bf00"/>
+                                <circle cx="200" cy="252" r="38" fill="#aa151b"/>
+                                <circle cx="200" cy="252" r="28" fill="#f1bf00"/>
+                            </g>
+                        </svg>
+                    </div>
+                    <div class="flag-text-box">
+                        <span class="flag-lang-name">Español</span>
+                        <span class="flag-lang-sub">España / Latinoamérica</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right flag-arrow"></i>
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <script src="js/i18n.js"></script>
+    <script>
+        function selectLanguageAndEnter(lang) {
+            if (typeof i18n !== 'undefined') {
+                i18n.setLanguage(lang);
+            } else {
+                try { localStorage.setItem('quatime_language', lang); } catch (_) {}
+                try { document.cookie = 'quatime_lang=' + lang + '; path=/; max-age=31536000; SameSite=Lax'; } catch (_) {}
+            }
+            window.location.href = 'play?lang=' + lang;
+        }
+    </script>
+</body>
+</html>

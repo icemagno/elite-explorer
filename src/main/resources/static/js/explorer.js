@@ -1491,47 +1491,67 @@ function updateTrafficAudioButton() {
     btn.title = trafficAudioEnabled ? tr('galaxy.traffic_sound_on') : tr('galaxy.traffic_sound_off');
 }
 
+function scheduleTrafficBeep(ctx, isArrival) {
+    try {
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        if (isArrival) {
+            // Bip curto ascendente (chegada ao sistema)
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(780, now);
+            osc.frequency.exponentialRampToValueAtTime(1120, now + 0.09);
+            gain.gain.setValueAtTime(0.001, now);
+            gain.gain.linearRampToValueAtTime(0.16, now + 0.012);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.13);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.135);
+        } else {
+            // Bip curto descendente (saída do sistema)
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(520, now);
+            osc.frequency.exponentialRampToValueAtTime(320, now + 0.1);
+            gain.gain.setValueAtTime(0.001, now);
+            gain.gain.linearRampToValueAtTime(0.15, now + 0.012);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.135);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.14);
+        }
+    } catch (_) {}
+}
+
 function playTrafficBeep(isArrival) {
     if (!trafficAudioEnabled) return;
     const ctx = ensureTrafficAudioContext();
-    if (!ctx || ctx.state !== 'running') return;
+    if (!ctx) return;
 
-    const now = ctx.currentTime;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    if (isArrival) {
-        // Bip curto ascendente (chegada ao sistema)
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(780, now);
-        osc.frequency.exponentialRampToValueAtTime(1120, now + 0.085);
-        gain.gain.setValueAtTime(0.001, now);
-        gain.gain.linearRampToValueAtTime(0.08, now + 0.012);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.115);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start(now);
-        osc.stop(now + 0.12);
-    } else {
-        // Bip curto descendente (saída do sistema)
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(520, now);
-        osc.frequency.exponentialRampToValueAtTime(320, now + 0.095);
-        gain.gain.setValueAtTime(0.001, now);
-        gain.gain.linearRampToValueAtTime(0.075, now + 0.012);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start(now);
-        osc.stop(now + 0.125);
+    if (ctx.state === 'running') {
+        scheduleTrafficBeep(ctx, isArrival);
+    } else if (ctx.state === 'suspended') {
+        ctx.resume().then(() => {
+            if (ctx.state === 'running') {
+                scheduleTrafficBeep(ctx, isArrival);
+            }
+        }).catch(() => {});
     }
 }
 
 function initTrafficAudioControls() {
     updateTrafficAudioButton();
-    const unlock = () => ensureTrafficAudioContext();
-    window.addEventListener('pointerdown', unlock, { once: true, passive: true });
-    window.addEventListener('keydown', unlock, { once: true, passive: true });
+    const unlock = () => {
+        const ctx = ensureTrafficAudioContext();
+        if (ctx && ctx.state === 'running') {
+            window.removeEventListener('pointerdown', unlock);
+            window.removeEventListener('keydown', unlock);
+        }
+    };
+    window.addEventListener('pointerdown', unlock, { passive: true });
+    window.addEventListener('keydown', unlock, { passive: true });
 
     const btn = document.getElementById('btnToggleTrafficAudio');
     if (btn) {
@@ -1633,8 +1653,9 @@ async function pollTrafficEvents() {
                 addTrafficEventToLog(ev);
                 if (!isInitial || (Date.now() - ev.timestamp < 10000)) {
                     triggerJumpBeam(ev);
-                    if (!isInitial && ev.id && !playedTrafficSoundIds.has(ev.id)) {
-                        playedTrafficSoundIds.add(ev.id);
+                    const evSoundId = ev.id || `${ev.type || 'EV'}_${ev.systemName || ''}_${ev.timestamp || 0}`;
+                    if (!isInitial && !playedTrafficSoundIds.has(evSoundId)) {
+                        playedTrafficSoundIds.add(evSoundId);
                         if (playedTrafficSoundIds.size > 200) {
                             const firstId = playedTrafficSoundIds.values().next().value;
                             playedTrafficSoundIds.delete(firstId);

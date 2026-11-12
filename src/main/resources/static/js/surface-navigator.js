@@ -64,7 +64,7 @@ function initSurface3D() {
     // Cena e Névoa Atmosférica Planetária
     surfaceScene = new THREE.Scene();
     surfaceScene.background = new THREE.Color(0x020813);
-    surfaceScene.fog = new THREE.FogExp2(0x020813, 0.0008);
+    surfaceScene.fog = new THREE.FogExp2(0x020813, 0.00035);
 
     // Câmera em Perspectiva Inclinada 2.5D (Columbus View)
     surfaceCamera = new THREE.PerspectiveCamera(45, width / height, 1, 10000);
@@ -268,13 +268,25 @@ function createLandingBeacon() {
     beaconGroup.add(padMesh);
 
     // Rótulo textual 2D flutuante identificando a nave estacionada
-    const labelSprite = createTextSprite('🚀 NAVE ESTACIONADA', '#ffaa00', 11);
-    labelSprite.position.set(0, 8.0, 0);
-    labelSprite.scale.set(40, 10, 1);
-    beaconGroup.add(labelSprite);
-
     beaconGroup.visible = false;
     surfaceLandingBeacon = beaconGroup;
+    updateLandingBeaconLabel();
+}
+
+// Atualiza o rótulo 3D da baliza de pouso conforme o idioma selecionado
+function updateLandingBeaconLabel() {
+    if (!surfaceLandingBeacon) return;
+    const oldSprite = surfaceLandingBeacon.getObjectByName('landingBeaconLabel');
+    if (oldSprite) {
+        if (oldSprite.material && oldSprite.material.map) oldSprite.material.map.dispose();
+        if (oldSprite.material) oldSprite.material.dispose();
+        surfaceLandingBeacon.remove(oldSprite);
+    }
+    const labelSprite = createTextSprite(surfaceTr('surface.ship_parked'), '#ffaa00', 11);
+    labelSprite.name = 'landingBeaconLabel';
+    labelSprite.position.set(0, 8.0, 0);
+    labelSprite.scale.set(40, 10, 1);
+    surfaceLandingBeacon.add(labelSprite);
 }
 
 // Cria o modelo da nave / SRV do jogador com vetor de rumo e haste de sombra
@@ -1058,7 +1070,7 @@ function createBioSampleBeacon(sample, pos) {
     group.add(colonyDisc);
 
     // Rótulo da espécie
-    const label = createTextSprite(`🌿 ${sample.species || 'Amostra'}`, '#00ffaa', 10);
+    const label = createTextSprite(`🌿 ${sample.species || surfaceTr('surface.bio_sample_default')}`, '#00ffaa', 10);
     label.name = 'bioLabel';
     label.position.set(0, 7.0, 0);
     group.add(label);
@@ -1067,45 +1079,87 @@ function createBioSampleBeacon(sample, pos) {
     return group;
 }
 
+let lastAnnouncedSampleKey = null;
+let wasOutsideSampleArea = null;
+
+function isSurfaceAudioEnabled() {
+    try {
+        return localStorage.getItem('elite_explorer_traffic_audio') !== '0';
+    } catch (_) {
+        return true;
+    }
+}
+
+function speakSurfaceAlert(text) {
+    if (!text || !isSurfaceAudioEnabled() || !('speechSynthesis' in window)) return;
+    try {
+        const locale = window.i18n ? window.i18n.getLocale() : 'pt-BR';
+        window.speechSynthesis.cancel();
+        if (typeof window.speechSynthesis.resume === 'function') {
+            window.speechSynthesis.resume();
+        }
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.lang = locale;
+        const voices = window.speechSynthesis.getVoices ? window.speechSynthesis.getVoices() : [];
+        const langPrefix = locale.split('-')[0].toLowerCase();
+        const matchVoice = voices.find(v => v.lang && v.lang.toLowerCase() === locale.toLowerCase())
+            || voices.find(v => v.lang && v.lang.toLowerCase().startsWith(langPrefix));
+        if (matchVoice) utter.voice = matchVoice;
+        utter.rate = 1.05;
+        utter.pitch = 1.0;
+        utter.volume = 1.0;
+        window.speechSynthesis.speak(utter);
+    } catch (e) {
+        console.warn('Erro na síntese de voz:', e);
+    }
+}
+
 // Atualiza marcadores 3D das bio-amostras, raio de colônia e hodômetro de diversidade
 function updateBioTelemetry(data, moved) {
-    if (!surfaceBioGroup) return;
-
     const samples = data.activeBioSamples || [];
     const count = samples.length;
     const lastSample = data.lastBioSample;
     const distToLast = data.distanceToLastBioSample;
     const diversityReached = data.geneticDiversityReached;
 
-    // 1. Reconstruir balizas 3D e anéis de colônia apenas se a contagem mudou
-    if (count !== lastRenderedBioCount) {
-        lastRenderedBioCount = count;
-        surfaceBioGroup.clear();
+    if (surfaceBioGroup) {
+        // 1. Reconstruir balizas 3D e anéis de colônia apenas se a contagem mudou
+        if (count !== lastRenderedBioCount) {
+            lastRenderedBioCount = count;
+            surfaceBioGroup.clear();
 
-        samples.forEach(sample => {
+            samples.forEach(sample => {
+                const rel = getRelativeCoordsMeters(sample.latitude, sample.longitude, data.latitude, data.longitude, data.planetRadius);
+                const beacon = createBioSampleBeacon(sample, rel);
+                surfaceBioGroup.add(beacon);
+            });
+        }
+
+        // 2. Atualiza a posição no chão de cada baliza de amostra relativa à nave/jogador
+        // Se estiver além do horizonte de 560m, projeta a baliza na borda do radar para manter visível a direção
+        surfaceBioGroup.children.forEach(beacon => {
+            const sample = beacon.userData.sample;
+            if (!sample) return;
             const rel = getRelativeCoordsMeters(sample.latitude, sample.longitude, data.latitude, data.longitude, data.planetRadius);
-            const beacon = createBioSampleBeacon(sample, rel);
-            surfaceBioGroup.add(beacon);
+            const isBeyondHorizon = rel.dist > 560.0;
+            if (!isBeyondHorizon) {
+                beacon.position.set(rel.x, 0, rel.z);
+            } else {
+                const angle = Math.atan2(rel.x, -rel.z);
+                beacon.position.set(Math.sin(angle) * 560.0, 0, -Math.cos(angle) * 560.0);
+            }
+
+            const colonyRadius = beacon.userData.colonyRadius || 500.0;
+            const insideColony = rel.dist < colonyRadius;
+            const ringColor = insideColony ? 0xffaa00 : 0x00ffaa;
+
+            const colonyRing = beacon.getObjectByName('colonyRing');
+            if (colonyRing && colonyRing.material) colonyRing.material.color.setHex(ringColor);
+
+            const colonyDisc = beacon.getObjectByName('colonyDisc');
+            if (colonyDisc && colonyDisc.material) colonyDisc.material.color.setHex(ringColor);
         });
     }
-
-    // 2. Atualiza a posição no chão de cada baliza de amostra relativa à nave/jogador
-    surfaceBioGroup.children.forEach(beacon => {
-        const sample = beacon.userData.sample;
-        if (!sample) return;
-        const rel = getRelativeCoordsMeters(sample.latitude, sample.longitude, data.latitude, data.longitude, data.planetRadius);
-        beacon.position.set(rel.x, 0, rel.z);
-
-        const colonyRadius = beacon.userData.colonyRadius || 500.0;
-        const insideColony = rel.dist < colonyRadius;
-        const ringColor = insideColony ? 0xffaa00 : 0x00ffaa;
-
-        const colonyRing = beacon.getObjectByName('colonyRing');
-        if (colonyRing && colonyRing.material) colonyRing.material.color.setHex(ringColor);
-
-        const colonyDisc = beacon.getObjectByName('colonyDisc');
-        if (colonyDisc && colonyDisc.material) colonyDisc.material.color.setHex(ringColor);
-    });
 
     // 3. Linha Guia Dinâmica do Hodômetro (Player no centro -> Última Amostra)
     if (surfaceBioTetherLine) {
@@ -1201,6 +1255,8 @@ function updateBioTelemetry(data, moved) {
             bannerEl.textContent = surfaceTr('surface.bio_waiting_scan');
             bannerEl.style.color = '#8da4be';
             bannerEl.style.background = 'rgba(255,255,255,0.05)';
+            lastAnnouncedSampleKey = null;
+            wasOutsideSampleArea = null;
         } else if (count >= 3) {
             distEl.textContent = surfaceTr('surface.bio_completed');
             distEl.style.color = '#00ffaa';
@@ -1209,6 +1265,8 @@ function updateBioTelemetry(data, moved) {
             bannerEl.textContent = surfaceTr('surface.bio_success_banner');
             bannerEl.style.color = '#00ffaa';
             bannerEl.style.background = 'rgba(0,255,170,0.2)';
+            lastAnnouncedSampleKey = null;
+            wasOutsideSampleArea = null;
         } else if (lastSample) {
             const minColony = lastSample.minColonyDistance || 500.0;
             const currentDist = (distToLast !== null && distToLast !== undefined) ? distToLast : 0;
@@ -1220,7 +1278,19 @@ function updateBioTelemetry(data, moved) {
             const pct = Math.min(100, Math.max(0, Math.round((currentDist / minColony) * 100)));
             barEl.style.width = `${pct}%`;
 
-            if (diversityReached || currentDist >= minColony) {
+            const isOutsideArea = !!(diversityReached || currentDist >= minColony);
+            const sampleKey = `${lastSample.sampleNumber}_${lastSample.timestamp || ''}`;
+            if (lastAnnouncedSampleKey !== sampleKey) {
+                lastAnnouncedSampleKey = sampleKey;
+                wasOutsideSampleArea = isOutsideArea;
+            } else {
+                if (!wasOutsideSampleArea && isOutsideArea) {
+                    speakSurfaceAlert(surfaceTr('surface.bio_leaving_area_voice'));
+                }
+                wasOutsideSampleArea = isOutsideArea;
+            }
+
+            if (isOutsideArea) {
                 distEl.style.color = '#00ffaa';
                 barEl.style.background = '#00ffaa';
                 bannerEl.textContent = surfaceTr('surface.bio_ready_banner', distMeters, count + 1);
@@ -1712,6 +1782,7 @@ function initSurfaceNavigator() {
     pollSurfaceTelemetry();
 
     window.addEventListener('elite:languageChanged', () => {
+        updateLandingBeaconLabel();
         if (lastSurfaceData) {
             handleSurfaceDataUpdate(lastSurfaceData);
         }

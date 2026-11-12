@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>QuaTime • Relógio</title>
+    <base href="/clock/">
+    <link rel="icon" type="image/png" href="images/logo-image.png">
+    <!-- Fontes e Ícones -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="css/play.css">
+</head>
+<body>
+    <!-- Notificações Toast Globais -->
+    <div id="gameToastContainer" class="game-toast-container"></div>
+
+    <!-- ========================================== -->
+    <!-- TELA 1: LISTA DE MESAS DISPONÍVEIS         -->
+    <!-- ========================================== -->
+    <section class="screen active" id="screenTables">
+        <header class="app-header">
+            <a href="./" class="header-brand" title="QuaTime - Início">
+                <img src="images/logo-image.png" alt="QuaTime Emblem" class="brand-logo-img">
+                <img src="images/logo-novo.png" alt="QuaTime" class="brand-logo-wordmark">
+            </a>
+            <div class="header-actions">
+                <!-- Seletor de Idioma / Regionalização -->
+                <div class="lang-dropdown-wrapper" id="langSelectorWrapper">
+                    <button class="btn-lang-pill" id="btnLangToggle" onclick="toggleLanguageMenu(event)" title="Idioma / Language">
+                        <span id="currentLangPillFlag">🇧🇷</span>
+                        <span id="currentLangPillText">PT</span>
+                        <i class="fa-solid fa-chevron-down" style="font-size: 10px; opacity: 0.7;"></i>
+                    </button>
+                    <div class="lang-dropdown-box" id="langDropdownMenu" style="display: none;">
+                        <button class="lang-dropdown-item" onclick="switchLanguage('pt')">
+                            <span>🇧🇷</span> Português
+                        </button>
+                        <button class="lang-dropdown-item" onclick="switchLanguage('en')">
+                            <span>🇺🇸</span> English
+                        </button>
+                        <button class="lang-dropdown-item" onclick="switchLanguage('es')">
+                            <span>🇪🇸</span> Español
+                        </button>
+                    </div>
+                </div>
+
+                <button class="btn-icon" title="Atualizar Mesas" data-i18n-title="nav.refresh" onclick="fetchTablesList()">
+                    <i class="fa-solid fa-rotate"></i>
+                </button>
+                <a href="./" class="btn-icon" title="Início" data-i18n-title="nav.home">
+                    <i class="fa-solid fa-house"></i>
+                </a>
+                <a href="dashboard" class="btn-icon" title="Painel de Administração" data-i18n-title="nav.admin">
+                    <i class="fa-solid fa-table-columns"></i>
+                </a>
+            </div>
+        </header>
+
+        <main class="content-scroll">
+            <!-- Perfil do Jogador (Salvo neste navegador) -->
+            <div class="player-profile-card">
+                <div class="profile-card-header">
+                    <i class="fa-solid fa-circle-user"></i>
+                    <span data-i18n="profile.title">Seu Nome / Apelido:</span>
+                    <span class="profile-saved-tag"><i class="fa-solid fa-cloud-arrow-up"></i> <span data-i18n="profile.saved">Salvo</span></span>
+                </div>
+                <div class="profile-input-row">
+                    <input type="text" id="globalPlayerNameInput" class="custom-input profile-input" placeholder="Digite seu nome (Ex: Magno)" data-i18n-placeholder="profile.placeholder" maxlength="25" oninput="handleGlobalNameChange(this.value)">
+                </div>
+            </div>
+
+            <!-- Legenda das Cores -->
+            <div class="legend-box">
+                <span class="legend-title" data-i18n="legend.title">Disponibilidade de Cores na Mesa:</span>
+                <div class="legend-items">
+                    <div class="legend-item">
+                        <span class="dot-sample dot-vivid"></span>
+                        <span><span data-i18n="play.legend_vivid">Cor Viva:</span> <strong data-i18n="play.legend_free">Livre</strong></span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="dot-sample dot-faded"></span>
+                        <span><span data-i18n="play.legend_faded">Cor Fosca:</span> <strong data-i18n="play.legend_occupied">Ocupada</strong></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lista de Mesas -->
+            <div class="section-title-row">
+                <h2 data-i18n="play.open_tables">Mesas Abertas</h2>
+                <span class="badge-count" id="tablesCountBadge" data-i18n="tables.count_badge_zero">0 Mesa(s)</span>
+            </div>
+
+            <div class="tables-list-container" id="tablesListContainer">
+                <!-- Preenchido via JavaScript -->
+                <div class="loading-state">
+                    <i class="fa-solid fa-circle-notch fa-spin"></i>
+                    <p>Buscando mesas no servidor...</p>
+                </div>
+            </div>
+        </main>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TELA 2: ESCOLHA DE COR E NOME DO JOGADOR   -->
+    <!-- ========================================== -->
+    <section class="screen" id="screenColorSelect">
+        <header class="app-header">
+            <button class="btn-back" onclick="leaveColorSelect()" data-i18n-title="nav.back">
+                <i class="fa-solid fa-arrow-left"></i>
+            </button>
+            <div class="header-center">
+                <h2 id="selectTableName">Mesa</h2>
+                <span class="header-meta" id="selectTableMeta">15 min + 5s</span>
+            </div>
+            <div style="width: 38px;"></div>
+        </header>
+
+        <main class="content-scroll">
+            <div class="form-card">
+                <div class="color-select-title">
+                    <i class="fa-solid fa-shield-halved icon-gold"></i>
+                    <div>
+                        <h3 data-i18n="color_select.title">Escolha seu Exército</h3>
+                        <p data-i18n="play.color_select_tip">Toque em uma das cores livres para assumir o relógio</p>
+                    </div>
+                </div>
+
+                <!-- 4 Exércitos Canônicos -->
+                <div class="armies-selection-grid">
+                    <!-- Branco -->
+                    <div class="army-select-card card-white" id="cardSelectWhite" onclick="selectColor('white')">
+                        <div class="army-select-header">
+                            <span class="army-color-badge badge-white"></span>
+                            <span class="army-card-title" id="armyTitleWhite">Branco</span>
+                        </div>
+                        <span class="army-select-status" id="statusSelectWhite">Disponível</span>
+                    </div>
+
+                    <!-- Vermelho -->
+                    <div class="army-select-card card-red" id="cardSelectRed" onclick="selectColor('red')">
+                        <div class="army-select-header">
+                            <span class="army-color-badge badge-red"></span>
+                            <span class="army-card-title" id="armyTitleRed">Vermelho</span>
+                        </div>
+                        <span class="army-select-status" id="statusSelectRed">Disponível</span>
+                    </div>
+
+                    <!-- Preto -->
+                    <div class="army-select-card card-black" id="cardSelectBlack" onclick="selectColor('black')">
+                        <div class="army-select-header">
+                            <span class="army-color-badge badge-black"></span>
+                            <span class="army-card-title" id="armyTitleBlack">Preto</span>
+                        </div>
+                        <span class="army-select-status" id="statusSelectBlack">Disponível</span>
+                    </div>
+
+                    <!-- Verde -->
+                    <div class="army-select-card card-green" id="cardSelectGreen" onclick="selectColor('green')">
+                        <div class="army-select-header">
+                            <span class="army-color-badge badge-green"></span>
+                            <span class="army-card-title" id="armyTitleGreen">Verde</span>
+                        </div>
+                        <span class="army-select-status" id="statusSelectGreen">Disponível</span>
+                    </div>
+                </div>
+
+                <!-- Nome / Apelido -->
+                <div class="input-group">
+                    <label for="playerNameInput" data-i18n="play.your_name_label">Seu Nome ou Apelido</label>
+                    <input type="text" id="playerNameInput" class="custom-input" placeholder="Ex: Jogador 1" data-i18n-placeholder="profile.placeholder" maxlength="25" oninput="handlePlayerNameInputChange(this.value)">
+                </div>
+
+                <button class="btn-confirm-join" id="btnConfirmJoin" onclick="confirmJoinTable()" disabled>
+                    <i class="fa-solid fa-check"></i> <span data-i18n="play.btn_enter_table">Entrar na Mesa</span>
+                </button>
+            </div>
+        </main>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TELA 3: SALA DE ESPERA (LOBBY)             -->
+    <!-- ========================================== -->
+    <section class="screen" id="screenLobby" aria-label="Sala de Espera da Partida">
+        <header class="app-header">
+            <button class="btn-back" onclick="leaveCurrentTable()" title="Sair da Mesa" aria-label="Voltar e sair da mesa">
+                <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+            </button>
+            <div class="header-center">
+                <h2 id="lobbyTableName" data-i18n="lobby.title">Sala de Espera</h2>
+                <span class="header-meta" id="lobbyTableMeta" data-i18n="play.status_lobby">Aguardando início</span>
+            </div>
+            <div class="lobby-count-badge" id="lobbyPlayerCountBadge" aria-live="polite">0/4</div>
+        </header>
+
+        <main class="content-scroll">
+            <div class="lobby-card">
+                <div class="lobby-pulse-icon" id="lobbyPulseIcon" aria-hidden="true">
+                    <i class="fa-solid fa-hourglass-half" id="lobbyStatusIcon"></i>
+                </div>
+                <h3 class="lobby-title" id="lobbyTitleText" aria-live="polite" data-i18n="lobby.waiting_players">Aguardando Jogadores</h3>
+                <p class="lobby-sub" id="lobbySubText" data-i18n="lobby.waiting_sub">Aguardando os 4 jogadores confirmarem prontidão para o administrador iniciar a partida.</p>
+
+                <!-- Slots dos 4 Jogadores com Status de Prontidão -->
+                <div class="lobby-slots-list" role="list" aria-label="Lista de jogadores por exército">
+                    <div class="lobby-slot slot-white" id="lobbySlotWhite" role="listitem" tabindex="0">
+                        <span class="lobby-slot-bullet bullet-white" aria-hidden="true"></span>
+                        <div class="lobby-slot-info">
+                            <span class="lobby-slot-name" id="lobbyNameWhite">Branco</span>
+                            <span class="lobby-slot-player" id="lobbyPlayerWhite">Aguardando...</span>
+                        </div>
+                        <span class="lobby-ready-badge badge-pending" id="lobbyBadgeWhite">Aguardando</span>
+                    </div>
+
+                    <div class="lobby-slot slot-red" id="lobbySlotRed" role="listitem" tabindex="0">
+                        <span class="lobby-slot-bullet bullet-red" aria-hidden="true"></span>
+                        <div class="lobby-slot-info">
+                            <span class="lobby-slot-name" id="lobbyNameRed">Vermelho</span>
+                            <span class="lobby-slot-player" id="lobbyPlayerRed">Aguardando...</span>
+                        </div>
+                        <span class="lobby-ready-badge badge-pending" id="lobbyBadgeRed">Aguardando</span>
+                    </div>
+
+                    <div class="lobby-slot slot-black" id="lobbySlotBlack" role="listitem" tabindex="0">
+                        <span class="lobby-slot-bullet bullet-black" aria-hidden="true"></span>
+                        <div class="lobby-slot-info">
+                            <span class="lobby-slot-name" id="lobbyNameBlack">Preto</span>
+                            <span class="lobby-slot-player" id="lobbyPlayerBlack">Aguardando...</span>
+                        </div>
+                        <span class="lobby-ready-badge badge-pending" id="lobbyBadgeBlack">Aguardando</span>
+                    </div>
+
+                    <div class="lobby-slot slot-green" id="lobbySlotGreen" role="listitem" tabindex="0">
+                        <span class="lobby-slot-bullet bullet-green" aria-hidden="true"></span>
+                        <div class="lobby-slot-info">
+                            <span class="lobby-slot-name" id="lobbyNameGreen">Verde</span>
+                            <span class="lobby-slot-player" id="lobbyPlayerGreen">Aguardando...</span>
+                        </div>
+                        <span class="lobby-ready-badge badge-pending" id="lobbyBadgeGreen">Aguardando</span>
+                    </div>
+                </div>
+
+                <!-- Painel de Confirmação: "Pronto para Iniciar?" -->
+                <div class="ready-confirm-card" id="readyConfirmCard">
+                    <div class="ready-card-text">
+                        <h4 id="readyPromptTitle" data-i18n="play.ready_prompt_title">Pronto para iniciar?</h4>
+                        <p id="readyPromptSub" data-i18n="play.ready_prompt_sub">Confirme sua presença. O administrador iniciará o jogo assim que todos responderem Sim.</p>
+                    </div>
+
+                    <button class="btn-ready-toggle btn-not-ready" id="btnReadyToggle" onclick="toggleMyReadyState()" title="Clique para confirmar prontidão" aria-pressed="false">
+                        <i class="fa-solid fa-check" aria-hidden="true"></i>
+                        <span id="btnReadyLabel" data-i18n="play.btn_ready">Estou pronto</span>
+                    </button>
+
+                    <div class="ready-progress-bar-container" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="4" id="readyProgressContainer">
+                        <div class="ready-progress-bar" id="readyProgressBar" style="width: 0%;"></div>
+                    </div>
+                    <span class="ready-count-label" id="readyCountLabel" aria-live="polite">0 de 4 jogadores responderam Sim</span>
+                </div>
+            </div>
+        </main>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TELA 4: RELÓGIO OFICIAL QUATERNITY (CLOCK) -->
+    <!-- ========================================== -->
+    <section class="screen screen-clock" id="screenClock" onclick="handleClockAreaTap(event)">
+        <!-- Barra Superior Compacta -->
+        <header class="clock-top-bar" onclick="event.stopPropagation()">
+            <div class="clock-turn-pill" id="clockTurnPill">
+                <span class="turn-bullet" id="turnBullet"></span>
+                <span><span data-i18n="clock.turn">Vez:</span> <strong id="clockActiveTurnText">Branco</strong></span>
+            </div>
+
+            <div class="clock-move-pill" id="clockMovePill" title="Número total de jogadas efetuadas">
+                <i class="fa-solid fa-arrows-rotate"></i>
+                <span id="clockMoveText">Lance #0</span>
+            </div>
+
+            <div class="clock-bar-actions">
+                <!-- Botão Som/Bipes On/Off -->
+                <button class="clock-action-btn" id="btnVoiceToggle" title="Ativar/Desativar Sons e Bipes" data-i18n-title="play.btn_audio_tip" onclick="toggleVoice()">
+                    <i class="fa-solid fa-volume-high" id="voiceIcon"></i>
+                </button>
+
+                <!-- Botão Sair da Sala (exibido apenas para espectadores eliminados ou após término do jogo) -->
+                <button class="clock-action-btn btn-exit" id="btnClockExit" title="Sair da Sala" data-i18n-title="clock.btn_exit" onclick="exitGame()" style="display: none;">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Banner de Partida Pausada pelo Administrador -->
+        <div class="clock-paused-banner" id="pausedBanner" style="display: none;">
+            <i class="fa-solid fa-circle-pause"></i>
+            <span id="pausedBannerText" data-i18n="clock.paused_banner">PARTIDA PAUSADA PELO ADMINISTRADOR - Aguardando retomada...</span>
+        </div>
+
+        <!-- Overlay de Contagem Regressiva Oficial (5 segundos) -->
+        <div class="clock-overlay-countdown" id="overlayCountdown" style="display: none;">
+            <div class="countdown-card">
+                <div class="countdown-action-title" id="countdownActionTitle" data-i18n="clock.countdown_start">INICIANDO JOGO</div>
+                <div class="countdown-digits" id="countdownDigits">5</div>
+                <div class="countdown-sub" id="countdownSub" data-i18n="clock.get_ready">Preparem-se!</div>
+            </div>
+        </div>
+
+        <!-- Grade dos 4 Quadrantes Oficiais -->
+        <div class="clock-quadrants-grid">
+            <!-- 1. Branco -->
+            <div class="clock-quadrant quad-white" id="clockQuadWhite" data-color="white">
+                <div class="quad-top">
+                    <span class="quad-title" id="titleWhite">Branco</span>
+                    <div class="quad-actions" onclick="event.stopPropagation()">
+                        <span class="badge-playing" id="playingBadgeWhite" data-i18n="play.playing_badge">JOGANDO</span>
+                        <button class="btn-quad-flag" id="flagBtnWhite" title="Eliminar Exército" data-i18n-title="play.flag_tip" onclick="triggerEliminate('white')">
+                            <i class="fa-solid fa-flag"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="quad-digits" id="digitsWhite">15:00</div>
+                <div class="quad-sub" id="subWhite">Aguardando</div>
+            </div>
+
+            <!-- 2. Vermelho -->
+            <div class="clock-quadrant quad-red" id="clockQuadRed" data-color="red">
+                <div class="quad-top">
+                    <span class="quad-title" id="titleRed">Vermelho</span>
+                    <div class="quad-actions" onclick="event.stopPropagation()">
+                        <span class="badge-playing" id="playingBadgeRed" data-i18n="play.playing_badge">JOGANDO</span>
+                        <button class="btn-quad-flag" id="flagBtnRed" title="Eliminar Exército" data-i18n-title="play.flag_tip" onclick="triggerEliminate('red')">
+                            <i class="fa-solid fa-flag"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="quad-digits" id="digitsRed">15:00</div>
+                <div class="quad-sub" id="subRed">Aguardando</div>
+            </div>
+
+            <!-- 3. Verde (Posicionado conforme layout canônico Quaternity) -->
+            <div class="clock-quadrant quad-green" id="clockQuadGreen" data-color="green">
+                <div class="quad-top">
+                    <span class="quad-title" id="titleGreen">Verde</span>
+                    <div class="quad-actions" onclick="event.stopPropagation()">
+                        <span class="badge-playing" id="playingBadgeGreen" data-i18n="play.playing_badge">JOGANDO</span>
+                        <button class="btn-quad-flag" id="flagBtnGreen" title="Eliminar Exército" data-i18n-title="play.flag_tip" onclick="triggerEliminate('green')">
+                            <i class="fa-solid fa-flag"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="quad-digits" id="digitsGreen">15:00</div>
+                <div class="quad-sub" id="subGreen">Aguardando</div>
+            </div>
+
+            <!-- 4. Preto -->
+            <div class="clock-quadrant quad-black" id="clockQuadBlack" data-color="black">
+                <div class="quad-top">
+                    <span class="quad-title" id="titleBlack">Preto</span>
+                    <div class="quad-actions" onclick="event.stopPropagation()">
+                        <span class="badge-playing" id="playingBadgeBlack" data-i18n="play.playing_badge">JOGANDO</span>
+                        <button class="btn-quad-flag" id="flagBtnBlack" title="Eliminar Exército" data-i18n-title="play.flag_tip" onclick="triggerEliminate('black')">
+                            <i class="fa-solid fa-flag"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="quad-digits" id="digitsBlack">15:00</div>
+                <div class="quad-sub" id="subBlack">Aguardando</div>
+            </div>
+        </div>
+
+        <!-- Banner / Barra de Toque no Rodapé -->
+        <footer class="clock-tap-footer" id="clockTapFooter">
+            <i class="fa-solid fa-hand-pointer icon-tap"></i>
+            <span id="tapFooterText" data-i18n="play.tap_to_move">SUA VEZ! Toque na tela para passar o lance.</span>
+        </footer>
+
+        <!-- Overlay de Pausa -->
+        <div class="clock-overlay-pause" id="overlayPause" style="display: none !important;">
+            <div class="pause-card">
+                <i class="fa-solid fa-circle-pause icon-gold"></i>
+                <h2 data-i18n="play.pause_title">PARTIDA PAUSADA</h2>
+                <p id="pauseReasonText" data-i18n="play.pause_desc">O tempo dos 4 jogadores está congelado.</p>
+                <div class="pause-actions-group">
+                    <button class="btn-resume-overlay" onclick="togglePauseGame()">
+                        <i class="fa-solid fa-play"></i> <span data-i18n="play.btn_resume">Retomar Partida</span>
+                    </button>
+                    <button class="btn-undo-overlay" id="btnUndoPause" onclick="undoLastMove()">
+                        <i class="fa-solid fa-rotate-left"></i> <span data-i18n="play.btn_undo">Desfazer Último Lance (Undo)</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Vitória -->
+        <div class="clock-overlay-winner" id="overlayWinner" style="display: none;">
+            <div class="winner-card">
+                <i class="fa-solid fa-trophy winner-trophy"></i>
+                <h2 data-i18n="play.winner_title">VITÓRIA!</h2>
+                <p id="winnerText">O exército Branco é o vencedor da partida!</p>
+                <button class="btn-winner-exit" onclick="exitGame()">
+                    <i class="fa-solid fa-check"></i> <span data-i18n="play.btn_winner_exit">Sair para as Mesas</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Modal de Partida Cancelada pelo Árbitro / Administrador -->
+        <div class="clock-overlay-aborted" id="overlayAborted" style="display: none;">
+            <div class="aborted-card">
+                <i class="fa-solid fa-ban aborted-icon"></i>
+                <h2 data-i18n="play.abort_title">PARTIDA CANCELADA</h2>
+                <p id="abortedText" data-i18n="play.abort_desc">Esta partida foi cancelada ou encerrada pelo árbitro / administrador.</p>
+                <button class="btn-aborted-exit" onclick="leaveCurrentTable()">
+                    <i class="fa-solid fa-arrow-left"></i> <span data-i18n="play.btn_back_tables">Voltar à Lista de Mesas</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Modal de Confirmação Genérico (Design System) -->
+        <div class="clock-overlay-modal" id="modalConfirmDialog" style="display: none;" onclick="if (event.target === this) closeConfirmDialog();">
+            <div class="modal-card">
+                <div class="modal-icon-wrapper warning-glow" id="confirmDialogIconWrapper">
+                    <i class="fa-solid fa-rotate-left modal-icon-symbol" id="confirmDialogIcon"></i>
+                </div>
+                <h2 id="confirmDialogTitle" data-i18n="dialog.confirm_title">Confirmar Ação</h2>
+                <p id="confirmDialogMessage" data-i18n="dialog.confirm_message">Deseja realmente prosseguir?</p>
+                <div class="modal-actions-group">
+                    <button class="btn-modal-warning" id="confirmDialogBtnConfirm" onclick="handleConfirmDialogAccept()">
+                        <i class="fa-solid fa-check" id="confirmDialogBtnIcon"></i> <span id="confirmDialogBtnLabel" data-i18n="dialog.btn_confirm">Confirmar</span>
+                    </button>
+                    <button class="btn-modal-cancel" onclick="closeConfirmDialog()">
+                        <i class="fa-solid fa-chevron-left"></i> <span id="confirmDialogCancelLabel" data-i18n="dialog.btn_cancel">Cancelar</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Bibliotecas: SockJS, STOMP & i18n Core -->
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+    <script src="js/i18n.js"></script>
+    <script src="js/play.js"></script>
+</body>
+</html>

@@ -52,6 +52,7 @@ public class JournalWatcherService {
     private long lastNavRouteModified = 0L;
     private long lastStatusModified = 0L;
     private boolean disembarkedCalibrated = false;
+    private String activeBioBodyName = "";
 
     public JournalWatcherService(EdsmSyncService edsmSyncService,
                                  @org.springframework.context.annotation.Lazy EddnTrafficListenerService eddnTrafficService,
@@ -351,6 +352,7 @@ public class JournalWatcherService {
                     status.setCurrentStation("");
                     PlanetaryStatusDTO ps = planetaryStatusRef.get();
                     clearPlanetaryTelemetry(ps);
+                    clearBioTelemetry(ps);
                     if (status.getPosX() != null) {
                         galaxyExplorationService.registerDiscoveredSystem(
                                 sys,
@@ -405,6 +407,7 @@ public class JournalWatcherService {
                     PlanetaryStatusDTO ps = planetaryStatusRef.get();
                     if (isOrbitalStation(stationType)) {
                         clearPlanetaryTelemetry(ps);
+                        clearBioTelemetry(ps);
                     }
                 }
                 case "Undocked" -> {
@@ -535,6 +538,7 @@ public class JournalWatcherService {
                 case "LeaveBody" -> {
                     PlanetaryStatusDTO ps = planetaryStatusRef.get();
                     clearPlanetaryTelemetry(ps);
+                    clearBioTelemetry(ps);
                     if (isLiveUpdate) {
                         sseNotificationService.broadcastEvent("surface_status", ps);
                     }
@@ -547,6 +551,9 @@ public class JournalWatcherService {
                     int bodyId = root.path("BodyID").asInt(-1);
                     if ("Planet".equalsIgnoreCase(bodyType)) {
                         PlanetaryStatusDTO ps = planetaryStatusRef.get();
+                        if (!body.isBlank() && !activeBioBodyName.isBlank() && !body.equalsIgnoreCase(activeBioBodyName)) {
+                            clearBioTelemetry(ps);
+                        }
                         ps.setInPlanetaryOrbit(true);
                         ps.setOnPlanetSurface(true);
                         ps.setCurrentSystem(starSystem);
@@ -572,6 +579,9 @@ public class JournalWatcherService {
                     ps.setOnFoot(true);
                     ps.setOnPlanetSurface(true);
                     if (!body.isBlank()) {
+                        if (!activeBioBodyName.isBlank() && !body.equalsIgnoreCase(activeBioBodyName)) {
+                            clearBioTelemetry(ps);
+                        }
                         ps.setBodyName(body);
                         ps.setBodyId(bodyId >= 0 ? bodyId : null);
                         planetHistoryService.recordApproachOrBody(starSystem, systemAddress > 0 ? systemAddress : null, body, bodyId >= 0 ? bodyId : null);
@@ -602,6 +612,9 @@ public class JournalWatcherService {
                     long systemAddress = root.path("SystemAddress").asLong(0L);
                     String body = root.path("Body").asText(ps.getBodyName());
                     int bodyId = root.path("BodyID").asInt(-1);
+                    if (isBioCollectionCompleted(ps) || (!body.isBlank() && !activeBioBodyName.isBlank() && !body.equalsIgnoreCase(activeBioBodyName))) {
+                        clearBioTelemetry(ps);
+                    }
                     if (onPlanet) {
                         planetHistoryService.recordTouchdown(starSystem, systemAddress > 0 ? systemAddress : null, body, bodyId >= 0 ? bodyId : null, timestamp);
                     }
@@ -623,6 +636,9 @@ public class JournalWatcherService {
                 case "Liftoff" -> {
                     PlanetaryStatusDTO ps = planetaryStatusRef.get();
                     ps.setLanded(false);
+                    if (isBioCollectionCompleted(ps)) {
+                        clearBioTelemetry(ps);
+                    }
                     if (root.has("NearestDestination")) {
                         String rawDest = root.path("NearestDestination").asText("");
                         String locDest = root.path("NearestDestination_Localised").asText(rawDest);
@@ -693,6 +709,7 @@ public class JournalWatcherService {
                     ps.setLastBioSample(sample);
                     ps.setDistanceToLastBioSample(0.0);
                     ps.setGeneticDiversityReached(false);
+                    activeBioBodyName = ps.getBodyName() != null ? ps.getBodyName() : "";
             // Carregar e atualizar distância para elementos de solo conhecidos do planeta
             if (!ps.getBodyName().isBlank()) {
                 surfaceFeatureService.syncPlanetaryStatusSignals(ps, ps.getCurrentSystem(), ps.getBodyName());
@@ -870,6 +887,25 @@ public class JournalWatcherService {
         ps.setTouchdownLat(null);
         ps.setTouchdownLong(null);
         ps.setDistanceToTouchdown(null);
+        if (isBioCollectionCompleted(ps)) {
+            clearBioTelemetry(ps);
+        }
+    }
+
+    private boolean isBioCollectionCompleted(PlanetaryStatusDTO ps) {
+        if (ps == null) return false;
+        if (ps.getActiveBioSamples().size() >= 3) return true;
+        BioSampleDTO last = ps.getLastBioSample();
+        return last != null && "analyse".equalsIgnoreCase(last.getScanType());
+    }
+
+    private void clearBioTelemetry(PlanetaryStatusDTO ps) {
+        if (ps == null) return;
+        ps.getActiveBioSamples().clear();
+        ps.setLastBioSample(null);
+        ps.setDistanceToLastBioSample(null);
+        ps.setGeneticDiversityReached(false);
+        activeBioBodyName = "";
     }
 
     private void enrichPlanetaryBodyInfo(PlanetaryStatusDTO ps) {
@@ -946,6 +982,9 @@ public class JournalWatcherService {
             if ((docked && !landedOnPlanet) || (!onSurface && !inOrbit)) {
                 // Fora da atmosfera / zona orbital planetária ou atracado em estação orbital
                 clearPlanetaryTelemetry(ps);
+                if (docked && !landedOnPlanet) {
+                    clearBioTelemetry(ps);
+                }
             } else {
                 ps.setOnPlanetSurface(true);
                 ps.setInPlanetaryOrbit(inOrbit);
@@ -982,6 +1021,9 @@ public class JournalWatcherService {
                         if (!bName.equalsIgnoreCase(ps.getBodyName())) {
                             ps.setSurfaceGravity(null);
                             ps.setAtmosphereType("");
+                        }
+                        if (!activeBioBodyName.isBlank() && !bName.equalsIgnoreCase(activeBioBodyName)) {
+                            clearBioTelemetry(ps);
                         }
                         ps.setBodyName(bName);
                     }
