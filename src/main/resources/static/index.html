@@ -648,7 +648,10 @@
                 <div style="font-size: 11px; font-weight: bold; color: #00d4ff; letter-spacing: 0.5px; text-transform: uppercase;" data-i18n="galaxy.traffic_title">
                     🛰️ TRÁFEGO DE COMANDANTES
                 </div>
-                <span id="trafficCountBadge" style="font-size: 10px; color: #2bfca8; font-family: monospace;" data-i18n="galaxy.traffic_live">AO VIVO</span>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <button id="btnToggleTrafficAudio" type="button" data-i18n-title="galaxy.traffic_sound_on" title="Alertas sonoros de tráfego ativados (clique para silenciar)" style="background: rgba(0,212,255,0.12); border: 1px solid rgba(0,212,255,0.35); color: #00d4ff; border-radius: 3px; font-size: 11px; line-height: 1; padding: 2px 5px; cursor: pointer;">🔊</button>
+                    <span id="trafficCountBadge" style="font-size: 10px; color: #2bfca8; font-family: monospace;" data-i18n="galaxy.traffic_live">AO VIVO</span>
+                </div>
             </div>
             <div id="trafficEventsList" style="display: flex; flex-direction: column; gap: 5px;">
                 <div style="color: #6a88a8; font-size: 11px; font-style: italic; padding: 4px 0;" data-i18n="galaxy.waiting_sector_traffic">Aguardando tráfego no setor...</div>
@@ -914,9 +917,9 @@
         </div>
     </div>
 
-    <script src="/js/i18n.js?v=20261112-1"></script>
-    <script src="/js/splash.js?v=20261112-1"></script>
-    <script src="/js/explorer.js?v=20261112-1"></script>
-    <script src="/js/surface-navigator.js?v=20261112-1"></script>
+    <script src="/js/i18n.js?v=20261112-2"></script>
+    <script src="/js/splash.js?v=20261112-2"></script>
+    <script src="/js/explorer.js?v=20261112-2"></script>
+    <script src="/js/surface-navigator.js?v=20261112-2"></script>
 </body>
 </html>

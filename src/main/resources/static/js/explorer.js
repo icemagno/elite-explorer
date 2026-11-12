@@ -1457,6 +1457,99 @@ setInterval(checkEdsmStatus, 5000);
 
 // Log dos 4 últimos eventos de tráfego (chegadas e partidas)
 const recentTrafficLog = [];
+const TRAFFIC_AUDIO_STORAGE_KEY = 'elite_explorer_traffic_audio';
+let trafficAudioCtx = null;
+let trafficAudioEnabled = (() => {
+    try {
+        return localStorage.getItem(TRAFFIC_AUDIO_STORAGE_KEY) !== '0';
+    } catch (_) {
+        return true;
+    }
+})();
+const playedTrafficSoundIds = new Set();
+let lastTrafficBeepAt = 0;
+
+function ensureTrafficAudioContext() {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return null;
+    if (!trafficAudioCtx) {
+        trafficAudioCtx = new AudioCtx();
+    }
+    if (trafficAudioCtx.state === 'suspended') {
+        trafficAudioCtx.resume().catch(() => {});
+    }
+    return trafficAudioCtx;
+}
+
+function updateTrafficAudioButton() {
+    const btn = document.getElementById('btnToggleTrafficAudio');
+    if (!btn) return;
+    btn.textContent = trafficAudioEnabled ? '🔊' : '🔇';
+    btn.style.color = trafficAudioEnabled ? '#00d4ff' : '#6a88a8';
+    btn.style.borderColor = trafficAudioEnabled ? 'rgba(0,212,255,0.35)' : 'rgba(255,255,255,0.15)';
+    btn.style.background = trafficAudioEnabled ? 'rgba(0,212,255,0.12)' : 'rgba(255,255,255,0.04)';
+    btn.title = trafficAudioEnabled ? tr('galaxy.traffic_sound_on') : tr('galaxy.traffic_sound_off');
+}
+
+function playTrafficBeep(isArrival) {
+    if (!trafficAudioEnabled) return;
+    const ctx = ensureTrafficAudioContext();
+    if (!ctx || ctx.state !== 'running') return;
+
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    if (isArrival) {
+        // Bip curto ascendente (chegada ao sistema)
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(780, now);
+        osc.frequency.exponentialRampToValueAtTime(1120, now + 0.085);
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.linearRampToValueAtTime(0.08, now + 0.012);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.115);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.12);
+    } else {
+        // Bip curto descendente (saída do sistema)
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(520, now);
+        osc.frequency.exponentialRampToValueAtTime(320, now + 0.095);
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.linearRampToValueAtTime(0.075, now + 0.012);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.125);
+    }
+}
+
+function initTrafficAudioControls() {
+    updateTrafficAudioButton();
+    const unlock = () => ensureTrafficAudioContext();
+    window.addEventListener('pointerdown', unlock, { once: true, passive: true });
+    window.addEventListener('keydown', unlock, { once: true, passive: true });
+
+    const btn = document.getElementById('btnToggleTrafficAudio');
+    if (btn) {
+        btn.addEventListener('click', () => {
+            trafficAudioEnabled = !trafficAudioEnabled;
+            try {
+                localStorage.setItem(TRAFFIC_AUDIO_STORAGE_KEY, trafficAudioEnabled ? '1' : '0');
+            } catch (_) {}
+            updateTrafficAudioButton();
+            if (trafficAudioEnabled) {
+                ensureTrafficAudioContext();
+                playTrafficBeep(true);
+            }
+        });
+    }
+}
+
+initTrafficAudioControls();
 
 function addTrafficEventToLog(ev) {
     if (!ev || !ev.systemName) return;
@@ -1540,6 +1633,19 @@ async function pollTrafficEvents() {
                 addTrafficEventToLog(ev);
                 if (!isInitial || (Date.now() - ev.timestamp < 10000)) {
                     triggerJumpBeam(ev);
+                    if (!isInitial && ev.id && !playedTrafficSoundIds.has(ev.id)) {
+                        playedTrafficSoundIds.add(ev.id);
+                        if (playedTrafficSoundIds.size > 200) {
+                            const firstId = playedTrafficSoundIds.values().next().value;
+                            playedTrafficSoundIds.delete(firstId);
+                        }
+                        const nowMs = Date.now();
+                        if (nowMs - lastTrafficBeepAt >= 200) {
+                            lastTrafficBeepAt = nowMs;
+                            const isArrival = (ev.type === 'JUMP_IN' || ev.type === 'IN');
+                            playTrafficBeep(isArrival);
+                        }
+                    }
                 }
             });
         }
@@ -1859,6 +1965,7 @@ async function checkEdsmStatus() {
 
 window.addEventListener('elite:languageChanged', () => {
     updateToggleHabitedButton();
+    updateTrafficAudioButton();
     if (lastGalaxyCubeData) {
         updateStatsSummary(lastGalaxyCubeData);
     }
