@@ -32,7 +32,7 @@
                 cmdrEl.textContent = `CMDR ${data.commanderName.toUpperCase()}`;
             }
             if (statusEl) {
-                statusEl.textContent = 'SISTEMAS PRONTOS • SINCRONIZANDO TELEMETRIA';
+                statusEl.textContent = window.t ? window.t('splash.ready') : 'SISTEMAS PRONTOS • SINCRONIZANDO TELEMETRIA';
             }
         })
         .catch(() => {

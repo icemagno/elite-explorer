@@ -1,6 +1,14 @@
+const tr = (key, ...args) => (window.t ? window.t(key, ...args) : key);
+
 let currentRoutes = [];
+let lastTradeErrorKey = null;
+let lastTradeErrorArg = null;
 
 document.addEventListener('DOMContentLoaded', () => {
+    if (window.i18n) {
+        document.title = tr('trade.page_title');
+    }
+
     // Initial fetch on page load
     fetchTradeRoutes();
 
@@ -15,6 +23,17 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('sortSelect').addEventListener('change', () => {
+        renderRoutes();
+    });
+
+    window.addEventListener('elite:languageChanged', () => {
+        document.title = tr('trade.page_title');
+        if (lastTradeErrorKey) {
+            const errorBox = document.getElementById('errorBox');
+            if (errorBox && errorBox.style.display === 'block') {
+                errorBox.textContent = tr(lastTradeErrorKey, lastTradeErrorArg);
+            }
+        }
         renderRoutes();
     });
 });
@@ -33,8 +52,10 @@ async function fetchTradeRoutes() {
 
     btn.disabled = true;
     spinner.style.display = 'inline-block';
-    btnText.textContent = 'Consultando...';
+    btnText.textContent = tr('trade.consulting');
     errorBox.style.display = 'none';
+    lastTradeErrorKey = null;
+    lastTradeErrorArg = null;
 
     try {
         const query = new URLSearchParams({
@@ -47,13 +68,13 @@ async function fetchTradeRoutes() {
 
         const resp = await fetch(`/api/routes?${query.toString()}`);
         if (!resp.ok) {
-            throw new Error(`Erro de rede ou servidor: HTTP ${resp.status}`);
+            throw new Error(`HTTP ${resp.status}`);
         }
 
         const data = await resp.json();
 
         if (!data.success) {
-            throw new Error(data.errorMessage || 'Falha ao buscar dados no Inara.');
+            throw new Error(data.errorMessage || tr('trade.fetch_error', 'Inara'));
         }
 
         currentRoutes = data.routes || [];
@@ -64,12 +85,14 @@ async function fetchTradeRoutes() {
         renderRoutes();
     } catch (err) {
         console.error('Erro ao buscar rotas:', err);
-        errorBox.textContent = `Falha na consulta: ${err.message}`;
+        lastTradeErrorKey = 'trade.fetch_error';
+        lastTradeErrorArg = err.message;
+        errorBox.textContent = tr('trade.fetch_error', err.message);
         errorBox.style.display = 'block';
     } finally {
         btn.disabled = false;
         spinner.style.display = 'none';
-        btnText.textContent = 'Atualizar';
+        btnText.textContent = tr('trade.btn_refresh');
     }
 }
 
@@ -125,8 +148,8 @@ function renderRoutes() {
     if (routes.length === 0) {
         container.innerHTML = `
             <div class="empty-state">
-                <h3>Nenhuma rota encontrada</h3>
-                <p>Verifique os filtros de pesquisa ou aumente a distância máxima de salto.</p>
+                <h3>${tr('trade.empty_title')}</h3>
+                <p>${tr('trade.empty_desc')}</p>
             </div>
         `;
         return;
@@ -149,28 +172,28 @@ function createRouteCardHtml(route) {
             <!-- Header: Origem & Destino -->
             <div class="route-header-row">
                 <div class="location-box">
-                    <span class="loc-label from">Origem (From)</span>
+                    <span class="loc-label from">${tr('trade.from_label')}</span>
                     <span class="loc-station">${escapeHtml(route.sourceStation || '-')}</span>
                     <div class="loc-system-row">
                         <span class="loc-system">${escapeHtml(route.sourceSystem || '-')}</span>
-                        <button class="copy-btn" onclick="copyToClipboard('${escapeHtml(route.sourceSystem)}')" title="Copiar nome do sistema">📋 Copiar</button>
+                        <button class="copy-btn" onclick="copyToClipboard('${escapeHtml(route.sourceSystem)}')" title="${tr('galaxy.copy')}">📋 ${tr('galaxy.copy')}</button>
                     </div>
-                    <span class="loc-distance">Distância da estação: <span>${escapeHtml(route.sourceDistance || '-')}</span></span>
+                    <span class="loc-distance">${tr('trade.station_dist_label')} <span>${escapeHtml(route.sourceDistance || '-')}</span></span>
                 </div>
 
                 <div class="location-box">
-                    <span class="loc-label to">Destino (To)</span>
+                    <span class="loc-label to">${tr('trade.to_label')}</span>
                     <span class="loc-station">${escapeHtml(route.targetStation || '-')}</span>
                     <div class="loc-system-row">
                         <span class="loc-system">${escapeHtml(route.targetSystem || '-')}</span>
-                        <button class="copy-btn" onclick="copyToClipboard('${escapeHtml(route.targetSystem)}')" title="Copiar nome do sistema">📋 Copiar</button>
+                        <button class="copy-btn" onclick="copyToClipboard('${escapeHtml(route.targetSystem)}')" title="${tr('galaxy.copy')}">📋 ${tr('galaxy.copy')}</button>
                     </div>
-                    <span class="loc-distance">Distância da estação: <span>${escapeHtml(route.targetDistance || '-')}</span></span>
+                    <span class="loc-distance">${tr('trade.station_dist_label')} <span>${escapeHtml(route.targetDistance || '-')}</span></span>
                 </div>
 
                 <div class="profits-right">
                     <div class="profit-badge">
-                        <div class="profit-badge-label">Lucro por Viagem</div>
+                        <div class="profit-badge-label">${tr('trade.profit_trip')}</div>
                         <div class="profit-badge-value major">${escapeHtml(route.profitPerTrip || '-')}</div>
                     </div>
                 </div>
@@ -181,19 +204,19 @@ function createRouteCardHtml(route) {
                 <!-- Ida -->
                 <div class="trade-leg-box">
                     <div class="leg-title">
-                        <span>Ida ➔ ${escapeHtml(route.targetStation || 'Destino')}</span>
+                        <span>${tr('trade.outbound_leg', escapeHtml(route.targetStation || tr('trade.to_label')))}</span>
                         <span class="commodity-name text-cyan">${escapeHtml(outLeg.commodity || '-')}</span>
                     </div>
                     <div class="leg-data-row">
                         <div class="data-cell">
-                            <span class="data-cell-label">Compra (Origem)</span>
+                            <span class="data-cell-label">${tr('trade.buy_origin')}</span>
                             <span class="data-cell-value">${escapeHtml(outLeg.buyPrice || '-')}</span>
-                            <span class="data-cell-label" style="margin-top:4px;">Oferta (Supply): <span class="data-cell-value">${escapeHtml(outLeg.supply || '-')}</span></span>
+                            <span class="data-cell-label" style="margin-top:4px;">${tr('trade.supply')} <span class="data-cell-value">${escapeHtml(outLeg.supply || '-')}</span></span>
                         </div>
                         <div class="data-cell">
-                            <span class="data-cell-label">Venda (Destino)</span>
+                            <span class="data-cell-label">${tr('trade.sell_dest')}</span>
                             <span class="data-cell-value text-profit">${escapeHtml(outLeg.sellPrice || '-')}</span>
-                            <span class="data-cell-label" style="margin-top:4px;">Demanda: <span class="data-cell-value">${escapeHtml(outLeg.demand || '-')}</span></span>
+                            <span class="data-cell-label" style="margin-top:4px;">${tr('trade.demand')} <span class="data-cell-value">${escapeHtml(outLeg.demand || '-')}</span></span>
                         </div>
                     </div>
                 </div>
@@ -201,19 +224,19 @@ function createRouteCardHtml(route) {
                 <!-- Volta -->
                 <div class="trade-leg-box">
                     <div class="leg-title">
-                        <span>Volta ➔ ${escapeHtml(route.sourceStation || 'Origem')}</span>
+                        <span>${tr('trade.inbound_leg', escapeHtml(route.sourceStation || tr('trade.from_label')))}</span>
                         <span class="commodity-name text-orange">${escapeHtml(inLeg.commodity || '-')}</span>
                     </div>
                     <div class="leg-data-row">
                         <div class="data-cell">
-                            <span class="data-cell-label">Compra (Destino)</span>
+                            <span class="data-cell-label">${tr('trade.buy_dest')}</span>
                             <span class="data-cell-value">${escapeHtml(inLeg.buyPrice || '-')}</span>
-                            <span class="data-cell-label" style="margin-top:4px;">Oferta (Supply): <span class="data-cell-value">${escapeHtml(inLeg.supply || '-')}</span></span>
+                            <span class="data-cell-label" style="margin-top:4px;">${tr('trade.supply')} <span class="data-cell-value">${escapeHtml(inLeg.supply || '-')}</span></span>
                         </div>
                         <div class="data-cell">
-                            <span class="data-cell-label">Venda (Origem)</span>
+                            <span class="data-cell-label">${tr('trade.sell_origin')}</span>
                             <span class="data-cell-value text-profit">${escapeHtml(inLeg.sellPrice || '-')}</span>
-                            <span class="data-cell-label" style="margin-top:4px;">Demanda: <span class="data-cell-value">${escapeHtml(inLeg.demand || '-')}</span></span>
+                            <span class="data-cell-label" style="margin-top:4px;">${tr('trade.demand')} <span class="data-cell-value">${escapeHtml(inLeg.demand || '-')}</span></span>
                         </div>
                     </div>
                 </div>
@@ -223,30 +246,30 @@ function createRouteCardHtml(route) {
             <div class="route-summary-row">
                 <div class="stats-left">
                     <div class="stat-item">
-                        <span class="stat-item-label">Distância da Rota</span>
+                        <span class="stat-item-label">${tr('trade.route_dist')}</span>
                         <span class="stat-item-value">${escapeHtml(route.routeDistance || '-')}</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-item-label">Dist. do Centro</span>
+                        <span class="stat-item-label">${tr('trade.center_dist')}</span>
                         <span class="stat-item-value">${escapeHtml(route.distanceFromCenter || '-')}</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-item-label">Margem</span>
+                        <span class="stat-item-label">${tr('trade.margin')}</span>
                         <span class="stat-item-value text-profit">${escapeHtml(route.margin || '-')}</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-item-label">Atualizado</span>
+                        <span class="stat-item-label">${tr('trade.updated')}</span>
                         <span class="stat-item-value">${escapeHtml(route.updated || '-')}</span>
                     </div>
                 </div>
 
                 <div class="profits-right">
                     <div class="stat-item" style="text-align: right;">
-                        <span class="stat-item-label">Lucro por Unidade</span>
+                        <span class="stat-item-label">${tr('trade.profit_unit')}</span>
                         <span class="stat-item-value text-orange" style="font-weight: 700;">${escapeHtml(route.profitPerUnit || '-')}</span>
                     </div>
                     <div class="stat-item" style="text-align: right;">
-                        <span class="stat-item-label">Lucro por Hora</span>
+                        <span class="stat-item-label">${tr('trade.profit_hour')}</span>
                         <span class="stat-item-value text-cyan" style="font-weight: 700;">${escapeHtml(route.profitPerHour || '-')}</span>
                     </div>
                 </div>
@@ -258,7 +281,7 @@ function createRouteCardHtml(route) {
 function copyToClipboard(text) {
     if (!text) return;
     navigator.clipboard.writeText(text).then(() => {
-        showToast(`Sistema "${text}" copiado!`);
+        showToast(tr('copilot.copied', text));
     }).catch(err => {
         console.error('Falha ao copiar:', err);
     });

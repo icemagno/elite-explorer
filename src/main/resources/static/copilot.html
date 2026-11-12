@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Elite Explorer Copilot - Copilot em Tempo Real</title>
+    <title data-i18n="copilot.page_title">Elite Explorer Copilot - Copilot em Tempo Real</title>
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -12,20 +12,21 @@
         <nav class="top-nav">
             <a href="/index.html" class="nav-tab cyan">
                 <span>🌌</span>
-                <span>Cubo Galáctico 3D</span>
+                <span data-i18n="nav.galaxy_cube_3d">Cubo Galáctico 3D</span>
             </a>
             <a href="/system-orrery.html" class="nav-tab">
                 <span>🪐</span>
-                <span>Sistema 3D (Orrery)</span>
+                <span data-i18n="nav.system_orrery">Sistema 3D (Orrery)</span>
             </a>
             <a href="/copilot.html" class="nav-tab active cyan">
                 <span>🛰️</span>
-                <span>Copilot em Tempo Real (Journal)</span>
+                <span data-i18n="nav.copilot">Copilot em Tempo Real (Journal)</span>
             </a>
             <a href="/trade.html" class="nav-tab">
                 <span>🔄</span>
-                <span>Rotas de Loop</span>
+                <span data-i18n="nav.trade_loops">Rotas de Loop</span>
             </a>
+            <div data-lang-switcher style="margin-left: auto;"></div>
         </nav>
 
         <!-- Header -->
@@ -33,78 +34,78 @@
             <div class="hud-title-wrap">
                 <div class="hud-logo cyan">CP</div>
                 <div>
-                    <h1 class="hud-title">Painel de Bordo <span>Copilot</span></h1>
-                    <p class="hud-subtitle">Monitoramento de Voo em Tempo Real & Cotações de Venda de Ida</p>
+                    <h1 class="hud-title"><span data-i18n="copilot.title_prefix">Painel de Bordo</span> <span>Copilot</span></h1>
+                    <p class="hud-subtitle" data-i18n="copilot.subtitle">Monitoramento de Voo em Tempo Real & Cotações de Venda de Ida</p>
                 </div>
             </div>
             <div class="hud-status-badge">
                 <span id="journalDot" class="status-dot pulsing"></span>
-                <span id="journalStatusText">Conectando ao Journal...</span>
+                <span id="journalStatusText" data-i18n="copilot.journal_connecting">Conectando ao Journal...</span>
             </div>
         </header>
 
         <!-- Player Live HUD Status Bar -->
         <section class="copilot-status-bar">
             <div class="status-tile">
-                <span class="status-tile-label">Comandante</span>
+                <span class="status-tile-label" data-i18n="copilot.label_commander">Comandante</span>
                 <span id="cmdrName" class="status-tile-value">-</span>
-                <span id="journalFileName" class="status-tile-sub">Lendo log...</span>
+                <span id="journalFileName" class="status-tile-sub" data-i18n="copilot.reading_log">Lendo log...</span>
             </div>
             <div class="status-tile">
-                <span class="status-tile-label">Sistema Atual (Origem)</span>
+                <span class="status-tile-label" data-i18n="copilot.label_current_system">Sistema Atual (Origem)</span>
                 <div class="status-tile-value highlight-cyan">
                     <span id="currentSystem">-</span>
-                    <button id="btnCopyCurrentSystem" class="copy-btn" title="Copiar sistema atual">📋</button>
+                    <button id="btnCopyCurrentSystem" class="copy-btn" data-i18n-title="galaxy.copy" title="Copiar">📋</button>
                 </div>
-                <span id="currentStation" class="status-tile-sub">No hiperespaço</span>
+                <span id="currentStation" class="status-tile-sub" data-i18n="copilot.in_hyperspace">No hiperespaço</span>
             </div>
             <div class="status-tile">
-                <span class="status-tile-label">Nave Ativa & Carga</span>
+                <span class="status-tile-label" data-i18n="copilot.label_ship_cargo">Nave Ativa & Carga</span>
                 <span id="shipInfo" class="status-tile-value">-</span>
-                <span id="cargoCapacityText" class="status-tile-sub">Capacidade de carga: - T</span>
+                <span id="cargoCapacityText" class="status-tile-sub" data-i18n="copilot.cargo_capacity_init">Capacidade de carga: - T</span>
             </div>
             <div class="status-tile">
-                <span class="status-tile-label">Status de Voo</span>
+                <span class="status-tile-label" data-i18n="copilot.label_flight_status">Status de Voo</span>
                 <span id="flightStatus" class="status-tile-value">-</span>
-                <span id="lastEventTime" class="status-tile-sub">Aguardando eventos...</span>
+                <span id="lastEventTime" class="status-tile-sub" data-i18n="copilot.waiting_events">Aguardando eventos...</span>
             </div>
         </section>
 
         <!-- Jump Alert Banner -->
         <div id="jumpAlert" class="banner-jump">
-            🚀 <strong>Novo salto detectado!</strong> O comandante entrou no sistema <span id="jumpAlertSystem" style="color: var(--accent-cyan); font-weight: 700;"></span>. Atualizando cotações de ida...
+            🚀 <strong data-i18n="copilot.jump_detected">Novo salto detectado!</strong> <span id="jumpAlertBody"><span id="jumpAlertSystem" style="color: var(--accent-cyan); font-weight: 700;"></span></span>
         </div>
 
         <!-- Action / Search Bar -->
         <section class="copilot-action-bar">
             <div class="copilot-controls-left">
-                <label class="toggle-switch-label" title="Atualiza o mercado automaticamente ao detectar salto FSD no Journal">
+                <label class="toggle-switch-label" data-i18n-title="copilot.auto_refresh_title" title="Atualiza o mercado automaticamente ao detectar salto FSD no Journal">
                     <input type="checkbox" id="chkAutoRefresh" checked>
-                    <span>Auto-Atualizar ao Mudar de Sistema</span>
+                    <span data-i18n="copilot.auto_refresh">Auto-Atualizar ao Mudar de Sistema</span>
                 </label>
 
                 <div style="display: flex; align-items: center; gap: 8px;">
-                    <label for="inputMaxDist" style="font-size: 12px; color: var(--text-secondary); text-transform: uppercase;">Dist. Máx (Ly):</label>
+                    <label for="inputMaxDist" data-i18n="copilot.max_dist" style="font-size: 12px; color: var(--text-secondary); text-transform: uppercase;">Dist. Máx (Ly):</label>
                     <input type="number" id="inputMaxDist" class="input-compact" value="80" min="10" max="500">
                 </div>
 
                 <div style="display: flex; align-items: center; gap: 8px;">
-                    <label for="selectPadSize" style="font-size: 12px; color: var(--text-secondary); text-transform: uppercase;">Pad:</label>
+                    <label for="selectPadSize" data-i18n="copilot.pad" style="font-size: 12px; color: var(--text-secondary); text-transform: uppercase;">Pad:</label>
                     <select id="selectPadSize" class="input-compact" style="width: 120px;">
-                        <option value="1" selected>Qualquer / L</option>
-                        <option value="2">Médio (M)</option>
-                        <option value="3">Pequeno (S)</option>
+                        <option value="1" selected data-i18n="copilot.pad_any">Qualquer / L</option>
+                        <option value="2" data-i18n="copilot.pad_med">Médio (M)</option>
+                        <option value="3" data-i18n="copilot.pad_small">Pequeno (S)</option>
                     </select>
                 </div>
             </div>
 
             <div style="display: flex; gap: 10px;">
-                <button type="button" id="btnSimulate" class="copy-btn" style="padding: 8px 14px; font-size: 13px;" title="Testar mudança de sistema manualmente">
+                <button type="button" id="btnSimulate" class="copy-btn" data-i18n="copilot.simulate_jump" data-i18n-title="copilot.simulate_title" style="padding: 8px 14px; font-size: 13px;" title="Testar mudança de sistema manualmente">
                     🧪 Simular Salto
                 </button>
                 <button type="button" id="btnRefreshTrades" class="btn-refresh btn-cyan">
                     <span id="btnSpinner" class="spinner" style="display: none;"></span>
-                    <span id="btnText">Atualizar Cotações</span>
+                    <span id="btnText" data-i18n="copilot.refresh_quotes">Atualizar Cotações</span>
                 </button>
             </div>
         </section>
@@ -115,16 +116,16 @@
         <!-- Tool Bar -->
         <div class="tool-bar">
             <div class="tool-left">
-                <span>Oportunidades de Ida: <strong id="badgeCount" class="badge-count">0</strong></span>
-                <span>| Última busca: <span id="lastFetchedAt">-</span></span>
-                <span>| <a id="inaraLink" href="#" target="_blank" rel="noopener noreferrer" style="color: var(--accent-cyan); text-decoration: none;">Ver busca no Inara ↗</a></span>
+                <span><span data-i18n="copilot.outbound_opps">Oportunidades de Ida:</span> <strong id="badgeCount" class="badge-count">0</strong></span>
+                <span>| <span data-i18n="copilot.last_search">Última busca:</span> <span id="lastFetchedAt">-</span></span>
+                <span>| <a id="inaraLink" href="#" target="_blank" rel="noopener noreferrer" data-i18n="copilot.view_inara" style="color: var(--accent-cyan); text-decoration: none;">Ver busca no Inara ↗</a></span>
             </div>
             <div class="tool-right">
-                <input type="text" id="filterInput" class="filter-input" placeholder="Filtrar por produto, estação ou destino...">
+                <input type="text" id="filterInput" class="filter-input" data-i18n-placeholder="copilot.filter_placeholder" placeholder="Filtrar por produto, estação ou destino...">
                 <select id="sortSelect" class="sort-select">
-                    <option value="profit">Ordenar: Maior Lucro</option>
-                    <option value="distance">Ordenar: Menor Distância (Ly)</option>
-                    <option value="station_dist">Ordenar: Menor Distância da Estação (Ls)</option>
+                    <option value="profit" data-i18n="copilot.sort_profit">Ordenar: Maior Lucro</option>
+                    <option value="distance" data-i18n="copilot.sort_distance">Ordenar: Menor Distância (Ly)</option>
+                    <option value="station_dist" data-i18n="copilot.sort_station_dist">Ordenar: Menor Distância da Estação (Ls)</option>
                 </select>
             </div>
         </div>
@@ -138,6 +139,7 @@
     <!-- Toast Notification -->
     <div id="toast" class="toast"></div>
 
-    <script src="/js/copilot.js"></script>
+    <script src="/js/i18n.js?v=20261112-1"></script>
+    <script src="/js/copilot.js?v=20261112-1"></script>
 </body>
 </html>

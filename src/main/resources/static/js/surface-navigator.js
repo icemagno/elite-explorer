@@ -1,6 +1,8 @@
 // surface-navigator.js - HUD de Navegação Planetária 2.5D (Columbus View)
 // Elite Dangerous Explorer HUD
 
+const surfaceTr = (key, ...args) => (window.t ? window.t(key, ...args) : key);
+
 let surfaceScene, surfaceCamera, surfaceRenderer, surfaceControls;
 let surfaceVehicleMarker = null;
 let surfaceDropStalk = null;
@@ -905,22 +907,23 @@ function updateSurfaceTelemetry(data) {
     // 6. Atualiza Elementos do HUD (Bússola e textos sempre atualizam conforme telemetria)
     updateCompassTape(heading);
 
+    const locale = window.i18n ? window.i18n.getLocale() : 'pt-BR';
     const altEl = document.getElementById('surfaceAltitudeText');
     const stateEl = document.getElementById('surfaceFlightStateBadge');
     if (altEl) {
-        altEl.textContent = `${Math.round(alt).toLocaleString('pt-BR')} m`;
+        altEl.textContent = `${Math.round(alt).toLocaleString(locale)} m`;
     }
     if (stateEl) {
         if (data.landed) {
-            stateEl.textContent = data.inSrv ? 'SRV NA SUPERFÍCIE' : (data.onFoot ? 'PILOTO A PÉ' : 'NAVE POUSADA');
+            stateEl.textContent = data.inSrv ? surfaceTr('surface.state_landed_srv') : (data.onFoot ? surfaceTr('surface.state_landed_foot') : surfaceTr('surface.state_landed_ship'));
             stateEl.style.color = '#2bfca8';
             stateEl.style.background = 'rgba(43,252,168,0.2)';
         } else if (data.glideMode) {
-            stateEl.textContent = 'VOO EM GLIDE ORBITAL';
+            stateEl.textContent = surfaceTr('surface.state_glide');
             stateEl.style.color = '#ffaa00';
             stateEl.style.background = 'rgba(255,170,0,0.2)';
         } else {
-            stateEl.textContent = 'EM VOO ATMOSFÉRICO';
+            stateEl.textContent = surfaceTr('surface.state_flight');
             stateEl.style.color = '#00d4ff';
             stateEl.style.background = 'rgba(0,212,255,0.2)';
         }
@@ -942,7 +945,7 @@ function updateSurfaceTelemetry(data) {
     }
     if (distTdEl) {
         const distMeters = isAboardLandedShip ? 0 : Math.round(data.distanceToTouchdown || 0);
-        distTdEl.textContent = `${distMeters.toLocaleString('pt-BR')} m`;
+        distTdEl.textContent = `${distMeters.toLocaleString(locale)} m`;
         if (distMeters >= 500) {
             distTdEl.style.color = '#2bfca8'; // Verde: seguro para amostra Stratum!
         } else {
@@ -956,12 +959,12 @@ function updateSurfaceTelemetry(data) {
     const atmEl = document.getElementById('surfaceAtmosphereText');
     const pressEl = document.getElementById('surfacePressureText');
 
-    if (planetEl) planetEl.textContent = data.bodyName || 'Aguardando corpo...';
+    if (planetEl) planetEl.textContent = data.bodyName || surfaceTr('surface.waiting_body');
     if (gravEl) gravEl.textContent = (data.surfaceGravity !== null && data.surfaceGravity !== undefined && data.surfaceGravity > 0)
         ? `${data.surfaceGravity.toFixed(2)} G`
         : '---';
     if (atmEl) {
-        let atm = data.atmosphereType || 'Sem atmosfera';
+        let atm = data.atmosphereType || surfaceTr('surface.no_atmosphere');
         if (atm.includes('(') && atm.includes('atm')) {
             const match = atm.match(/\(([^)]+)\)/);
             if (match && pressEl) {
@@ -970,7 +973,7 @@ function updateSurfaceTelemetry(data) {
             atm = atm.replace(/\s*\([^)]+\)/, '').trim();
         } else if (pressEl) {
             const lowerAtm = atm.toLowerCase();
-            pressEl.textContent = (lowerAtm === 'none' || lowerAtm === 'no atmosphere' || lowerAtm.includes('sem atmosfera') || lowerAtm.includes('vácuo'))
+            pressEl.textContent = (lowerAtm === 'none' || lowerAtm === 'no atmosphere' || lowerAtm.includes('sem atmosfera') || lowerAtm.includes('sin atmósfera') || lowerAtm.includes('vácuo'))
                 ? '0.00 atm'
                 : '---';
         }
@@ -1160,12 +1163,12 @@ function updateBioTelemetry(data, moved) {
         const statusEl = document.getElementById(`bioSlot${i}Status`);
         if (slotEl && statusEl) {
             if (i <= count) {
-                statusEl.textContent = 'COLETADA';
+                statusEl.textContent = surfaceTr('surface.bio_collected');
                 statusEl.style.color = '#00ffaa';
                 slotEl.style.borderColor = 'rgba(0,255,170,0.6)';
                 slotEl.style.background = 'rgba(0,255,170,0.15)';
             } else {
-                statusEl.textContent = 'PENDENTE';
+                statusEl.textContent = surfaceTr('surface.bio_pending');
                 statusEl.style.color = '#557088';
                 slotEl.style.borderColor = 'rgba(255,255,255,0.08)';
                 slotEl.style.background = 'rgba(255,255,255,0.03)';
@@ -1180,7 +1183,7 @@ function updateBioTelemetry(data, moved) {
             speciesEl.textContent = lastSample.species;
             speciesEl.style.color = '#00ffaa';
         } else {
-            speciesEl.textContent = 'Aguardando amostragem...';
+            speciesEl.textContent = surfaceTr('surface.bio_waiting_sample');
             speciesEl.style.color = '#8da4be';
         }
     }
@@ -1191,18 +1194,19 @@ function updateBioTelemetry(data, moved) {
     const bannerEl = document.getElementById('bioStatusBanner');
 
     if (distEl && barEl && bannerEl) {
+        const locale = window.i18n ? window.i18n.getLocale() : 'pt-BR';
         if (count === 0) {
             distEl.textContent = '---';
             barEl.style.width = '0%';
-            bannerEl.textContent = 'Aguardando scan inicial...';
+            bannerEl.textContent = surfaceTr('surface.bio_waiting_scan');
             bannerEl.style.color = '#8da4be';
             bannerEl.style.background = 'rgba(255,255,255,0.05)';
         } else if (count >= 3) {
-            distEl.textContent = 'CONCLUÍDO';
+            distEl.textContent = surfaceTr('surface.bio_completed');
             distEl.style.color = '#00ffaa';
             barEl.style.width = '100%';
             barEl.style.background = '#00ffaa';
-            bannerEl.textContent = '🎉 ESPÉCIE ANALISADA COM SUCESSO';
+            bannerEl.textContent = surfaceTr('surface.bio_success_banner');
             bannerEl.style.color = '#00ffaa';
             bannerEl.style.background = 'rgba(0,255,170,0.2)';
         } else if (lastSample) {
@@ -1211,7 +1215,7 @@ function updateBioTelemetry(data, moved) {
             const distMeters = Math.round(currentDist);
             const reqMeters = Math.round(minColony);
 
-            distEl.textContent = `${distMeters.toLocaleString('pt-BR')} m / ${reqMeters} m`;
+            distEl.textContent = `${distMeters.toLocaleString(locale)} m / ${reqMeters} m`;
 
             const pct = Math.min(100, Math.max(0, Math.round((currentDist / minColony) * 100)));
             barEl.style.width = `${pct}%`;
@@ -1219,14 +1223,14 @@ function updateBioTelemetry(data, moved) {
             if (diversityReached || currentDist >= minColony) {
                 distEl.style.color = '#00ffaa';
                 barEl.style.background = '#00ffaa';
-                bannerEl.textContent = `✅ DIVERSIDADE ALCANÇADA (${distMeters}m) • PRONTA P/ AMOSTRA #${count + 1}`;
+                bannerEl.textContent = surfaceTr('surface.bio_ready_banner', distMeters, count + 1);
                 bannerEl.style.color = '#00ffaa';
                 bannerEl.style.background = 'rgba(0,255,170,0.2)';
             } else {
                 distEl.style.color = '#ffaa00';
                 barEl.style.background = '#ffaa00';
                 const remaining = Math.max(0, reqMeters - distMeters);
-                bannerEl.textContent = `⚠️ DENTRO DA COLÔNIA (${distMeters}m) • Faltam ${remaining}m`;
+                bannerEl.textContent = surfaceTr('surface.bio_inside_banner', distMeters, remaining);
                 bannerEl.style.color = '#ffaa00';
                 bannerEl.style.background = 'rgba(255,170,0,0.15)';
             }
@@ -1495,7 +1499,7 @@ function showSurfaceView() {
     if (cubeView) cubeView.style.display = 'none';
     if (surfaceView) surfaceView.style.display = 'block';
     if (btnSwitch) {
-        btnSwitch.innerHTML = '🪐 Superfície';
+        btnSwitch.innerHTML = `🪐 ${surfaceTr('nav.surface')}`;
         btnSwitch.style.borderColor = '#2bfca8';
         btnSwitch.style.background = 'rgba(43,252,168,0.25)';
     }
@@ -1536,7 +1540,7 @@ function hideSurfaceView() {
             btnSwitch.style.opacity = '1.0';
             btnSwitch.style.cursor = 'pointer';
             btnSwitch.style.pointerEvents = 'auto';
-            btnSwitch.innerHTML = '🪐 Superfície';
+            btnSwitch.innerHTML = `🪐 ${surfaceTr('nav.surface')}`;
             btnSwitch.style.borderColor = 'rgba(43,252,168,0.5)';
             btnSwitch.style.background = 'rgba(43,252,168,0.12)';
         }
@@ -1568,13 +1572,13 @@ function handleSurfaceDataUpdate(data) {
     const isNearSurface = checkIsNearSurface(data);
 
     if (btnSwitch) {
-        btnSwitch.innerHTML = '🪐 Superfície';
+        btnSwitch.innerHTML = `🪐 ${surfaceTr('nav.surface')}`;
         if (isNearSurface) {
             btnSwitch.disabled = false;
             btnSwitch.style.opacity = '1.0';
             btnSwitch.style.cursor = 'pointer';
             btnSwitch.style.pointerEvents = 'auto';
-            btnSwitch.title = `Nave em órbita/solo de ${data.bodyName || data.planetName || 'planeta'} - Clique para alternar o HUD de Superfície`;
+            btnSwitch.title = surfaceTr('nav.surface_active_title', data.bodyName || data.planetName || surfaceTr('nav.surface').toLowerCase());
             if (isSurfaceViewActive) {
                 btnSwitch.style.borderColor = '#2bfca8';
                 btnSwitch.style.background = 'rgba(43,252,168,0.25)';
@@ -1587,7 +1591,7 @@ function handleSurfaceDataUpdate(data) {
             btnSwitch.style.opacity = '0.35';
             btnSwitch.style.cursor = 'not-allowed';
             btnSwitch.style.pointerEvents = 'none';
-            btnSwitch.title = 'Disponível apenas quando a nave estiver em órbita ou na superfície de um planeta';
+            btnSwitch.title = surfaceTr('nav.surface_disabled_title');
         }
     }
 
@@ -1706,6 +1710,12 @@ function initSurfaceNavigator() {
     setupSurfaceSseListener();
     setInterval(pollSurfaceTelemetry, 2500);
     pollSurfaceTelemetry();
+
+    window.addEventListener('elite:languageChanged', () => {
+        if (lastSurfaceData) {
+            handleSurfaceDataUpdate(lastSurfaceData);
+        }
+    });
 
     // Se a página foi aberta com ?view=surface, abre a visão de superfície
     const urlParams = new URLSearchParams(window.location.search);

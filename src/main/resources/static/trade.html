@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Elite Explorer Copilot - Rotas de Mercado & Cotações</title>
+    <title data-i18n="trade.page_title">Elite Explorer Copilot - Rotas de Mercado & Cotações</title>
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -12,20 +12,21 @@
         <nav class="top-nav">
             <a href="/index.html" class="nav-tab cyan">
                 <span>🌌</span>
-                <span>Cubo Galáctico 3D</span>
+                <span data-i18n="nav.galaxy_cube_3d">Cubo Galáctico 3D</span>
             </a>
             <a href="/system-orrery.html" class="nav-tab">
                 <span>🪐</span>
-                <span>Sistema 3D (Orrery)</span>
+                <span data-i18n="nav.system_orrery">Sistema 3D (Orrery)</span>
             </a>
             <a href="/copilot.html" class="nav-tab">
                 <span>🛰️</span>
-                <span>Copilot em Tempo Real (Journal)</span>
+                <span data-i18n="nav.copilot">Copilot em Tempo Real (Journal)</span>
             </a>
             <a href="/trade.html" class="nav-tab active">
                 <span>🔄</span>
-                <span>Rotas de Loop</span>
+                <span data-i18n="nav.trade_loops">Rotas de Loop</span>
             </a>
+            <div data-lang-switcher style="margin-left: auto;"></div>
         </nav>
 
         <!-- Header -->
@@ -34,7 +35,7 @@
                 <div class="hud-logo">ED</div>
                 <div>
                     <h1 class="hud-title">Elite Dangerous <span>Trade Hub</span></h1>
-                    <p class="hud-subtitle">Cotações e Rotas de Mercado Otimizadas (Via Inara API/Scraper)</p>
+                    <p class="hud-subtitle" data-i18n="trade.subtitle">Cotações e Rotas de Mercado Otimizadas (Via Inara API/Scraper)</p>
                 </div>
             </div>
             <div class="hud-status-badge">
@@ -48,38 +49,38 @@
             <form id="searchForm">
                 <div class="form-grid">
                     <div class="form-group">
-                        <label for="inputSystem">Sistema de Centro da Busca (Origem)</label>
-                        <input type="text" id="inputSystem" class="input-field" value="Col 285 Sector EG-D a42-1" required placeholder="Ex: Sol, Shinrarta Dezhra...">
+                        <label for="inputSystem" data-i18n="trade.center_system">Sistema de Centro da Busca (Origem)</label>
+                        <input type="text" id="inputSystem" class="input-field" value="Col 285 Sector EG-D a42-1" required data-i18n-placeholder="trade.center_placeholder" placeholder="Ex: Sol, Shinrarta Dezhra...">
                     </div>
                     <div class="form-group">
-                        <label for="inputCargo">Carga da Nave (T)</label>
+                        <label for="inputCargo" data-i18n="trade.ship_cargo">Carga da Nave (T)</label>
                         <input type="number" id="inputCargo" class="input-field" value="36" min="1" max="1000" required>
                     </div>
                     <div class="form-group">
-                        <label for="inputMaxDist">Distância Máx. (Ly)</label>
+                        <label for="inputMaxDist" data-i18n="trade.max_dist">Distância Máx. (Ly)</label>
                         <input type="number" id="inputMaxDist" class="input-field" value="80" min="1" max="1000" required>
                     </div>
                     <div class="form-group">
-                        <label for="inputPadSize">Pad de Pouso</label>
+                        <label for="inputPadSize" data-i18n="trade.pad_size">Pad de Pouso</label>
                         <select id="inputPadSize" class="input-field">
-                            <option value="1" selected>Qualquer / Grande (L)</option>
-                            <option value="2">Médio (M)</option>
-                            <option value="3">Pequeno (S)</option>
+                            <option value="1" selected data-i18n="trade.pad_any">Qualquer / Grande (L)</option>
+                            <option value="2" data-i18n="copilot.pad_med">Médio (M)</option>
+                            <option value="3" data-i18n="copilot.pad_small">Pequeno (S)</option>
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="inputMaxAge">Idade Máx. Dados</label>
+                        <label for="inputMaxAge" data-i18n="trade.max_age">Idade Máx. Dados</label>
                         <select id="inputMaxAge" class="input-field">
-                            <option value="24">24 horas</option>
-                            <option value="48">48 horas</option>
-                            <option value="72" selected>72 horas</option>
-                            <option value="168">7 dias</option>
+                            <option value="24" data-i18n="trade.hours_24">24 horas</option>
+                            <option value="48" data-i18n="trade.hours_48">48 horas</option>
+                            <option value="72" selected data-i18n="trade.hours_72">72 horas</option>
+                            <option value="168" data-i18n="trade.days_7">7 dias</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <button type="submit" id="btnRefresh" class="btn-refresh">
                             <span id="btnSpinner" class="spinner" style="display: none;"></span>
-                            <span id="btnText">Atualizar</span>
+                            <span id="btnText" data-i18n="trade.btn_refresh">Atualizar</span>
                         </button>
                     </div>
                 </div>
@@ -92,18 +93,18 @@
         <!-- Tool Bar -->
         <div class="tool-bar">
             <div class="tool-left">
-                <span>Rotas Encontradas: <strong id="badgeCount" class="badge-count">0</strong></span>
-                <span>| Última busca: <span id="lastFetchedAt">-</span></span>
-                <span>| <a id="inaraLink" href="#" target="_blank" rel="noopener noreferrer" style="color: var(--accent-cyan); text-decoration: none;">Ver busca no Inara ↗</a></span>
+                <span><span data-i18n="trade.routes_found">Rotas Encontradas:</span> <strong id="badgeCount" class="badge-count">0</strong></span>
+                <span>| <span data-i18n="copilot.last_search">Última busca:</span> <span id="lastFetchedAt">-</span></span>
+                <span>| <a id="inaraLink" href="#" target="_blank" rel="noopener noreferrer" data-i18n="copilot.view_inara" style="color: var(--accent-cyan); text-decoration: none;">Ver busca no Inara ↗</a></span>
             </div>
             <div class="tool-right">
-                <input type="text" id="filterInput" class="filter-input" placeholder="Filtrar por estação, sistema ou mercadoria...">
+                <input type="text" id="filterInput" class="filter-input" data-i18n-placeholder="trade.filter_placeholder" placeholder="Filtrar por estação, sistema ou mercadoria...">
                 <select id="sortSelect" class="sort-select">
-                    <option value="trip">Ordenar: Maior Lucro / Viagem</option>
-                    <option value="unit">Ordenar: Maior Lucro / Unidade</option>
-                    <option value="hour">Ordenar: Maior Lucro / Hora</option>
-                    <option value="route_dist_asc">Ordenar: Menor Distância da Rota</option>
-                    <option value="dist_center_asc">Ordenar: Mais Próximo do Centro</option>
+                    <option value="trip" data-i18n="trade.sort_trip">Ordenar: Maior Lucro / Viagem</option>
+                    <option value="unit" data-i18n="trade.sort_unit">Ordenar: Maior Lucro / Unidade</option>
+                    <option value="hour" data-i18n="trade.sort_hour">Ordenar: Maior Lucro / Hora</option>
+                    <option value="route_dist_asc" data-i18n="trade.sort_route_dist">Ordenar: Menor Distância da Rota</option>
+                    <option value="dist_center_asc" data-i18n="trade.sort_center_dist">Ordenar: Mais Próximo do Centro</option>
                 </select>
             </div>
         </div>
@@ -117,6 +118,7 @@
     <!-- Clipboard Toast Notification -->
     <div id="toast" class="toast"></div>
 
-    <script src="/js/app.js"></script>
+    <script src="/js/i18n.js?v=20261112-1"></script>
+    <script src="/js/app.js?v=20261112-1"></script>
 </body>
 </html>

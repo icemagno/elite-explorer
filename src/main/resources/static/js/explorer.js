@@ -3,6 +3,9 @@
  * Renderizador Three.js interativo de cubos galácticos e caçador de vazios.
  */
 
+const tr = (key, ...args) => (window.t ? window.t(key, ...args) : key);
+const getLocale = () => (window.i18n ? window.i18n.getLocale() : 'pt-BR');
+
 // Paleta de Cores Estelares (KGBFOAM + Especiais + Outras)
 const STAR_COLORS = {
     // KGBFOAM (Combustível / Scoopable)
@@ -72,9 +75,9 @@ const edsmSyncDisplayEl = document.getElementById('edsmSyncDisplay');
 const cubeLoadingIndicatorEl = document.getElementById('cubeLoadingIndicator');
 const cubeLoadingTextEl = document.getElementById('cubeLoadingText');
 
-function showCubeLoading(text = 'Aguarde... Carregando dados estelares') {
+function showCubeLoading(text) {
     if (cubeLoadingIndicatorEl) {
-        if (cubeLoadingTextEl) cubeLoadingTextEl.textContent = text;
+        if (cubeLoadingTextEl) cubeLoadingTextEl.textContent = text || tr('galaxy.loading_default');
         cubeLoadingIndicatorEl.style.display = 'flex';
         requestAnimationFrame(() => {
             cubeLoadingIndicatorEl.style.opacity = '1';
@@ -99,22 +102,27 @@ const targetCardBadge = document.getElementById('targetCardBadge');
 const targetCardContent = document.getElementById('targetCardContent');
 const btnToggleHabited = document.getElementById('btnToggleHabited');
 
+function updateToggleHabitedButton() {
+    if (!btnToggleHabited) return;
+    if (filterInhabitedOnly) {
+        btnToggleHabited.innerHTML = tr('galaxy.filter_inhabited');
+        btnToggleHabited.style.background = 'rgba(0, 212, 255, 0.25)';
+        btnToggleHabited.style.borderColor = '#00d4ff';
+        btnToggleHabited.style.color = '#ffffff';
+        btnToggleHabited.style.boxShadow = '0 0 10px rgba(0, 212, 255, 0.5)';
+    } else {
+        btnToggleHabited.innerHTML = tr('galaxy.filter_all');
+        btnToggleHabited.style.background = 'rgba(12, 25, 45, 0.85)';
+        btnToggleHabited.style.borderColor = 'rgba(0, 212, 255, 0.35)';
+        btnToggleHabited.style.color = '#8da4be';
+        btnToggleHabited.style.boxShadow = 'none';
+    }
+}
+
 if (btnToggleHabited) {
     btnToggleHabited.addEventListener('click', () => {
         filterInhabitedOnly = !filterInhabitedOnly;
-        if (filterInhabitedOnly) {
-            btnToggleHabited.innerHTML = '🏙️ Apenas Habitados';
-            btnToggleHabited.style.background = 'rgba(0, 212, 255, 0.25)';
-            btnToggleHabited.style.borderColor = '#00d4ff';
-            btnToggleHabited.style.color = '#ffffff';
-            btnToggleHabited.style.boxShadow = '0 0 10px rgba(0, 212, 255, 0.5)';
-        } else {
-            btnToggleHabited.innerHTML = '🌐 Todos';
-            btnToggleHabited.style.background = 'rgba(12, 25, 45, 0.85)';
-            btnToggleHabited.style.borderColor = 'rgba(0, 212, 255, 0.35)';
-            btnToggleHabited.style.color = '#8da4be';
-            btnToggleHabited.style.boxShadow = 'none';
-        }
+        updateToggleHabitedButton();
         updateVisibleStars();
     });
 }
@@ -329,13 +337,13 @@ function onMouseMove(event) {
         tooltipEl.style.left = `${event.clientX}px`;
         tooltipEl.style.top = `${event.clientY}px`;
         
-        const typeText = foundStar.starType ? `<div style="color: #ffaa33; font-size: 11px;">Classe: <b>${foundStar.starType}</b> ${foundStar.isScoopable ? '⛽ (Scoopable)' : ''}</div>` : '';
-        const popNote = (foundStar.population && foundStar.population > 0) ? `<div style="color: #00d4ff; font-size: 11px; margin-top: 1px;">População: <b>${foundStar.population.toLocaleString('pt-BR')}</b></div>` : '';
+        const typeText = foundStar.starType ? `<div style="color: #ffaa33; font-size: 11px;">${tr('orrery.star_class', `<b>${foundStar.starType}</b>`)} ${foundStar.isScoopable ? '⛽ (Scoopable)' : ''}</div>` : '';
+        const popNote = (foundStar.population && foundStar.population > 0) ? `<div style="color: #00d4ff; font-size: 11px; margin-top: 1px;">${tr('galaxy.population_label')}: <b>${foundStar.population.toLocaleString(getLocale())}</b></div>` : '';
         let stratumNote = '';
         if (foundStar.hasStratumConfirmed) {
-            stratumNote = `<div style="color: #2bfca8; font-size: 11px; margin-top: 2px; font-weight: bold;">✔ Presença Confirmada</div>`;
+            stratumNote = `<div style="color: #2bfca8; font-size: 11px; margin-top: 2px; font-weight: bold;">${tr('galaxy.confirmed_presence')}</div>`;
         } else if (foundStar.hasStratumCandidate) {
-            stratumNote = `<div style="color: #ffcc44; font-size: 11px; margin-top: 2px;">🪐 Potencial Inédito (1st)</div>`;
+            stratumNote = `<div style="color: #ffcc44; font-size: 11px; margin-top: 2px;">${tr('galaxy.potential_first')}</div>`;
         }
 
         tooltipEl.innerHTML = `
@@ -343,9 +351,9 @@ function onMouseMove(event) {
             ${typeText}
             ${popNote}
             ${stratumNote}
-            <div style="color: #a4bedc;">Distância: <b>${foundStar.distance.toFixed(1)} ly</b></div>
+            <div style="color: #a4bedc;">${tr('galaxy.distance')}: <b>${foundStar.distance.toFixed(1)} ly</b></div>
             <div style="color: #6a88a8; font-size: 11px;">[X: ${foundStar.x.toFixed(1)}, Y: ${foundStar.y.toFixed(1)}, Z: ${foundStar.z.toFixed(1)}]</div>
-            ${foundStar.bodyCount ? `<div style="color: #2bfca8; font-size: 11px;">Corpos: ${foundStar.bodyCount}</div>` : ''}
+            ${foundStar.bodyCount ? `<div style="color: #2bfca8; font-size: 11px;">${tr('galaxy.bodies_label')}: ${foundStar.bodyCount}</div>` : ''}
         `;
         return;
     }
@@ -370,26 +378,26 @@ function onMouseMove(event) {
                 tooltipEl.style.top = `${event.clientY}px`;
 
                 const titleName = v.systemName || v.id;
-                const massLabel = v.massCode ? `Massa ${v.massCode} (Precisão: ±${v.accuracyLy} ly)` : `±${v.size} ly`;
-                const sibText = v.siblingsSample ? `<div style="color: #8da4be; font-size: 11px; margin-top: 2px;">Irmãos conhecidos: <b style="color: #a4bedc;">${v.siblingsSample}</b></div>` : '';
+                const massLabel = v.massCode ? tr('galaxy.void_mass', v.massCode, v.accuracyLy) : `±${v.size} ly`;
+                const sibText = v.siblingsSample ? `<div style="color: #8da4be; font-size: 11px; margin-top: 2px;">${tr('galaxy.void_known_siblings')}: <b style="color: #a4bedc;">${v.siblingsSample}</b></div>` : '';
 
                 const wpHtml = v.waypointSystemName ? `
                     <hr style="border: 0; border-top: 1px solid rgba(0,212,255,0.2); margin: 6px 0;">
-                    <div style="color: #2bfca8; font-weight: bold; font-size: 11px;">🎯 SALTO SUGERIDO (Irmão Conhecido):</div>
+                    <div style="color: #2bfca8; font-weight: bold; font-size: 11px;">${tr('galaxy.void_suggested_jump')}</div>
                     <div style="color: #fff; font-size: 13px; font-weight: bold; background: rgba(0,212,255,0.15); padding: 2px 6px; border-radius: 3px; display: inline-block; margin-top: 2px;">
                         ${v.waypointSystemName}
                     </div>
                     <div style="color: #a4bedc; font-size: 11px; margin-top: 2px;">
-                        Distância da sua Nave: <b>${v.waypointDistanceToPlayer.toFixed(1)} ly</b>
+                        ${tr('galaxy.distance_your_ship')}: <b>${v.waypointDistanceToPlayer.toFixed(1)} ly</b>
                     </div>
-                ` : '<div style="color: #8da4be; font-size: 11px;">Sem estrela próxima catalogada</div>';
+                ` : `<div style="color: #8da4be; font-size: 11px;">${tr('galaxy.void_no_nearby_star')}</div>`;
 
                 tooltipEl.innerHTML = `
-                    <div style="color: #ffaa00; font-weight: bold; font-size: 13px;">👻 SISTEMA NÃO CATALOGADO (GAP PROCEDURAL)</div>
+                    <div style="color: #ffaa00; font-weight: bold; font-size: 13px;">${tr('galaxy.void_tooltip_title')}</div>
                     <div style="color: #fff; font-size: 14px; font-weight: bold; margin-top: 2px;">${titleName}</div>
-                    <div style="color: #2bfca8; font-size: 11px; margin-top: 2px;">Certeza Matemática: <b>100% no Stellar Forge</b></div>
-                    <div style="color: #a4bedc; font-size: 11px;">Sub-bloco: <b>${massLabel}</b></div>
-                    <div style="color: #6a88a8; font-size: 11px;">Distância estimada: <b>${v.distanceToPlayer.toFixed(1)} ly</b></div>
+                    <div style="color: #2bfca8; font-size: 11px; margin-top: 2px;">${tr('galaxy.void_certainty')}: <b>${tr('galaxy.void_certainty_val')}</b></div>
+                    <div style="color: #a4bedc; font-size: 11px;">${tr('galaxy.void_subblock')}: <b>${massLabel}</b></div>
+                    <div style="color: #6a88a8; font-size: 11px;">${tr('galaxy.void_est_dist')}: <b>${v.distanceToPlayer.toFixed(1)} ly</b></div>
                     ${sibText}
                     ${wpHtml}
                 `;
@@ -479,13 +487,13 @@ function pinStarCard(star) {
         }
     }
 
-    targetCardBadge.textContent = "SISTEMA SELECIONADO";
+    targetCardBadge.textContent = tr('galaxy.system_selected');
     targetCardBadge.style.color = "#00d4ff";
     targetCardBadge.style.background = "rgba(0,212,255,0.2)";
 
     const typeText = star.starType ? `
         <div style="color: #ffaa33; font-size: 13px; margin-top: 4px;">
-            Classe: <b>${star.starType}</b> ${star.isScoopable ? '⛽ <span style="color: #2bfca8;">(Scoopable)</span>' : ''}
+            ${tr('orrery.star_class', `<b>${star.starType}</b>`)} ${star.isScoopable ? '⛽ <span style="color: #2bfca8;">(Scoopable)</span>' : ''}
         </div>` : '';
 
     let stratumHtml = '';
@@ -498,11 +506,11 @@ function pinStarCard(star) {
             const list = confirmed.map(p => {
                 let statusBadge = '';
                 if (p.alreadyCollected) {
-                    const dt = p.collectedDate ? ` em ${formatShortDate(p.collectedDate)}` : '';
-                    statusBadge = `<div style="color: #ff4466; font-size: 11px; font-weight: bold; margin-top: 4px; background: rgba(255,68,102,0.15); border: 1px solid rgba(255,68,102,0.4); padding: 2px 6px; border-radius: 3px;">🚫 JÁ COLETADO${dt}</div>`;
+                    const dt = p.collectedDate ? tr('galaxy.on_date', formatShortDate(p.collectedDate)) : '';
+                    statusBadge = `<div style="color: #ff4466; font-size: 11px; font-weight: bold; margin-top: 4px; background: rgba(255,68,102,0.15); border: 1px solid rgba(255,68,102,0.4); padding: 2px 6px; border-radius: 3px;">${tr('galaxy.already_collected')}${dt}</div>`;
                 } else if (p.alreadyLanded) {
-                    const dt = p.landedDate ? ` em ${formatShortDate(p.landedDate)}` : '';
-                    statusBadge = `<div style="color: #ffaa33; font-size: 10px; margin-top: 3px;">👣 Pouso já realizado${dt}</div>`;
+                    const dt = p.landedDate ? tr('galaxy.on_date', formatShortDate(p.landedDate)) : '';
+                    statusBadge = `<div style="color: #ffaa33; font-size: 10px; margin-top: 3px;">${tr('galaxy.already_landed_card')}${dt}</div>`;
                 }
 
                 return `
@@ -515,7 +523,7 @@ function pinStarCard(star) {
                                 </div>
                             </div>
                             <div style="color: #a4bedc; font-size: 10px; font-family: monospace;">
-                                ${p.distanceLs ? Math.round(p.distanceLs).toLocaleString('pt-BR') + ' ls' : ''}
+                                ${p.distanceLs ? Math.round(p.distanceLs).toLocaleString(getLocale()) + ' ls' : ''}
                             </div>
                         </div>
                         ${statusBadge}
@@ -526,7 +534,7 @@ function pinStarCard(star) {
             confirmedHtml = `
                 <div style="margin-top: 10px; padding: 8px; background: rgba(43, 252, 168, 0.08); border-left: 2px solid #2bfca8; border-radius: 3px;">
                     <div style="color: #2bfca8; font-size: 11px; font-weight: bold; letter-spacing: 0.5px; text-transform: uppercase;">
-                        ✔ Presença Confirmada
+                        ${tr('galaxy.confirmed_presence')}
                     </div>
                     ${list}
                 </div>
@@ -537,16 +545,16 @@ function pinStarCard(star) {
         if (potential.length > 0) {
             const list = potential.map(p => {
                 const isFirst = p.firstDiscovery || p.isFirstDiscovery;
-                const firstBadge = isFirst ? `<span title="Sem registro prévio de descoberta no EDSM" style="background: rgba(43,252,168,0.15); color: #2bfca8; border: 1px solid #2bfca8; border-radius: 3px; font-size: 9px; padding: 1px 4px; margin-left: 6px; font-weight: bold;">⭐ 1st</span>` : '';
-                const mapBadge = `<span title="Corpo celeste nunca mapeado por nenhum comandante" style="background: rgba(0,212,255,0.15); color: #00d4ff; border: 1px solid rgba(0,212,255,0.4); border-radius: 3px; font-size: 9px; padding: 1px 4px; margin-left: 4px; font-weight: bold;">NUNCA MAPEADO</span>`;
+                const firstBadge = isFirst ? `<span title="${tr('galaxy.first_badge_title')}" style="background: rgba(43,252,168,0.15); color: #2bfca8; border: 1px solid #2bfca8; border-radius: 3px; font-size: 9px; padding: 1px 4px; margin-left: 6px; font-weight: bold;">⭐ 1st</span>` : '';
+                const mapBadge = `<span title="${tr('galaxy.never_mapped_title')}" style="background: rgba(0,212,255,0.15); color: #00d4ff; border: 1px solid rgba(0,212,255,0.4); border-radius: 3px; font-size: 9px; padding: 1px 4px; margin-left: 4px; font-weight: bold;">${tr('galaxy.never_mapped')}</span>`;
 
                 let statusBadge = '';
                 if (p.alreadyCollected) {
-                    const dt = p.collectedDate ? ` em ${formatShortDate(p.collectedDate)}` : '';
-                    statusBadge = `<div style="color: #ff4466; font-size: 11px; font-weight: bold; margin-top: 4px; background: rgba(255,68,102,0.15); border: 1px solid rgba(255,68,102,0.4); padding: 2px 6px; border-radius: 3px;">🚫 JÁ COLETADO${dt}</div>`;
+                    const dt = p.collectedDate ? tr('galaxy.on_date', formatShortDate(p.collectedDate)) : '';
+                    statusBadge = `<div style="color: #ff4466; font-size: 11px; font-weight: bold; margin-top: 4px; background: rgba(255,68,102,0.15); border: 1px solid rgba(255,68,102,0.4); padding: 2px 6px; border-radius: 3px;">${tr('galaxy.already_collected')}${dt}</div>`;
                 } else if (p.alreadyLanded) {
-                    const dt = p.landedDate ? ` em ${formatShortDate(p.landedDate)}` : '';
-                    statusBadge = `<div style="color: #ffaa33; font-size: 10px; margin-top: 3px;">👣 Pouso já realizado${dt}</div>`;
+                    const dt = p.landedDate ? tr('galaxy.on_date', formatShortDate(p.landedDate)) : '';
+                    statusBadge = `<div style="color: #ffaa33; font-size: 10px; margin-top: 3px;">${tr('galaxy.already_landed_card')}${dt}</div>`;
                 }
 
                 return `
@@ -555,11 +563,11 @@ function pinStarCard(star) {
                             <div>
                                 <span style="color: #fff; font-weight: bold;">${p.planetName}</span>${firstBadge}${mapBadge}
                                 <div style="color: #8da4be; font-size: 10px; margin-top: 2px;">
-                                    ${p.atmosphere || 'Atmosfera Fina'} • ${p.gravity ? p.gravity.toFixed(2) + 'G' : '<0.7G'}${p.surfaceTemperature ? ` • <span style="color: #ffcc44;">${Math.round(p.surfaceTemperature)} K</span>` : ''}
+                                    ${p.atmosphere || tr('galaxy.thin_atmosphere')} • ${p.gravity ? p.gravity.toFixed(2) + 'G' : '<0.7G'}${p.surfaceTemperature ? ` • <span style="color: #ffcc44;">${Math.round(p.surfaceTemperature)} K</span>` : ''}
                                 </div>
                             </div>
                             <div style="color: #a4bedc; font-size: 10px; font-family: monospace;">
-                                ${p.distanceLs ? Math.round(p.distanceLs).toLocaleString('pt-BR') + ' ls' : ''}
+                                ${p.distanceLs ? Math.round(p.distanceLs).toLocaleString(getLocale()) + ' ls' : ''}
                             </div>
                         </div>
                         ${statusBadge}
@@ -570,7 +578,7 @@ function pinStarCard(star) {
             potentialHtml = `
                 <div style="margin-top: 10px; padding: 8px; background: rgba(255, 204, 68, 0.08); border-left: 2px solid #ffcc44; border-radius: 3px;">
                     <div style="color: #ffcc44; font-size: 11px; font-weight: bold; letter-spacing: 0.5px; text-transform: uppercase;">
-                        🪐 Potencial Inédito (1st)
+                        ${tr('galaxy.potential_first')}
                     </div>
                     ${list}
                 </div>
@@ -581,7 +589,7 @@ function pinStarCard(star) {
     }
 
     const popHtml = (star.population && star.population > 0) ?
-        `<div style="color: #00d4ff; font-size: 12px; margin-top: 4px;">População: <b>${star.population.toLocaleString('pt-BR')} habitantes</b></div>` : '';
+        `<div style="color: #00d4ff; font-size: 12px; margin-top: 4px;">${tr('galaxy.population_label')}: <b>${star.population.toLocaleString(getLocale())} ${tr('galaxy.inhabitants')}</b></div>` : '';
 
     targetCardContent.innerHTML = `
         <div style="font-size: 18px; font-weight: bold; color: #fff; margin-top: 4px;">
@@ -589,18 +597,18 @@ function pinStarCard(star) {
         </div>
         <div style="display: flex; gap: 6px; margin-top: 6px;">
             <button class="copy-btn" style="flex: 1; margin-top: 0;" onclick="navigator.clipboard.writeText('${star.name}')">
-                📋 Copiar
+                ${tr('galaxy.copy')}
             </button>
             <a href="/system-orrery.html?system=${encodeURIComponent(star.name)}" style="flex: 1; text-decoration: none; background: rgba(255,170,0,0.15); border: 1px solid rgba(255,170,0,0.45); color: #ffaa00; font-size: 11px; font-weight: bold; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; gap: 4px; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,170,0,0.28)'" onmouseout="this.style.background='rgba(255,170,0,0.15)'">
-                🪐 Sistema 3D
+                ${tr('galaxy.system_3d')}
             </a>
         </div>
         ${typeText}
         <div style="margin-top: 8px; font-size: 13px; color: #a4bedc;">
-            Distância da Nave: <b style="color: #fff;">${star.distance.toFixed(1)} ly</b>
+            ${tr('galaxy.distance_ship')}: <b style="color: #fff;">${star.distance.toFixed(1)} ly</b>
         </div>
         ${popHtml}
-        ${star.bodyCount ? `<div style="color: #2bfca8; font-size: 12px; margin-top: 4px;">Corpos Celestes: <b>${star.bodyCount}</b></div>` : ''}
+        ${star.bodyCount ? `<div style="color: #2bfca8; font-size: 12px; margin-top: 4px;">${tr('galaxy.celestial_bodies_label')}: <b>${star.bodyCount}</b></div>` : ''}
         ${stratumHtml}
     `;
     targetCardEl.style.display = 'block';
@@ -617,34 +625,34 @@ function pinVoidCard(v) {
     }
     const titleName = v.systemName || v.id;
 
-    targetCardBadge.textContent = "SISTEMA INÉDITO (GAP PROCEDURAL)";
+    targetCardBadge.textContent = tr('galaxy.void_badge');
     targetCardBadge.style.color = "#ffaa00";
     targetCardBadge.style.background = "rgba(255,170,0,0.18)";
 
     const wpHtml = v.waypointSystemName ? `
         <div style="margin-top: 10px; padding: 8px; background: rgba(0,212,255,0.1); border: 1px solid rgba(0,212,255,0.3); border-radius: 4px;">
-            <div style="color: #2bfca8; font-weight: bold; font-size: 11px;">🎯 SALTO SUGERIDO (Irmão Conhecido):</div>
+            <div style="color: #2bfca8; font-weight: bold; font-size: 11px;">${tr('galaxy.void_suggested_jump')}</div>
             <div style="color: #fff; font-size: 14px; font-weight: bold; margin: 4px 0;">
                 ${v.waypointSystemName}
             </div>
             <div style="color: #a4bedc; font-size: 11px; margin-top: 4px;">
-                Distância da Nave: <b style="color: #fff;">${v.waypointDistanceToPlayer.toFixed(1)} ly</b>
+                ${tr('galaxy.distance_ship')}: <b style="color: #fff;">${v.waypointDistanceToPlayer.toFixed(1)} ly</b>
             </div>
             <div style="color: #6a88a8; font-size: 11px;">
-                Do Waypoint até o Alvo: <b>~${v.waypointDistanceToVoid.toFixed(1)} ly</b>
+                ${tr('galaxy.void_to_target')}: <b>~${v.waypointDistanceToVoid.toFixed(1)} ly</b>
             </div>
         </div>
-    ` : '<div style="color: #8da4be; font-size: 12px; margin-top: 6px;">Nenhum sistema catalogado na borda</div>';
+    ` : `<div style="color: #8da4be; font-size: 12px; margin-top: 6px;">${tr('galaxy.void_no_edge_system')}</div>`;
 
     targetCardContent.innerHTML = `
         <div style="font-size: 18px; font-weight: bold; color: #fff; margin-top: 4px;">
             ${titleName}
         </div>
         <div style="font-size: 12px; color: #a4bedc; margin-top: 8px;">
-            Classe de Massa: <b style="color: #fff;">${v.massCode || 'C'}</b> (Precisão espacial: ±${v.accuracyLy || 40} ly)
+            ${tr('galaxy.void_mass_class')}: <b style="color: #fff;">${v.massCode || 'C'}</b> (${tr('galaxy.void_spatial_acc', v.accuracyLy || 40)})
         </div>
         <div style="font-size: 12px; color: #8da4be; margin-top: 2px;">
-            Distância da Nave: <b style="color: #fff;">${v.distanceToPlayer.toFixed(1)} ly</b>
+            ${tr('galaxy.distance_ship')}: <b style="color: #fff;">${v.distanceToPlayer.toFixed(1)} ly</b>
         </div>
         ${wpHtml}
     `;
@@ -704,8 +712,13 @@ function animate() {
 }
 
 // Carrega os dados do cubo galáctico da API
+let lastGalaxyCubeData = null;
+let lastStationsCache = { system: '', list: null };
+let lastEdsmData = null;
+let lastPlayerInfo = null;
+
 async function loadGalaxyCube(size, voxelSize) {
-    showCubeLoading('Aguarde... Mapeando e triangulando setor estelar');
+    showCubeLoading(tr('galaxy.loading_mapping'));
     try {
         const queryParams = new URLSearchParams({
             size: size || DEFAULT_CUBE_SIZE,
@@ -728,7 +741,7 @@ async function loadGalaxyCube(size, voxelSize) {
     } catch (err) {
         console.error('Erro ao carregar cubo galáctico:', err);
         if (statsEl) {
-            statsEl.innerHTML = `<span style="color: #ff6666;">Erro ao carregar dados do EDSM</span>`;
+            statsEl.innerHTML = `<span style="color: #ff6666;">${tr('galaxy.edsm_error')}</span>`;
         }
     } finally {
         hideCubeLoading();
@@ -859,8 +872,31 @@ function renderStarPointsAndRings() {
     });
 }
 
+function updateStatsSummary(data) {
+    if (!statsEl || !data) return;
+    const cubeSize = data.cubeSize;
+    let sourceBadge = '';
+    if (data.dataSource === 'CACHE') {
+        sourceBadge = `<div style="margin-top:4px;font-size:11px;color:#2bfca8;">${tr('galaxy.source_cache')}</div>`;
+    } else if (data.dataSource === 'EDSM') {
+        sourceBadge = `<div style="margin-top:4px;font-size:11px;color:#00d4ff;">${tr('galaxy.source_edsm')}</div>`;
+    } else if (data.dataSource === 'STALE_CACHE') {
+        sourceBadge = `<div style="margin-top:4px;font-size:11px;color:#ffaa00;">${tr('galaxy.source_stale')} <button onclick="loadGalaxyCube()" style="margin-left:6px;padding:1px 6px;font-size:10px;cursor:pointer;">${tr('galaxy.btn_refresh')}</button></div>`;
+    } else if (data.dataSource === 'LOCAL_ONLY') {
+        sourceBadge = `<div style="margin-top:4px;font-size:11px;color:#ff6666;">${tr('galaxy.source_local')} <button onclick="loadGalaxyCube()" style="margin-left:6px;padding:1px 6px;font-size:10px;cursor:pointer;">${tr('galaxy.btn_retry')}</button></div>`;
+    }
+    statsEl.innerHTML = `
+        <div>${tr('galaxy.stats_central')}: <b style="color: #fff;">${data.centralSystem}</b></div>
+        <div>${tr('galaxy.stats_cube')}: <b>${cubeSize} x ${cubeSize} x ${cubeSize} ly</b></div>
+        <div>${tr('galaxy.stats_known')}: <b style="color: #00d4ff;">${data.totalKnownSystems}</b></div>
+        <div>${tr('galaxy.stats_gaps')}: <b style="color: #ffaa00;">${data.detectedVoidCount}</b></div>
+        ${sourceBadge}
+    `;
+}
+
 // Renderiza os sistemas e os cubos de vazios na cena 3D
 function renderGalaxyData(data) {
+    lastGalaxyCubeData = data;
     const cx = data.centerX;
     const cy = data.centerY;
     const cz = data.centerZ;
@@ -876,25 +912,7 @@ function renderGalaxyData(data) {
         camera.updateProjectionMatrix();
     }
 
-    if (statsEl) {
-        let sourceBadge = '';
-        if (data.dataSource === 'CACHE') {
-            sourceBadge = `<div style="margin-top:4px;font-size:11px;color:#2bfca8;">● Fonte: Cache local (0 reqs EDSM)</div>`;
-        } else if (data.dataSource === 'EDSM') {
-            sourceBadge = `<div style="margin-top:4px;font-size:11px;color:#00d4ff;">● Fonte: EDSM (salvo em cache)</div>`;
-        } else if (data.dataSource === 'STALE_CACHE') {
-            sourceBadge = `<div style="margin-top:4px;font-size:11px;color:#ffaa00;">⚠ Cache prévio (EDSM offline) <button onclick="loadGalaxyCube()" style="margin-left:6px;padding:1px 6px;font-size:10px;cursor:pointer;">Atualizar</button></div>`;
-        } else if (data.dataSource === 'LOCAL_ONLY') {
-            sourceBadge = `<div style="margin-top:4px;font-size:11px;color:#ff6666;">⚠ EDSM falhou — apenas sistemas locais <button onclick="loadGalaxyCube()" style="margin-left:6px;padding:1px 6px;font-size:10px;cursor:pointer;">Tentar novamente</button></div>`;
-        }
-        statsEl.innerHTML = `
-            <div>Sistema Central: <b style="color: #fff;">${data.centralSystem}</b></div>
-            <div>Cubo: <b>${cubeSize} x ${cubeSize} x ${cubeSize} ly</b></div>
-            <div>Sistemas Conhecidos: <b style="color: #00d4ff;">${data.totalKnownSystems}</b></div>
-            <div>Gaps Procedurais: <b style="color: #ffaa00;">${data.detectedVoidCount}</b></div>
-            ${sourceBadge}
-        `;
-    }
+    updateStatsSummary(data);
 
     // 1. Atualiza o Bounding Box do Cubo Principal
     if (boundaryCubeMesh) {
@@ -1007,14 +1025,23 @@ function renderGalaxyData(data) {
     loadCurrentSystemStations(data.centralSystem);
 }
 
+function updateCoordsDisplay(commander, sysName) {
+    if (!coordsDisplayEl) return;
+    coordsDisplayEl.innerHTML = `
+        <span>CMDR: <b>${commander || tr('galaxy.cmdr_unknown')}</b></span> |
+        <span>${tr('galaxy.system_label')}: <b>${sysName || tr('galaxy.cmdr_unknown')}</b></span>
+    `;
+}
+
 // Monitora o status do jogador através do Journal Watcher do backend
 async function checkPlayerStatus() {
     try {
         const res = await fetch('/api/player/status');
         if (!res.ok) return;
         const player = await res.json();
+        lastPlayerInfo = player;
 
-        const sysName = player.currentSystem || 'Desconhecido';
+        const sysName = player.currentSystem || tr('galaxy.cmdr_unknown');
         const px = player.posX !== null ? player.posX : 0.0;
         const py = player.posY !== null ? player.posY : 0.0;
         const pz = player.posZ !== null ? player.posZ : 0.0;
@@ -1022,12 +1049,7 @@ async function checkPlayerStatus() {
 
         currentCenter = { x: px, y: py, z: pz, system: sysName };
 
-        if (coordsDisplayEl) {
-            coordsDisplayEl.innerHTML = `
-                <span>CMDR: <b>${player.commander || 'Desconhecido'}</b></span> |
-                <span>Sistema: <b>${sysName}</b></span>
-            `;
-        }
+        updateCoordsDisplay(player.commander, sysName);
 
         // Atualiza automaticamente:
         // 1. Se você saltar de sistema (FSDJump)
@@ -1098,7 +1120,7 @@ function formatShortDate(iso) {
     if (!iso) return '';
     try {
         const d = new Date(iso);
-        return d.toLocaleDateString('pt-BR');
+        return d.toLocaleDateString(getLocale());
     } catch (e) {
         return iso;
     }
@@ -1128,11 +1150,11 @@ function updateStratumRadar() {
 
     const top3 = stratumStars.slice(0, 3);
     if (countBadge) {
-        countBadge.textContent = `${stratumStars.length} no cubo`;
+        countBadge.textContent = tr('galaxy.in_cube', stratumStars.length);
     }
 
     if (top3.length === 0) {
-        radarListEl.innerHTML = `<div style="color: #6a88a8; font-size: 11px; font-style: italic; padding: 4px 0;">Varrendo corpos celestes dos arredores...</div>`;
+        radarListEl.innerHTML = `<div style="color: #6a88a8; font-size: 11px; font-style: italic; padding: 4px 0;">${tr('galaxy.scanning_bodies')}</div>`;
         return;
     }
 
@@ -1144,17 +1166,17 @@ function updateStratumRadar() {
                 if (planetLabel.toLowerCase().startsWith(star.name.toLowerCase())) {
                     planetLabel = planetLabel.substring(star.name.length).trim();
                 }
-                const distLsText = p.distanceLs ? `${Math.round(p.distanceLs).toLocaleString('pt-BR')} ls` : '';
+                const distLsText = p.distanceLs ? `${Math.round(p.distanceLs).toLocaleString(getLocale())} ls` : '';
 
                 let statusBadge = '';
                 if (p.alreadyCollected) {
-                    statusBadge = `<span style="color: #ff4466; background: rgba(255,68,102,0.18); border: 1px solid rgba(255,68,102,0.45); padding: 1px 5px; border-radius: 2px; font-size: 9px; font-weight: bold;" title="Stratum já coletado neste planeta em ${formatShortDate(p.collectedDate)}">🚫 JÁ COLETADO</span>`;
+                    statusBadge = `<span style="color: #ff4466; background: rgba(255,68,102,0.18); border: 1px solid rgba(255,68,102,0.45); padding: 1px 5px; border-radius: 2px; font-size: 9px; font-weight: bold;" title="${tr('galaxy.collected_tooltip', formatShortDate(p.collectedDate))}">${tr('galaxy.already_collected')}</span>`;
                 } else if (p.alreadyLanded) {
-                    statusBadge = `<span style="color: #ffaa33; background: rgba(255,170,51,0.18); border: 1px solid rgba(255,170,51,0.45); padding: 1px 5px; border-radius: 2px; font-size: 9px; font-weight: bold;" title="Pouso já realizado em ${formatShortDate(p.landedDate)}">👣 JÁ POUSADO</span>`;
+                    statusBadge = `<span style="color: #ffaa33; background: rgba(255,170,51,0.18); border: 1px solid rgba(255,170,51,0.45); padding: 1px 5px; border-radius: 2px; font-size: 9px; font-weight: bold;" title="${tr('galaxy.landed_tooltip', formatShortDate(p.landedDate))}">${tr('galaxy.already_landed')}</span>`;
                 } else if (p.confirmed) {
-                    statusBadge = `<span style="color: #2bfca8; background: rgba(43,252,168,0.15); border: 1px solid rgba(43,252,168,0.4); padding: 1px 5px; border-radius: 2px; font-size: 9px; font-weight: bold;">✔ Confirmado</span>`;
+                    statusBadge = `<span style="color: #2bfca8; background: rgba(43,252,168,0.15); border: 1px solid rgba(43,252,168,0.4); padding: 1px 5px; border-radius: 2px; font-size: 9px; font-weight: bold;">${tr('galaxy.confirmed_badge')}</span>`;
                 } else {
-                    statusBadge = `<span style="color: #ffcc44; background: rgba(255,204,68,0.15); border: 1px solid rgba(255,204,68,0.4); padding: 1px 5px; border-radius: 2px; font-size: 9px; font-weight: bold;" title="100% compatível com Stratum, mas ainda não mapeado no Spansh (Bônus 5x de 1st Discovery: ~95M cr!)">🪐 Inédito (1st)</span>`;
+                    statusBadge = `<span style="color: #ffcc44; background: rgba(255,204,68,0.15); border: 1px solid rgba(255,204,68,0.4); padding: 1px 5px; border-radius: 2px; font-size: 9px; font-weight: bold;" title="${tr('galaxy.potential_tooltip')}">${tr('galaxy.potential_badge')}</span>`;
                 }
 
                 return `
@@ -1174,10 +1196,10 @@ function updateStratumRadar() {
             const isConf = star.hasStratumConfirmed;
             planetItems = `
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px; font-size: 11px;">
-                    <span style="color: #8da4be;">Planeta com Stratum</span>
+                    <span style="color: #8da4be;">${tr('galaxy.stratum_planet')}</span>
                     ${isConf 
-                        ? `<span style="color: #2bfca8; background: rgba(43,252,168,0.15); border: 1px solid rgba(43,252,168,0.4); padding: 1px 5px; border-radius: 2px; font-size: 9px; font-weight: bold;">✔ Confirmado</span>`
-                        : `<span style="color: #ffcc44; background: rgba(255,204,68,0.15); border: 1px solid rgba(255,204,68,0.4); padding: 1px 5px; border-radius: 2px; font-size: 9px; font-weight: bold;" title="100% compatível com Stratum, mas ainda não mapeado no Spansh (Bônus 5x de 1st Discovery: ~95M cr!)">🪐 Inédito (1st)</span>`
+                        ? `<span style="color: #2bfca8; background: rgba(43,252,168,0.15); border: 1px solid rgba(43,252,168,0.4); padding: 1px 5px; border-radius: 2px; font-size: 9px; font-weight: bold;">${tr('galaxy.confirmed_badge')}</span>`
+                        : `<span style="color: #ffcc44; background: rgba(255,204,68,0.15); border: 1px solid rgba(255,204,68,0.4); padding: 1px 5px; border-radius: 2px; font-size: 9px; font-weight: bold;" title="${tr('galaxy.potential_tooltip')}">${tr('galaxy.potential_badge')}</span>`
                     }
                 </div>
             `;
@@ -1224,13 +1246,13 @@ function updateGapsRadar() {
     if (!listEl) return;
 
     if (!currentVoidSectors || currentVoidSectors.length === 0) {
-        if (badgeEl) badgeEl.textContent = '0 no cubo';
-        listEl.innerHTML = `<div style="color: #6a88a8; font-size: 11px; font-style: italic; padding: 4px 0;">Nenhum gap detectado</div>`;
+        if (badgeEl) badgeEl.textContent = tr('galaxy.in_cube', 0);
+        listEl.innerHTML = `<div style="color: #6a88a8; font-size: 11px; font-style: italic; padding: 4px 0;">${tr('galaxy.no_gaps_detected')}</div>`;
         return;
     }
 
     if (badgeEl) {
-        badgeEl.textContent = `${currentVoidSectors.length} no cubo`;
+        badgeEl.textContent = tr('galaxy.in_cube', currentVoidSectors.length);
     }
 
     // Ordena pela distância da nave do jogador
@@ -1240,7 +1262,7 @@ function updateGapsRadar() {
     listEl.innerHTML = top3.map(gap => {
         const titleName = gap.systemName || gap.id;
         const distStr = `${gap.distanceToPlayer.toFixed(1)} ly`;
-        const waypoint = gap.waypointSystemName || 'Nenhum próximo';
+        const waypoint = gap.waypointSystemName || tr('galaxy.none_nearby');
         const escapedId = (gap.systemName || gap.id).replace(/'/g, "\\'");
 
         return `
@@ -1253,7 +1275,7 @@ function updateGapsRadar() {
                     <span style="color: #2bfca8; font-size: 11px; font-family: monospace; font-weight: 600;">${distStr}</span>
                 </div>
                 <div style="margin-top: 3px; font-size: 11px; color: #8da4be; display: flex; align-items: center; gap: 4px;">
-                    <span>Salto ref:</span>
+                    <span>${tr('galaxy.jump_ref')}</span>
                     <b style="color: #00d4ff;">${waypoint}</b>
                 </div>
             </div>
@@ -1282,15 +1304,78 @@ function focusGapSystem(gapIdOrName) {
 // Estações no Sistema Atual (Ancoragem segura para pausar o jogo)
 let lastLoadedStationsSystem = null;
 
-async function loadCurrentSystemStations(systemName) {
+function renderStationsList(sys, stations) {
     const listEl = document.getElementById('currentStationsList');
     const titleEl = document.getElementById('stationsSystemTitle');
     const countBadge = document.getElementById('stationsCountBadge');
     if (!listEl) return;
 
+    if (!sys || sys === 'Posição Atual' || sys === 'Desconhecido' || sys === tr('galaxy.cmdr_unknown')) {
+        listEl.innerHTML = `<div style="color: #6a88a8; font-size: 11px; font-style: italic;">${tr('galaxy.waiting_journal_signal')}</div>`;
+        return;
+    }
+
+    if (titleEl) titleEl.textContent = sys;
+    if (countBadge) countBadge.textContent = tr('galaxy.docks_orbital_count', stations ? stations.length : 0);
+
+    if (!stations || stations.length === 0) {
+        listEl.innerHTML = `
+            <div style="color: #8da4be; font-size: 11px; font-style: italic; padding: 6px; background: rgba(0,0,0,0.25); border-radius: 3px;">
+                ${tr('galaxy.no_orbital_stations')}<br>
+                <span style="color: #ffaa33; font-size: 10px;">${tr('galaxy.deep_space_no_docks')}</span>
+            </div>
+        `;
+        return;
+    }
+
+    listEl.innerHTML = stations.map(st => {
+        let icon = '🛰️';
+        let typeColor = '#00d4ff';
+        const lowerType = (st.type || '').toLowerCase();
+        if (lowerType.includes('starport') || lowerType.includes('coriolis') || lowerType.includes('orbis') || lowerType.includes('ocellus')) {
+            icon = '🪐';
+            typeColor = '#2bfca8';
+        } else if (lowerType.includes('fleet carrier')) {
+            icon = '🚀';
+            typeColor = '#d0aaff';
+        } else if (lowerType.includes('outpost') || lowerType.includes('asteroid')) {
+            icon = '🛰️';
+            typeColor = '#00d4ff';
+        }
+
+        const distFmt = st.distanceLs ? Math.round(st.distanceLs).toLocaleString(getLocale()) + ' ls' : '0 ls';
+        const bodyInfo = st.bodyName ? `<div style="color: #6a88a8; font-size: 10px;">${tr('galaxy.orbit_prefix', st.bodyName)}</div>` : '';
+        const services = [
+            st.hasShipyard ? '🚀 Shipyard' : '',
+            st.hasOutfitting ? '🛠️ Outfitting' : ''
+        ].filter(Boolean).join(' • ');
+
+        return `
+            <div style="background: rgba(0,0,0,0.3); border-left: 2px solid ${typeColor}; border-radius: 3px; padding: 5px 7px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div>
+                        <div style="color: #fff; font-weight: bold; font-size: 12px;">${icon} ${st.name}</div>
+                        <div style="color: ${typeColor}; font-size: 10px; font-weight: 600;">${st.type || tr('galaxy.orbital_station_fallback')}</div>
+                        ${bodyInfo}
+                    </div>
+                    <div style="text-align: right;">
+                        <span style="color: #a4bedc; font-size: 11px; font-family: monospace;">${distFmt}</span>
+                    </div>
+                </div>
+                ${services ? `<div style="color: #8da4be; font-size: 9px; margin-top: 3px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 2px;">${services}</div>` : ''}
+            </div>
+        `;
+    }).join('');
+}
+
+async function loadCurrentSystemStations(systemName) {
+    const listEl = document.getElementById('currentStationsList');
+    const titleEl = document.getElementById('stationsSystemTitle');
+    if (!listEl) return;
+
     const sys = systemName || (currentCenter && currentCenter.system);
-    if (!sys || sys === 'Posição Atual' || sys === 'Desconhecido') {
-        listEl.innerHTML = `<div style="color: #6a88a8; font-size: 11px; font-style: italic;">Aguardando sinal do Journal...</div>`;
+    if (!sys || sys === 'Posição Atual' || sys === 'Desconhecido' || sys === tr('galaxy.cmdr_unknown')) {
+        listEl.innerHTML = `<div style="color: #6a88a8; font-size: 11px; font-style: italic;">${tr('galaxy.waiting_journal_signal')}</div>`;
         return;
     }
 
@@ -1309,56 +1394,8 @@ async function loadCurrentSystemStations(systemName) {
             return !t.includes('planetary') && !t.includes('settlement') && !t.includes('surface');
         });
 
-        if (countBadge) countBadge.textContent = `${stations.length} orbitais`;
-
-        if (!stations || stations.length === 0) {
-            listEl.innerHTML = `
-                <div style="color: #8da4be; font-size: 11px; font-style: italic; padding: 6px; background: rgba(0,0,0,0.25); border-radius: 3px;">
-                    🌌 Nenhuma estação orbital catalogada neste sistema.<br>
-                    <span style="color: #ffaa33; font-size: 10px;">Espaço Profundo / Sem Docas Espaciais</span>
-                </div>
-            `;
-            return;
-        }
-
-        listEl.innerHTML = stations.map(st => {
-            let icon = '🛰️';
-            let typeColor = '#00d4ff';
-            const lowerType = (st.type || '').toLowerCase();
-            if (lowerType.includes('starport') || lowerType.includes('coriolis') || lowerType.includes('orbis') || lowerType.includes('ocellus')) {
-                icon = '🪐';
-                typeColor = '#2bfca8';
-            } else if (lowerType.includes('fleet carrier')) {
-                icon = '🚀';
-                typeColor = '#d0aaff';
-            } else if (lowerType.includes('outpost') || lowerType.includes('asteroid')) {
-                icon = '🛰️';
-                typeColor = '#00d4ff';
-            }
-
-            const distFmt = st.distanceLs ? Math.round(st.distanceLs).toLocaleString('pt-BR') + ' ls' : '0 ls';
-            const bodyInfo = st.bodyName ? `<div style="color: #6a88a8; font-size: 10px;">Órbita: ${st.bodyName}</div>` : '';
-            const services = [
-                st.hasShipyard ? '🚀 Shipyard' : '',
-                st.hasOutfitting ? '🛠️ Outfitting' : ''
-            ].filter(Boolean).join(' • ');
-
-            return `
-                <div style="background: rgba(0,0,0,0.3); border-left: 2px solid ${typeColor}; border-radius: 3px; padding: 5px 7px;">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                        <div>
-                            <div style="color: #fff; font-weight: bold; font-size: 12px;">${icon} ${st.name}</div>
-                            <div style="color: ${typeColor}; font-size: 10px; font-weight: 600;">${st.type || 'Estação Orbital'}</div>
-                            ${bodyInfo}
-                        </div>
-                        <div style="text-align: right;">
-                            <span style="color: #a4bedc; font-size: 11px; font-family: monospace;">${distFmt}</span>
-                        </div>
-                    </div>
-                    ${services ? `<div style="color: #8da4be; font-size: 9px; margin-top: 3px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 2px;">${services}</div>` : ''}
-                </div>
-            `;
-        }).join('');
+        lastStationsCache = { system: sys, list: stations };
+        renderStationsList(sys, stations);
     } catch (err) {
         console.warn('Erro ao buscar estações:', err);
     }
@@ -1391,10 +1428,7 @@ function setupGalaxyCubeSseListener() {
                         currentCenter.system = newSys;
                     }
                     if (coordsDisplayEl) {
-                        coordsDisplayEl.innerHTML = `
-                            <span>CMDR: <b>${currentCommanderName || 'Comandante'}</b></span> |
-                            <span>Sistema: <b>${newSys}</b></span>
-                        `;
+                        updateCoordsDisplay(currentCommanderName || tr('galaxy.commander_fallback'), newSys);
                     }
                     // Limpa alvo fixado e recentra a visualização no novo centro do cubo
                     currentPinnedStarName = null;
@@ -1441,7 +1475,7 @@ function renderTrafficCard() {
     if (!listEl) return;
 
     if (recentTrafficLog.length === 0) {
-        listEl.innerHTML = `<div style="color: #6a88a8; font-size: 11px; font-style: italic; padding: 4px 0;">Aguardando tráfego no setor...</div>`;
+        listEl.innerHTML = `<div style="color: #6a88a8; font-size: 11px; font-style: italic; padding: 4px 0;">${tr('galaxy.waiting_sector_traffic')}</div>`;
         return;
     }
 
@@ -1449,7 +1483,7 @@ function renderTrafficCard() {
         const isArrival = (ev.type === 'JUMP_IN' || ev.type === 'IN');
         const badgeColor = isArrival ? '#2bfca8' : '#ffaa00';
         const icon = isArrival ? '📥' : '📤';
-        const actionText = isArrival ? 'chegou ao sistema' : 'deixou o sistema';
+        const actionLine = isArrival ? tr('galaxy.cmdr_arrived') : tr('galaxy.cmdr_departed');
         const timeAgo = formatTimeAgo(ev.timestamp);
         const escapedSys = ev.systemName.replace(/'/g, "\\'");
 
@@ -1458,9 +1492,9 @@ function renderTrafficCard() {
                  onmouseover="this.style.background='rgba(0,212,255,0.08)';"
                  onmouseout="this.style.background='rgba(0,0,0,0.35)';"
                  onclick="focusRadarSystem('${escapedSys}')"
-                 title="Clique para focar no sistema ${ev.systemName}">
+                 title="${tr('galaxy.focus_system_title', ev.systemName)}">
                 <div style="display: flex; justify-content: space-between; align-items: center; color: #a4bedc; font-size: 10.5px;">
-                    <span>${icon} Um comandante ${actionText}:</span>
+                    <span>${icon} ${actionLine}</span>
                     <span style="font-size: 10px; color: #6a88a8; font-family: monospace;">${timeAgo}</span>
                 </div>
                 <div style="margin-top: 2px; padding-left: 18px; font-weight: bold; font-size: 12px; color: ${badgeColor}; letter-spacing: 0.3px;">
@@ -1472,14 +1506,14 @@ function renderTrafficCard() {
 }
 
 function formatTimeAgo(ts) {
-    if (!ts) return 'agora';
+    if (!ts) return tr('galaxy.time_now');
     const sec = Math.floor((Date.now() - ts) / 1000);
-    if (sec < 10) return 'agora';
-    if (sec < 60) return `há ${sec}s`;
+    if (sec < 10) return tr('galaxy.time_now');
+    if (sec < 60) return tr('galaxy.time_s', sec);
     const min = Math.floor(sec / 60);
-    if (min < 60) return `há ${min}m`;
+    if (min < 60) return tr('galaxy.time_m', min);
     const hrs = Math.floor(min / 60);
-    return `há ${hrs}h`;
+    return tr('galaxy.time_h', hrs);
 }
 
 // Atualiza os marcadores de tempo relativo do card a cada 10 segundos
@@ -1751,28 +1785,103 @@ function spawnBeamEffect(relX, starY, relZ, ceilingY, isJumpIn, colorHex) {
     activeBeams.push(beamObj);
 }
 
+function renderEdsmStatus(data) {
+    if (!edsmSyncDisplayEl || !data) return;
+    if (!data.enabled) {
+        edsmSyncDisplayEl.style.display = 'none';
+        return;
+    }
+    edsmSyncDisplayEl.style.display = 'inline-flex';
+    if (data.keyValid) {
+        const count = data.totalAccepted || 0;
+        edsmSyncDisplayEl.innerHTML = `🛰️ EDSM: <b style="color:#2bfca8">${tr('galaxy.edsm_sent', count)}</b>`;
+        edsmSyncDisplayEl.style.borderColor = 'rgba(43, 252, 168, 0.45)';
+        edsmSyncDisplayEl.style.color = '#2bfca8';
+    } else {
+        let statusLabel = '';
+        switch (data.statusCode) {
+            case 'NOT_CONFIGURED':
+                statusLabel = tr('galaxy.edsm_not_configured');
+                break;
+            case 'DISABLED':
+                statusLabel = tr('galaxy.edsm_disabled');
+                break;
+            case 'CONNECTION_FAILED':
+                statusLabel = tr('galaxy.edsm_conn_failed');
+                break;
+            case 'NETWORK_ERROR':
+                statusLabel = tr('galaxy.edsm_net_error');
+                break;
+            case 'CONNECTED':
+                statusLabel = tr('galaxy.edsm_connected', data.statusDetail || data.commanderName || 'CMDR');
+                break;
+            case 'SYNCED':
+                statusLabel = tr('galaxy.edsm_sent', data.statusDetail || data.totalAccepted || 0);
+                break;
+            case 'HTTP_ERROR':
+                statusLabel = `HTTP ${data.statusDetail || ''}`;
+                break;
+            case 'EDSM_MESSAGE':
+                statusLabel = data.statusDetail || data.lastStatus || '';
+                break;
+            case 'CONNECTING':
+                edsmSyncDisplayEl.innerHTML = tr('galaxy.edsm_connecting');
+                edsmSyncDisplayEl.style.borderColor = 'rgba(255, 170, 51, 0.4)';
+                edsmSyncDisplayEl.style.color = '#ffaa33';
+                return;
+            default:
+                if (!data.hasApiKey || !data.commanderName) {
+                    statusLabel = tr('galaxy.edsm_not_configured');
+                } else {
+                    statusLabel = data.lastStatus || '';
+                }
+        }
+        edsmSyncDisplayEl.innerHTML = statusLabel
+            ? `🛰️ EDSM: <span style="color:#ffaa33">${statusLabel}</span>`
+            : tr('galaxy.edsm_connecting');
+        edsmSyncDisplayEl.style.borderColor = 'rgba(255, 170, 51, 0.4)';
+        edsmSyncDisplayEl.style.color = '#ffaa33';
+    }
+}
+
 async function checkEdsmStatus() {
     if (!edsmSyncDisplayEl) return;
     try {
         const res = await fetch('/api/edsm/status');
         if (!res.ok) return;
         const data = await res.json();
-        if (!data.enabled) {
-            edsmSyncDisplayEl.style.display = 'none';
-            return;
-        }
-        edsmSyncDisplayEl.style.display = 'inline-flex';
-        if (data.keyValid) {
-            const count = data.totalAccepted || 0;
-            edsmSyncDisplayEl.innerHTML = `🛰️ EDSM: <b style="color:#2bfca8">${count} Envios</b>`;
-            edsmSyncDisplayEl.style.borderColor = 'rgba(43, 252, 168, 0.45)';
-            edsmSyncDisplayEl.style.color = '#2bfca8';
-        } else {
-            edsmSyncDisplayEl.innerHTML = `🛰️ EDSM: <span style="color:#ffaa33">${data.lastStatus || 'Conectando...'}</span>`;
-            edsmSyncDisplayEl.style.borderColor = 'rgba(255, 170, 51, 0.4)';
-            edsmSyncDisplayEl.style.color = '#ffaa33';
-        }
+        lastEdsmData = data;
+        renderEdsmStatus(data);
     } catch (e) {
         // silent fail
     }
 }
+
+window.addEventListener('elite:languageChanged', () => {
+    updateToggleHabitedButton();
+    if (lastGalaxyCubeData) {
+        updateStatsSummary(lastGalaxyCubeData);
+    }
+    if (lastPlayerInfo || currentCenter) {
+        updateCoordsDisplay(
+            (lastPlayerInfo && lastPlayerInfo.commander) || currentCommanderName,
+            (lastPlayerInfo && lastPlayerInfo.currentSystem) || (currentCenter && currentCenter.system)
+        );
+    }
+    updateStratumRadar();
+    updateGapsRadar();
+    if (lastStationsCache && lastStationsCache.list !== null) {
+        renderStationsList(lastStationsCache.system, lastStationsCache.list);
+    }
+    renderTrafficCard();
+    if (lastEdsmData) {
+        renderEdsmStatus(lastEdsmData);
+    }
+    if (currentPinnedStarName && allReceivedStars) {
+        const star = allReceivedStars.find(s => s.name === currentPinnedStarName);
+        if (star) pinStarCard(star);
+    } else if (currentPinnedVoidId && currentVoidSectors) {
+        const v = currentVoidSectors.find(g => (g.systemName || g.id) === currentPinnedVoidId);
+        if (v) pinVoidCard(v);
+    }
+});

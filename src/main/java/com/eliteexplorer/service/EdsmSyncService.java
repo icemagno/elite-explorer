@@ -65,6 +65,8 @@ public class EdsmSyncService {
     private final AtomicLong totalSent = new AtomicLong(0);
     private final AtomicLong totalAccepted = new AtomicLong(0);
     private final AtomicReference<String> lastStatusMsg = new AtomicReference<>("Iniciando telemetria EDSM...");
+    private final AtomicReference<String> statusCode = new AtomicReference<>("CONNECTING");
+    private final AtomicReference<String> statusDetail = new AtomicReference<>("");
     private final AtomicLong lastSyncTimestamp = new AtomicLong(0);
     private final AtomicBoolean keyValid = new AtomicBoolean(false);
 
@@ -80,12 +82,16 @@ public class EdsmSyncService {
         if (!enabled) {
             log.info("Sincronização com EDSM está desativada nas configurações.");
             lastStatusMsg.set("Desativado");
+            statusCode.set("DISABLED");
+            statusDetail.set("");
             return;
         }
 
         if (apiKey == null || apiKey.isBlank() || commanderName == null || commanderName.isBlank()) {
             log.warn("Comandante ou chave de API do EDSM não configurados (--edsm.commander.name / --edsm.api.key).");
             lastStatusMsg.set("EDSM não configurado");
+            statusCode.set("NOT_CONFIGURED");
+            statusDetail.set("");
             return;
         }
 
@@ -116,17 +122,23 @@ public class EdsmSyncService {
                 if (msgnum == 100) {
                     keyValid.set(true);
                     lastStatusMsg.set("Conectado ao EDSM (CMDR " + commanderName + ")");
+                    statusCode.set("CONNECTED");
+                    statusDetail.set(commanderName);
                     log.info("✅ Conexão com EDSM verificada com sucesso para CMDR '{}'!", commanderName);
                     return true;
                 } else {
                     String msg = node.path("msg").asText("Erro de autenticação");
                     lastStatusMsg.set("EDSM: " + msg);
+                    statusCode.set("EDSM_MESSAGE");
+                    statusDetail.set(msg);
                     log.warn("⚠️ EDSM retornou: {} (msgnum={})", msg, msgnum);
                 }
             }
         } catch (Exception e) {
             log.warn("Falha ao testar conexão com EDSM: {}", e.getMessage());
             lastStatusMsg.set("Falha na conexão com EDSM");
+            statusCode.set("CONNECTION_FAILED");
+            statusDetail.set("");
         }
         return false;
     }
@@ -214,6 +226,8 @@ public class EdsmSyncService {
                 if (msgnum == 100) {
                     totalAccepted.incrementAndGet();
                     lastStatusMsg.set("Sincronizado (" + totalAccepted.get() + " eventos)");
+                    statusCode.set("SYNCED");
+                    statusDetail.set(String.valueOf(totalAccepted.get()));
 
                     // Checa se gerou descoberta inédita
                     JsonNode eventsNode = res.path("events");
@@ -233,16 +247,22 @@ public class EdsmSyncService {
                     String msg = res.path("msg").asText("Resposta não-OK");
                     log.debug("EDSM aviso para evento: {} (msgnum={})", msg, msgnum);
                     lastStatusMsg.set("EDSM: " + msg);
+                    statusCode.set("EDSM_MESSAGE");
+                    statusDetail.set(msg);
                     return true; // Continua a fila mesmo se descartado
                 }
             } else {
                 log.warn("EDSM HTTP erro: {}", response.statusCode());
                 lastStatusMsg.set("HTTP " + response.statusCode());
+                statusCode.set("HTTP_ERROR");
+                statusDetail.set(String.valueOf(response.statusCode()));
                 return false;
             }
         } catch (Exception e) {
             log.warn("Falha no envio de evento EDSM: {}", e.getMessage());
             lastStatusMsg.set("Erro de rede no envio");
+            statusCode.set("NETWORK_ERROR");
+            statusDetail.set("");
             return false;
         }
     }
@@ -270,6 +290,8 @@ public class EdsmSyncService {
         map.put("totalSent", totalSent.get());
         map.put("totalAccepted", totalAccepted.get());
         map.put("lastStatus", lastStatusMsg.get());
+        map.put("statusCode", statusCode.get());
+        map.put("statusDetail", statusDetail.get());
         map.put("lastSyncTime", lastSyncTimestamp.get());
         return map;
     }

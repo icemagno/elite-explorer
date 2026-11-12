@@ -1,9 +1,18 @@
+const tr = (key, ...args) => (window.t ? window.t(key, ...args) : key);
+
 let lastKnownSystem = null;
 let currentTrades = [];
 let playerState = null;
 let isFirstStatusLoad = true;
+let lastJumpAlertSystem = null;
+let lastCopilotErrorKey = null;
+let lastCopilotErrorArg = null;
 
 document.addEventListener('DOMContentLoaded', () => {
+    if (window.i18n) {
+        document.title = tr('copilot.page_title');
+    }
+
     // Start polling player status immediately
     pollPlayerStatus();
     setInterval(pollPlayerStatus, 2000);
@@ -31,6 +40,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('btnSimulate').addEventListener('click', () => {
         simulateJumpDialog();
+    });
+
+    window.addEventListener('elite:languageChanged', () => {
+        document.title = tr('copilot.page_title');
+        if (playerState) updatePlayerHud(playerState);
+        if (lastJumpAlertSystem) {
+            const bodyEl = document.getElementById('jumpAlertBody');
+            if (bodyEl) {
+                bodyEl.innerHTML = tr('copilot.jump_body', `<span id="jumpAlertSystem" style="color: var(--accent-cyan); font-weight: 700;">${escapeHtml(lastJumpAlertSystem)}</span>`);
+            }
+        }
+        if (lastCopilotErrorKey) {
+            const errorBox = document.getElementById('errorBox');
+            if (errorBox && errorBox.style.display === 'block') {
+                errorBox.textContent = tr(lastCopilotErrorKey, lastCopilotErrorArg);
+            }
+        }
+        renderTrades();
     });
 });
 
@@ -73,37 +100,45 @@ function updatePlayerHud(status) {
 
     if (status.journalFound) {
         dot.className = 'status-dot pulsing';
-        statusText.textContent = `Journal Ativo: ${status.commander || 'CMDR'}`;
+        dot.style.backgroundColor = '';
+        statusText.textContent = tr('copilot.journal_active', status.commander || 'CMDR');
     } else {
         dot.className = 'status-dot';
         dot.style.backgroundColor = '#f85149';
-        statusText.textContent = 'Aguardando Arquivo Journal...';
+        statusText.textContent = tr('copilot.journal_waiting');
     }
 
-    document.getElementById('cmdrName').textContent = status.commander ? `CMDR ${status.commander}` : 'Desconhecido';
-    document.getElementById('journalFileName').textContent = status.journalFile ? `Log: ${status.journalFile}` : 'Sem log';
+    document.getElementById('cmdrName').textContent = status.commander ? `CMDR ${status.commander}` : tr('galaxy.cmdr_unknown');
+    document.getElementById('journalFileName').textContent = status.journalFile ? `Log: ${status.journalFile}` : tr('copilot.no_log');
 
     document.getElementById('currentSystem').textContent = status.currentSystem || '-';
     
-    let stationDesc = 'No Espaço / Supercruise';
+    let stationDesc = tr('copilot.in_supercruise');
     if (status.docked && status.currentStation) {
-        stationDesc = `Docked: ${status.currentStation}`;
+        stationDesc = tr('copilot.docked_at', status.currentStation);
     } else if (status.currentStation) {
         stationDesc = status.currentStation;
     }
     document.getElementById('currentStation').textContent = stationDesc;
 
-    document.getElementById('shipInfo').textContent = status.shipType || 'Nave';
-    document.getElementById('cargoCapacityText').textContent = `Capacidade de carga: ${status.cargoCapacity || 36} T`;
+    document.getElementById('shipInfo').textContent = status.shipType || tr('copilot.ship_default');
+    document.getElementById('cargoCapacityText').textContent = tr('copilot.cargo_capacity', status.cargoCapacity || 36);
 
-    let flight = status.docked ? 'Pousado em Estação' : 'Voando no Sistema';
+    let flight = status.docked ? tr('copilot.docked_station') : tr('copilot.flying_system');
     document.getElementById('flightStatus').textContent = flight;
-    document.getElementById('lastEventTime').textContent = status.lastEvent ? `Evento: ${status.lastEvent}` : '-';
+    document.getElementById('lastEventTime').textContent = status.lastEvent ? tr('copilot.event_prefix', status.lastEvent) : '-';
 }
 
 function showJumpAlert(newSystem) {
+    lastJumpAlertSystem = newSystem;
     const alertBox = document.getElementById('jumpAlert');
-    document.getElementById('jumpAlertSystem').textContent = newSystem;
+    const bodyEl = document.getElementById('jumpAlertBody');
+    if (bodyEl) {
+        bodyEl.innerHTML = tr('copilot.jump_body', `<span id="jumpAlertSystem" style="color: var(--accent-cyan); font-weight: 700;">${escapeHtml(newSystem)}</span>`);
+    } else {
+        const sysEl = document.getElementById('jumpAlertSystem');
+        if (sysEl) sysEl.textContent = newSystem;
+    }
     alertBox.style.display = 'block';
 
     setTimeout(() => {
@@ -123,8 +158,10 @@ async function fetchOutboundTrades(system, cargo) {
 
     btn.disabled = true;
     spinner.style.display = 'inline-block';
-    btnText.textContent = 'Buscando...';
+    btnText.textContent = tr('copilot.searching');
     errorBox.style.display = 'none';
+    lastCopilotErrorKey = null;
+    lastCopilotErrorArg = null;
 
     try {
         const query = new URLSearchParams({
@@ -137,13 +174,13 @@ async function fetchOutboundTrades(system, cargo) {
 
         const resp = await fetch(`/api/copilot/trades?${query.toString()}`);
         if (!resp.ok) {
-            throw new Error(`Erro na API HTTP ${resp.status}`);
+            throw new Error(`HTTP ${resp.status}`);
         }
 
         const data = await resp.json();
 
         if (!data.success) {
-            throw new Error(data.errorMessage || 'Falha ao obter cotações de ida.');
+            throw new Error(data.errorMessage || tr('copilot.fetch_error', ''));
         }
 
         currentTrades = data.trades || [];
@@ -154,12 +191,14 @@ async function fetchOutboundTrades(system, cargo) {
         renderTrades();
     } catch (err) {
         console.error('Erro ao buscar cotações do copilot:', err);
-        errorBox.textContent = `Falha ao consultar cotações: ${err.message}`;
+        lastCopilotErrorKey = 'copilot.fetch_error';
+        lastCopilotErrorArg = err.message;
+        errorBox.textContent = tr('copilot.fetch_error', err.message);
         errorBox.style.display = 'block';
     } finally {
         btn.disabled = false;
         spinner.style.display = 'none';
-        btnText.textContent = 'Atualizar Cotações';
+        btnText.textContent = tr('copilot.refresh_quotes');
     }
 }
 
@@ -218,8 +257,8 @@ function renderTrades() {
     if (trades.length === 0) {
         container.innerHTML = `
             <div class="empty-state" style="grid-column: 1 / -1;">
-                <h3>Nenhuma oportunidade de venda de ida encontrada</h3>
-                <p>Verifique os filtros ou tente aumentar a distância máxima de busca (Ly).</p>
+                <h3>${tr('copilot.empty_title')}</h3>
+                <p>${tr('copilot.empty_desc')}</p>
             </div>
         `;
         return;
@@ -241,12 +280,12 @@ function createTradeCardHtml(trade) {
             <!-- Header: Produto e Lucro -->
             <div class="outbound-header">
                 <div>
-                    <span style="font-size: 11px; text-transform: uppercase; color: var(--accent-cyan); font-weight: 700; letter-spacing: 0.5px;">Mercadoria</span>
+                    <span style="font-size: 11px; text-transform: uppercase; color: var(--accent-cyan); font-weight: 700; letter-spacing: 0.5px;">${tr('copilot.commodity')}</span>
                     <div class="outbound-product">${escapeHtml(trade.commodity || '-')}</div>
                 </div>
                 <div class="outbound-profit-badge">
                     <div class="outbound-profit-val">+${escapeHtml(trade.profitTotalTripFormatted || '-')}</div>
-                    <div class="outbound-profit-sub">+${escapeHtml(trade.profitPerUnitFormatted || '-')} / tonelada (${cargo}T)</div>
+                    <div class="outbound-profit-sub">+${escapeHtml(trade.profitPerUnitFormatted || '-')} ${tr('copilot.per_ton', cargo)}</div>
                 </div>
             </div>
 
@@ -255,29 +294,29 @@ function createTradeCardHtml(trade) {
                 <!-- Origem (Compra) -->
                 <div class="flow-point">
                     <div class="flow-point-left">
-                        <span class="flow-point-tag buy">1. Comprar na Origem (${escapeHtml(trade.originSystem || '-')})</span>
+                        <span class="flow-point-tag buy">${tr('copilot.buy_origin', escapeHtml(trade.originSystem || '-'))}</span>
                         <span class="flow-station">${escapeHtml(trade.originStation || '-')}</span>
-                        <span class="flow-system">Dist. Estação: ${escapeHtml(trade.originDistance || '-')}</span>
+                        <span class="flow-system">${tr('copilot.station_dist')} ${escapeHtml(trade.originDistance || '-')}</span>
                     </div>
                     <div class="flow-point-right">
                         <span class="flow-price">${escapeHtml(trade.buyPrice || '-')}</span>
-                        <span class="flow-volume">Estoque: ${escapeHtml(trade.supply || '-')}</span>
+                        <span class="flow-volume">${tr('copilot.supply')} ${escapeHtml(trade.supply || '-')}</span>
                     </div>
                 </div>
 
                 <!-- Destino (Venda) -->
                 <div class="flow-point">
                     <div class="flow-point-left">
-                        <span class="flow-point-tag sell">2. Vender no Destino</span>
+                        <span class="flow-point-tag sell">${tr('copilot.sell_dest')}</span>
                         <span class="flow-station">${escapeHtml(trade.destStation || '-')}</span>
                         <div class="flow-system">
                             <span>${escapeHtml(trade.destSystem || '-')}</span>
-                            <button class="copy-btn" onclick="copyToClipboard('${escapeHtml(trade.destSystem)}')" title="Copiar sistema de destino">📋 Copiar</button>
+                            <button class="copy-btn" onclick="copyToClipboard('${escapeHtml(trade.destSystem)}')" title="${tr('galaxy.copy')}">📋 ${tr('galaxy.copy')}</button>
                         </div>
                     </div>
                     <div class="flow-point-right">
                         <span class="flow-price text-profit">${escapeHtml(trade.sellPrice || '-')}</span>
-                        <span class="flow-volume">Demanda: ${escapeHtml(trade.demand || '-')}</span>
+                        <span class="flow-volume">${tr('copilot.demand')} ${escapeHtml(trade.demand || '-')}</span>
                     </div>
                 </div>
             </div>
@@ -285,11 +324,11 @@ function createTradeCardHtml(trade) {
             <!-- Footer: Métricas do Salto -->
             <div class="outbound-footer">
                 <div class="footer-metric">
-                    <span>Distância do Salto:</span>
+                    <span>${tr('copilot.jump_dist')}</span>
                     <strong>${escapeHtml(trade.routeDistance || '-')}</strong>
                 </div>
                 <div class="footer-metric">
-                    <span>Estação de Destino:</span>
+                    <span>${tr('copilot.dest_station')}</span>
                     <strong>${escapeHtml(trade.destDistance || '-')}</strong>
                 </div>
                 <div class="footer-metric">
@@ -303,7 +342,7 @@ function createTradeCardHtml(trade) {
 function copyToClipboard(text) {
     if (!text) return;
     navigator.clipboard.writeText(text).then(() => {
-        showToast(`Sistema "${text}" copiado!`);
+        showToast(tr('copilot.copied', text));
     }).catch(err => {
         console.error('Falha ao copiar:', err);
     });
@@ -319,16 +358,16 @@ function showToast(message) {
 }
 
 function simulateJumpDialog() {
-    const sys = prompt('Digite o nome do sistema estrelar para simular salto (ex: Sol, Shinrarta Dezhra, Gendalla):');
+    const sys = prompt(tr('copilot.simulate_prompt'));
     if (!sys || !sys.trim()) return;
 
     fetch(`/api/player/simulate?system=${encodeURIComponent(sys.trim())}`, { method: 'POST' })
         .then(r => r.json())
         .then(updated => {
-            showToast(`Salto simulado para ${updated.currentSystem}!`);
+            showToast(tr('copilot.simulate_ok', updated.currentSystem));
             pollPlayerStatus();
         })
-        .catch(err => alert('Erro ao simular: ' + err.message));
+        .catch(err => alert(tr('copilot.simulate_err', err.message)));
 }
 
 function escapeHtml(str) {

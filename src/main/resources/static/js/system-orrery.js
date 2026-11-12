@@ -3,6 +3,8 @@
  * Simulação Kepleriana Estática e Condizente com a Orientação Real do Jogo
  */
 
+const tr = (key, ...args) => (window.t ? window.t(key, ...args) : key);
+
 let scene, camera, renderer, controls;
 let systemData = null;
 let celestialBodies = [];
@@ -12,13 +14,38 @@ let selectedBodyData = null;
 let focusedObject = null;
 let lastKnownPlayerSystem = null;
 let lastOrrerySurfaceNear = null;
+let lastOrrerySurfaceData = null;
 
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 
 function startOrrery() {
+    if (window.i18n) {
+        document.title = tr('orrery.title');
+    }
+
     initThreeScene();
     setupEventListeners();
+
+    window.addEventListener('elite:languageChanged', () => {
+        document.title = tr('orrery.title');
+        if (lastOrrerySurfaceData) {
+            handleOrrerySurfaceEvent(lastOrrerySurfaceData);
+        }
+        if (systemData) {
+            updateOrreryHeaderBadges(systemData);
+            const bodies = systemData.bodies || [];
+            if (bodies.length === 0) {
+                const loadingText = document.getElementById('loadingStatusText');
+                if (loadingText) {
+                    loadingText.innerHTML = tr('orrery.unmapped_msg', systemData.systemName || tr('galaxy.system_label'));
+                }
+            }
+        }
+        if (selectedBodyData) {
+            showBodyDetails(selectedBodyData);
+        }
+    });
 
     const urlParams = new URLSearchParams(window.location.search);
     const systemParam = urlParams.get('system');
@@ -145,6 +172,7 @@ function checkIsNearSurface(data) {
 
 function handleOrrerySurfaceEvent(data) {
     if (!data) return;
+    lastOrrerySurfaceData = data;
     const surfaceBtn = document.getElementById('btnOrrerySurfaceLink');
     const surfaceText = document.getElementById('btnOrrerySurfaceText');
     const isNearSurface = checkIsNearSurface(data);
@@ -155,15 +183,15 @@ function handleOrrerySurfaceEvent(data) {
             surfaceBtn.style.pointerEvents = 'auto';
             surfaceBtn.style.opacity = '1.0';
             surfaceBtn.style.cursor = 'pointer';
-            surfaceBtn.title = `Nave em ${data.bodyName || data.planetName || 'superfície'} - Clique para abrir a Tela de Superfície`;
-            if (surfaceText) surfaceText.textContent = 'Superfície';
+            surfaceBtn.title = tr('nav.orrery_surface_title', data.bodyName || data.planetName || tr('nav.surface').toLowerCase());
+            if (surfaceText) surfaceText.textContent = tr('nav.surface');
         } else {
             surfaceBtn.classList.add('disabled');
             surfaceBtn.style.pointerEvents = 'none';
             surfaceBtn.style.opacity = '0.35';
             surfaceBtn.style.cursor = 'not-allowed';
-            surfaceBtn.title = 'Disponível apenas quando a nave estiver em órbita ou na superfície de um planeta';
-            if (surfaceText) surfaceText.textContent = 'Superfície';
+            surfaceBtn.title = tr('nav.surface_disabled_title');
+            if (surfaceText) surfaceText.textContent = tr('nav.surface');
         }
     }
 
@@ -207,6 +235,7 @@ async function checkSurfaceAvailability() {
         const res = await fetch('/api/player/surface-status');
         if (!res.ok) return;
         const data = await res.json();
+        lastOrrerySurfaceData = data;
         const surfaceBtn = document.getElementById('btnOrrerySurfaceLink');
         const surfaceText = document.getElementById('btnOrrerySurfaceText');
         const isNearSurface = checkIsNearSurface(data);
@@ -217,15 +246,15 @@ async function checkSurfaceAvailability() {
                 surfaceBtn.style.pointerEvents = 'auto';
                 surfaceBtn.style.opacity = '1.0';
                 surfaceBtn.style.cursor = 'pointer';
-                surfaceBtn.title = `Nave em ${data.bodyName || data.planetName || 'superfície'} - Clique para abrir a Tela de Superfície`;
-                if (surfaceText) surfaceText.textContent = 'Superfície';
+                surfaceBtn.title = tr('nav.orrery_surface_title', data.bodyName || data.planetName || tr('nav.surface').toLowerCase());
+                if (surfaceText) surfaceText.textContent = tr('nav.surface');
             } else {
                 surfaceBtn.classList.add('disabled');
                 surfaceBtn.style.pointerEvents = 'none';
                 surfaceBtn.style.opacity = '0.35';
                 surfaceBtn.style.cursor = 'not-allowed';
-                surfaceBtn.title = 'Disponível apenas quando a nave estiver em órbita ou na superfície de um planeta';
-                if (surfaceText) surfaceText.textContent = 'Superfície';
+                surfaceBtn.title = tr('nav.surface_disabled_title');
+                if (surfaceText) surfaceText.textContent = tr('nav.surface');
             }
         }
 
@@ -287,7 +316,7 @@ async function loadSystemOrrery(systemName) {
     const loadingEl = document.getElementById('orrery-loading');
     const loadingText = document.getElementById('loadingStatusText');
     if (loadingEl) loadingEl.style.display = 'flex';
-    if (loadingText) loadingText.textContent = `Consultando órbitas e telemetria de ${systemName || 'sistema atual'}...`;
+    if (loadingText) loadingText.textContent = tr('orrery.loading_system', systemName || tr('galaxy.current_system'));
 
     try {
         let url = '/api/system/orrery';
@@ -303,7 +332,7 @@ async function loadSystemOrrery(systemName) {
         renderSystemOrrery(data);
     } catch (err) {
         console.error('Erro ao carregar sistema:', err);
-        if (loadingText) loadingText.textContent = `Falha ao carregar sistema: ${err.message}`;
+        if (loadingText) loadingText.textContent = tr('orrery.load_failed', err.message);
     } finally {
         if (loadingEl) {
             setTimeout(() => { loadingEl.style.display = 'none'; }, 400);
@@ -354,6 +383,24 @@ function isBeltCluster(b) {
            name.includes('belt cluster') || name.includes('cluster');
 }
 
+function updateOrreryHeaderBadges(data) {
+    const bodies = [...(data.bodies || [])];
+    const mainStar = findMainStar(bodies);
+
+    const nameEl = document.getElementById('currentSystemName');
+    const badgeEl = document.getElementById('primaryStarBadge');
+    const countEl = document.getElementById('bodyCountBadge');
+
+    if (nameEl) nameEl.textContent = data.systemName || tr('galaxy.cmdr_unknown');
+    if (badgeEl) badgeEl.textContent = tr('orrery.star_class', mainStar ? (mainStar.spectralClass || mainStar.subType || data.primaryStarClass || 'K') : 'K');
+    if (countEl) {
+        countEl.textContent = bodies.length === 0
+            ? tr('orrery.bodies_unmapped')
+            : tr('orrery.bodies_count', bodies.length);
+    }
+    return mainStar;
+}
+
 // Renderiza a cena do Orrery
 function renderSystemOrrery(data) {
     celestialBodies = [];
@@ -365,22 +412,13 @@ function renderSystemOrrery(data) {
     }
 
     const bodies = [...(data.bodies || [])];
-    const mainStar = findMainStar(bodies);
-
-    const nameEl = document.getElementById('currentSystemName');
-    const badgeEl = document.getElementById('primaryStarBadge');
-    const countEl = document.getElementById('bodyCountBadge');
-
-    if (nameEl) nameEl.textContent = data.systemName || 'Desconhecido';
-    if (badgeEl) badgeEl.textContent = `Classe ${mainStar ? (mainStar.spectralClass || mainStar.subType || data.primaryStarClass || 'K') : 'K'}`;
-    if (countEl) countEl.textContent = `${bodies.length} corpos`;
+    const mainStar = updateOrreryHeaderBadges(data);
 
     if (bodies.length === 0) {
-        if (countEl) countEl.textContent = '0 corpos (Não Mapeado)';
         const loadingText = document.getElementById('loadingStatusText');
         const loadingEl = document.getElementById('orrery-loading');
         if (loadingText) {
-            loadingText.innerHTML = `⚠️ <b>${data.systemName || 'Sistema'}</b> não catalogado no EDSM.<br><span style="color:#00d4ff; font-size:13px; font-weight:normal;">Utilize o Scanner FSS no jogo para mapear e revelar os corpos em tempo real!</span>`;
+            loadingText.innerHTML = tr('orrery.unmapped_msg', data.systemName || tr('galaxy.system_label'));
         }
         if (loadingEl) loadingEl.style.display = 'flex';
         return;
@@ -924,9 +962,9 @@ function onMouseMove(e) {
             tooltip.style.top = `${e.clientY}px`;
 
             if (isBeltCluster(body)) {
-                tooltip.innerHTML = `<b>🪨 ${body.name}</b><br><span style="color:#c2a68c;">Aglomerado de Asteroides</span> • <span style="color:#ffaa00;">⛏️ Mineração</span>`;
+                tooltip.innerHTML = `<b>🪨 ${body.name}</b><br><span style="color:#c2a68c;">${tr('orrery.legend_belt')}</span> • <span style="color:#ffaa00;">${tr('orrery.mining_tooltip')}</span>`;
             } else {
-                const landText = body.isLandable ? ' • <span style="color:#2bfca8;font-weight:bold;">🟢 POUSÁVEL</span>' : '';
+                const landText = body.isLandable ? tr('orrery.landable_tooltip') : '';
                 tooltip.innerHTML = `<b>${body.name}</b><br><span style="color:#ffaa00;">${body.subType || body.type}</span>${landText}`;
             }
             document.body.style.cursor = 'pointer';
@@ -989,6 +1027,7 @@ function showBodyDetails(b) {
     panel.style.display = 'block';
 
     const isCluster = isBeltCluster(b);
+    const locale = window.i18n ? window.i18n.getLocale() : 'pt-BR';
 
     document.getElementById('detailBodyName').textContent = b.name;
     document.getElementById('detailBodyClass').textContent = b.subType || b.type;
@@ -997,50 +1036,50 @@ function showBodyDetails(b) {
     const landEl = document.getElementById('detailLandableBadge');
 
     if (isCluster) {
-        badgeTypeEl.textContent = 'AGLOMERADO DE ASTEROIDES';
+        badgeTypeEl.textContent = tr('orrery.badge_belt');
         badgeTypeEl.style.color = '#c2a68c';
         badgeTypeEl.style.borderColor = 'rgba(194,166,140,0.5)';
         badgeTypeEl.style.background = 'rgba(194,166,140,0.18)';
 
         landEl.style.display = 'inline-block';
-        landEl.textContent = '⛏️ MINERAÇÃO NO VÁCUO (Laser / Explosão)';
+        landEl.textContent = tr('orrery.landable_belt');
         landEl.style.borderColor = 'rgba(255,170,0,0.5)';
         landEl.style.color = '#ffaa00';
 
-        document.getElementById('detailGravity').textContent = '0.00 G (Microgravidade)';
-        document.getElementById('detailAtmosphere').textContent = 'Vácuo Espacial';
+        document.getElementById('detailGravity').textContent = tr('orrery.microgravity');
+        document.getElementById('detailAtmosphere').textContent = tr('orrery.vacuum');
         document.getElementById('detailPressure').textContent = '0.00 atm';
         document.getElementById('detailRadius').textContent = 'Cluster (~500m)';
-        document.getElementById('detailMass').textContent = 'Aglomerado Rochoso';
+        document.getElementById('detailMass').textContent = tr('orrery.rocky_cluster');
     } else {
-        badgeTypeEl.textContent = (b.type || 'PLANETA').toUpperCase();
+        badgeTypeEl.textContent = (b.type || tr('orrery.badge_planet')).toUpperCase();
         badgeTypeEl.style.color = '#00d4ff';
         badgeTypeEl.style.borderColor = 'rgba(0,212,255,0.4)';
         badgeTypeEl.style.background = 'rgba(0,212,255,0.2)';
 
         if (b.isLandable) {
             landEl.style.display = 'inline-block';
-            landEl.textContent = '🟢 POUSÁVEL COM NAVE / SRV';
+            landEl.textContent = tr('orrery.landable_yes');
             landEl.style.borderColor = 'rgba(43,252,168,0.5)';
             landEl.style.color = '#2bfca8';
         } else {
             landEl.style.display = 'inline-block';
-            landEl.textContent = '🔴 NÃO POUSÁVEL';
+            landEl.textContent = tr('orrery.landable_no');
             landEl.style.borderColor = 'rgba(255,80,80,0.5)';
             landEl.style.color = '#ff6666';
         }
 
-        document.getElementById('detailRadius').textContent = b.radius ? `${Math.round(b.radius).toLocaleString('pt-BR')} km` : (b.solarRadius ? `${b.solarRadius.toFixed(2)} R☉` : '---');
+        document.getElementById('detailRadius').textContent = b.radius ? `${Math.round(b.radius).toLocaleString(locale)} km` : (b.solarRadius ? `${b.solarRadius.toFixed(2)} R☉` : '---');
         document.getElementById('detailGravity').textContent = b.gravity !== null && b.gravity !== undefined ? `${b.gravity.toFixed(2)} G` : '---';
         document.getElementById('detailMass').textContent = b.earthMasses ? `${b.earthMasses.toFixed(3)} M⊕` : (b.solarMasses ? `${b.solarMasses.toFixed(2)} M☉` : '---');
-        document.getElementById('detailAtmosphere').textContent = b.atmosphereType || 'Vácuo / Sem atmosfera';
+        document.getElementById('detailAtmosphere').textContent = b.atmosphereType || tr('orrery.no_atmo');
         document.getElementById('detailPressure').textContent = b.surfacePressure ? `${b.surfacePressure.toFixed(2)} atm` : '0.00 atm';
     }
 
     // Mecânica Orbital
-    document.getElementById('detailDistArrival').textContent = b.distanceToArrival ? `${Math.round(b.distanceToArrival).toLocaleString('pt-BR')} Ls` : '0 Ls';
+    document.getElementById('detailDistArrival').textContent = b.distanceToArrival ? `${Math.round(b.distanceToArrival).toLocaleString(locale)} Ls` : '0 Ls';
     document.getElementById('detailSemiMajorAxis').textContent = b.semiMajorAxisAu ? `${b.semiMajorAxisAu.toFixed(3)} AU` : '---';
-    document.getElementById('detailOrbitalPeriod').textContent = b.orbitalPeriod ? `${b.orbitalPeriod.toFixed(1)} dias` : '---';
+    document.getElementById('detailOrbitalPeriod').textContent = b.orbitalPeriod ? tr('orrery.days_unit', b.orbitalPeriod.toFixed(1)) : '---';
     document.getElementById('detailEccentricity').textContent = b.orbitalEccentricity !== null && b.orbitalEccentricity !== undefined ? b.orbitalEccentricity.toFixed(4) : '0.0000';
     document.getElementById('detailInclination').textContent = b.orbitalInclination !== null && b.orbitalInclination !== undefined ? `${b.orbitalInclination.toFixed(2)}°` : '0.00°';
 

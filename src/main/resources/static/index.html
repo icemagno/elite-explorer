@@ -531,18 +531,18 @@
             </div>
 
             <div class="splash-title">ELITE EXPLORER COPILOT</div>
-            <div class="splash-subtitle">NAVEGAÇÃO GALÁCTICA • SISTEMA • SUPERFÍCIE</div>
+            <div class="splash-subtitle" data-i18n="splash.subtitle">NAVEGAÇÃO GALÁCTICA • SISTEMA • SUPERFÍCIE</div>
 
             <div class="splash-progress-track">
                 <div class="splash-progress-fill"></div>
             </div>
 
             <div class="splash-commander-box">
-                <div class="splash-commander-label">COMANDANTE</div>
+                <div class="splash-commander-label" data-i18n="splash.commander_label">COMANDANTE</div>
                 <div id="splashCommanderName" class="splash-commander-name">CMDR ...</div>
             </div>
 
-            <div id="splashStatusText" class="splash-status-text">CONECTANDO AO DIÁRIO DE BORDO...</div>
+            <div id="splashStatusText" class="splash-status-text" data-i18n="splash.connecting">CONECTANDO AO DIÁRIO DE BORDO...</div>
         </div>
     </div>
 
@@ -553,26 +553,27 @@
     <!-- Central HUD Map Loading Indicator -->
     <div id="cubeLoadingIndicator" class="cube-loading-banner">
         <span class="loading-spinner"></span>
-        <span id="cubeLoadingText">Aguarde... Carregando dados estelares</span>
+        <span id="cubeLoadingText" data-i18n="galaxy.loading_default">Aguarde... Carregando dados estelares</span>
     </div>
 
     <!-- Top Left Live Coordinates Badge -->
     <div class="top-nav-bar">
-        <div id="playerCoordsDisplay" class="coords-badge">
+        <div id="playerCoordsDisplay" class="coords-badge" data-i18n="galaxy.syncing_journal">
             Sincronizando com Journal...
         </div>
-        <div id="edsmSyncDisplay" class="coords-badge" style="color: #00d4ff; border-color: rgba(0, 212, 255, 0.45); box-shadow: 0 0 12px rgba(0, 212, 255, 0.15); cursor: default;" title="Transmissão contínua de telemetria e descobertas para o EDSM">
+        <div id="edsmSyncDisplay" class="coords-badge" style="color: #00d4ff; border-color: rgba(0, 212, 255, 0.45); box-shadow: 0 0 12px rgba(0, 212, 255, 0.15); cursor: default;" data-i18n="galaxy.edsm_connecting" data-i18n-title="galaxy.edsm_title" title="Transmissão contínua de telemetria e descobertas para o EDSM">
             🛰️ EDSM: Conectando...
         </div>
         <a href="/index.html" class="coords-badge" style="background: rgba(0,212,255,0.2); border-color: #00d4ff; color: #fff; text-decoration: none; font-weight: bold; cursor: default;">
-            🌌 Cubo Galáctico
+            <span>🌌</span> <span data-i18n="nav.galaxy_cube">Cubo Galáctico</span>
         </a>
-        <a href="/system-orrery.html" id="btnSwitchToOrrery" class="coords-badge" style="background: rgba(255,170,0,0.12); border-color: rgba(255,170,0,0.5); color: #ffaa00; text-decoration: none; cursor: pointer; font-weight: bold; transition: all 0.2s;" title="Abrir o Mapa 3D do Sistema Estelar">
-            🪐 Sistema
+        <a href="/system-orrery.html" id="btnSwitchToOrrery" class="coords-badge" style="background: rgba(255,170,0,0.12); border-color: rgba(255,170,0,0.5); color: #ffaa00; text-decoration: none; cursor: pointer; font-weight: bold; transition: all 0.2s;" data-i18n-title="nav.system_title" title="Abrir o Mapa 3D do Sistema Estelar">
+            <span>🪐</span> <span data-i18n="nav.system">Sistema</span>
         </a>
-        <button id="btnSwitchToSurface" class="coords-badge" style="opacity: 0.35; cursor: not-allowed; pointer-events: none; background: rgba(43,252,168,0.12); border-color: rgba(43,252,168,0.5); color: #2bfca8; font-weight: bold; transition: all 0.2s;" title="Disponível apenas quando a nave estiver em órbita ou na superfície de um planeta">
-            🪐 Superfície
+        <button id="btnSwitchToSurface" class="coords-badge" style="opacity: 0.35; cursor: not-allowed; pointer-events: none; background: rgba(43,252,168,0.12); border-color: rgba(43,252,168,0.5); color: #2bfca8; font-weight: bold; transition: all 0.2s;" data-i18n-title="nav.surface_disabled_title" title="Disponível apenas quando a nave estiver em órbita ou na superfície de um planeta">
+            <span>🪐</span> <span data-i18n="nav.surface">Superfície</span>
         </button>
+        <div data-lang-switcher></div>
     </div>
 
     <!-- Left HUD Column (Target Details & Stations) -->
@@ -580,8 +581,8 @@
         <!-- Selected Target Card (Pinned Selection) -->
         <div id="selected-target-card" class="hud-panel-glass">
             <div class="card-header-row">
-                <span id="targetCardBadge" style="font-size: 11px; background: rgba(0,212,255,0.2); color: #00d4ff; padding: 2px 6px; border-radius: 3px; font-weight: bold; letter-spacing: 0.5px;">ALVO FIXADO</span>
-                <button id="btnCloseCard" class="close-card-btn" title="Fechar">✕</button>
+                <span id="targetCardBadge" style="font-size: 11px; background: rgba(0,212,255,0.2); color: #00d4ff; padding: 2px 6px; border-radius: 3px; font-weight: bold; letter-spacing: 0.5px;" data-i18n="galaxy.target_pinned">ALVO FIXADO</span>
+                <button id="btnCloseCard" class="close-card-btn" data-i18n-title="galaxy.close" title="Fechar">✕</button>
             </div>
             <div id="targetCardContent">
                 <!-- Conteúdo dinâmico via JS -->
@@ -592,13 +593,13 @@
         <div id="current-stations-card" class="hud-panel-glass">
             <div class="card-header-row" style="margin-bottom: 4px;">
                 <div>
-                    <span style="font-size: 11px; background: rgba(255,170,51,0.2); color: #ffaa33; padding: 2px 6px; border-radius: 3px; font-weight: bold; letter-spacing: 0.5px;">⚓ ANCORAGEM SEGURA</span>
-                    <div id="stationsSystemTitle" style="font-size: 13px; font-weight: bold; color: #fff; margin-top: 3px;">Sistema Atual</div>
+                    <span style="font-size: 11px; background: rgba(255,170,51,0.2); color: #ffaa33; padding: 2px 6px; border-radius: 3px; font-weight: bold; letter-spacing: 0.5px;" data-i18n="galaxy.safe_docking">⚓ ANCORAGEM SEGURA</span>
+                    <div id="stationsSystemTitle" style="font-size: 13px; font-weight: bold; color: #fff; margin-top: 3px;" data-i18n="galaxy.current_system">Sistema Atual</div>
                 </div>
                 <span id="stationsCountBadge" style="font-size: 10px; color: #8da4be; font-family: monospace;">0 docas</span>
             </div>
             <div id="currentStationsList" style="display: flex; flex-direction: column; gap: 5px; margin-top: 6px;">
-                <div style="color: #6a88a8; font-size: 11px; font-style: italic;">Consultando estações do sistema...</div>
+                <div style="color: #6a88a8; font-size: 11px; font-style: italic;" data-i18n="galaxy.querying_stations">Consultando estações do sistema...</div>
             </div>
         </div>
     </div>
@@ -607,10 +608,10 @@
     <div class="hud-right-column">
         <!-- Population Filter Toggle -->
         <div class="hud-panel-glass" style="display: flex; align-items: center; justify-content: space-between; padding: 7px 12px;">
-            <div style="font-size: 11px; font-weight: bold; color: #a4bedc; letter-spacing: 0.5px; text-transform: uppercase;">
+            <div style="font-size: 11px; font-weight: bold; color: #a4bedc; letter-spacing: 0.5px; text-transform: uppercase;" data-i18n="galaxy.star_filter">
                 FILTRO ESTELAR
             </div>
-            <button id="btnToggleHabited" style="background: rgba(12, 25, 45, 0.85); border: 1px solid rgba(0, 212, 255, 0.35); color: #8da4be; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; transition: all 0.2s;" title="Alternar entre exibir todos os sistemas ou apenas habitados">
+            <button id="btnToggleHabited" style="background: rgba(12, 25, 45, 0.85); border: 1px solid rgba(0, 212, 255, 0.35); color: #8da4be; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; transition: all 0.2s;" data-i18n="galaxy.filter_all" data-i18n-title="galaxy.filter_toggle_title" title="Alternar entre exibir todos os sistemas ou apenas habitados">
                 🌐 Todos
             </button>
         </div>
@@ -618,39 +619,39 @@
         <!-- Top 3 Stratum Radar -->
         <div id="stratum-radar-card" class="hud-panel-glass">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                <div style="font-size: 11px; font-weight: bold; color: #2bfca8; letter-spacing: 0.5px; text-transform: uppercase;">
+                <div style="font-size: 11px; font-weight: bold; color: #2bfca8; letter-spacing: 0.5px; text-transform: uppercase;" data-i18n="galaxy.top3_stratum">
                     🪐 TOP 3 STRATUM PRÓXIMAS
                 </div>
                 <span id="radarCountBadge" style="font-size: 10px; color: #8da4be; font-family: monospace;">0 no cubo</span>
             </div>
             <div id="stratumRadarList" style="display: flex; flex-direction: column; gap: 6px;">
-                <div style="color: #6a88a8; font-size: 11px; font-style: italic; padding: 4px 0;">Varrendo arredores...</div>
+                <div style="color: #6a88a8; font-size: 11px; font-style: italic; padding: 4px 0;" data-i18n="galaxy.scanning_surroundings">Varrendo arredores...</div>
             </div>
         </div>
 
         <!-- Top 3 Gaps Procedurais -->
         <div id="gaps-radar-card" class="hud-panel-glass">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                <div style="font-size: 11px; font-weight: bold; color: #ffaa00; letter-spacing: 0.5px; text-transform: uppercase;">
+                <div style="font-size: 11px; font-weight: bold; color: #ffaa00; letter-spacing: 0.5px; text-transform: uppercase;" data-i18n="galaxy.top3_gaps">
                     👻 TOP 3 GAPS PROCEDURAIS
                 </div>
                 <span id="gapsCountBadge" style="font-size: 10px; color: #8da4be; font-family: monospace;">0 no cubo</span>
             </div>
             <div id="gapsRadarList" style="display: flex; flex-direction: column; gap: 6px;">
-                <div style="color: #6a88a8; font-size: 11px; font-style: italic; padding: 4px 0;">Varrendo vazios...</div>
+                <div style="color: #6a88a8; font-size: 11px; font-style: italic; padding: 4px 0;" data-i18n="galaxy.scanning_voids">Varrendo vazios...</div>
             </div>
         </div>
 
         <!-- Tráfego de Comandantes Recente (EDDN) -->
         <div id="traffic-radar-card" class="hud-panel-glass">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                <div style="font-size: 11px; font-weight: bold; color: #00d4ff; letter-spacing: 0.5px; text-transform: uppercase;">
+                <div style="font-size: 11px; font-weight: bold; color: #00d4ff; letter-spacing: 0.5px; text-transform: uppercase;" data-i18n="galaxy.traffic_title">
                     🛰️ TRÁFEGO DE COMANDANTES
                 </div>
-                <span id="trafficCountBadge" style="font-size: 10px; color: #2bfca8; font-family: monospace;">AO VIVO</span>
+                <span id="trafficCountBadge" style="font-size: 10px; color: #2bfca8; font-family: monospace;" data-i18n="galaxy.traffic_live">AO VIVO</span>
             </div>
             <div id="trafficEventsList" style="display: flex; flex-direction: column; gap: 5px;">
-                <div style="color: #6a88a8; font-size: 11px; font-style: italic; padding: 4px 0;">Aguardando tráfego no setor...</div>
+                <div style="color: #6a88a8; font-size: 11px; font-style: italic; padding: 4px 0;" data-i18n="galaxy.waiting_sector_traffic">Aguardando tráfego no setor...</div>
             </div>
         </div>
     </div>
@@ -659,27 +660,27 @@
     <div class="bottom-legend-hud hud-panel-glass">
         <div class="legend-item">
             <div class="legend-color" style="background: #2bfca8; box-shadow: 0 0 6px #2bfca8;"></div>
-            <span>Localização Atual</span>
+            <span data-i18n="galaxy.legend_current">Localização Atual</span>
         </div>
         <div class="legend-item">
             <div class="legend-color" style="background: linear-gradient(to right, #ff4422, #ff9933, #ffe066, #ffffee, #ccf0ff, #3377ff);"></div>
-            <span>Estrelas KGBFOAM</span>
+            <span data-i18n="galaxy.legend_kgbfoam">Estrelas KGBFOAM</span>
         </div>
         <div class="legend-item">
             <div class="legend-color" style="background: #8da4be;"></div>
-            <span>Demais Estrelas</span>
+            <span data-i18n="galaxy.legend_other">Demais Estrelas</span>
         </div>
         <div class="legend-item">
             <div class="legend-color" style="background: #ffaa00; transform: rotate(45deg); border: 1px solid #ffcc33; box-shadow: 0 0 6px #ffaa00; border-radius: 2px;"></div>
-            <span>Provável Gap Procedural</span>
+            <span data-i18n="galaxy.legend_gap">Provável Gap Procedural</span>
         </div>
         <div class="legend-item">
             <div class="legend-color" style="border: 2px solid #2bfca8; background: transparent; border-radius: 50%; box-shadow: 0 0 5px #2bfca8;"></div>
-            <span>Stratum Confirmado</span>
+            <span data-i18n="galaxy.legend_stratum_conf">Stratum Confirmado</span>
         </div>
         <div class="legend-item">
             <div class="legend-color" style="border: 2px solid #ffcc44; background: transparent; border-radius: 50%;"></div>
-            <span>Stratum Provável</span>
+            <span data-i18n="galaxy.legend_stratum_pot">Stratum Provável</span>
         </div>
     </div>
 
@@ -696,32 +697,33 @@
         </div>
 
         <!-- Botões de Navegação Superior (3 Telas Oficiais) -->
-        <div style="position: absolute; top: 16px; left: 20px; z-index: 1010; display: flex; gap: 8px;">
+        <div style="position: absolute; top: 16px; left: 20px; z-index: 1010; display: flex; gap: 8px; align-items: center;">
             <button id="btnBackToGalaxy" class="hud-panel-glass" style="color: #00d4ff; border: 1px solid #00d4ff; font-weight: bold; cursor: pointer; padding: 8px 16px; border-radius: 6px; font-size: 12px; display: flex; align-items: center; gap: 6px; transition: all 0.2s;">
-                <span>🌌</span> Cubo Galáctico
+                <span>🌌</span> <span data-i18n="nav.galaxy_cube">Cubo Galáctico</span>
             </button>
             <a href="/system-orrery.html" class="hud-panel-glass" style="color: #ffaa00; border: 1px solid #ffaa00; text-decoration: none; font-weight: bold; cursor: pointer; padding: 8px 16px; border-radius: 6px; font-size: 12px; display: flex; align-items: center; gap: 6px; transition: all 0.2s;">
-                <span>🪐</span> Sistema
+                <span>🪐</span> <span data-i18n="nav.system">Sistema</span>
             </a>
             <span class="hud-panel-glass" style="background: rgba(43,252,168,0.25); border: 1px solid #2bfca8; color: #2bfca8; font-weight: bold; padding: 8px 16px; border-radius: 6px; font-size: 12px; display: flex; align-items: center; gap: 6px;">
-                <span>🪐</span> Superfície
+                <span>🪐</span> <span data-i18n="nav.surface">Superfície</span>
             </span>
+            <div data-lang-switcher></div>
         </div>
 
         <!-- Seletor de Escala / Zoom -->
         <div style="position: absolute; top: 62px; left: 20px; z-index: 1010; display: flex; align-items: center; gap: 8px;">
             <!-- Botões de Modo de Escala -->
             <div class="hud-panel-glass" style="display: flex; gap: 4px; padding: 3px 6px; border-radius: 4px;">
-                <button id="btnZoomGlobal" style="background: rgba(0,212,255,0.15); border: 1px solid rgba(0,212,255,0.4); color: #00d4ff; padding: 2px 8px; border-radius: 3px; font-size: 10px; font-weight: bold; cursor: pointer;">
+                <button id="btnZoomGlobal" style="background: rgba(0,212,255,0.15); border: 1px solid rgba(0,212,255,0.4); color: #00d4ff; padding: 2px 8px; border-radius: 3px; font-size: 10px; font-weight: bold; cursor: pointer;" data-i18n="surface.zoom_global">
                     🌐 Global (-180°/+180°)
                 </button>
-                <button id="btnZoomTactical" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2); color: #8da4be; padding: 2px 8px; border-radius: 3px; font-size: 10px; font-weight: bold; cursor: pointer;">
+                <button id="btnZoomTactical" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2); color: #8da4be; padding: 2px 8px; border-radius: 3px; font-size: 10px; font-weight: bold; cursor: pointer;" data-i18n="surface.zoom_tactical">
                     🎯 Tático (1.200m)
                 </button>
-                <button id="btnZoomAuto" style="background: rgba(43,252,168,0.2); border: 1px solid #2bfca8; color: #2bfca8; padding: 2px 8px; border-radius: 3px; font-size: 10px; font-weight: bold; cursor: pointer;">
+                <button id="btnZoomAuto" style="background: rgba(43,252,168,0.2); border: 1px solid #2bfca8; color: #2bfca8; padding: 2px 8px; border-radius: 3px; font-size: 10px; font-weight: bold; cursor: pointer;" data-i18n="surface.zoom_auto">
                     🔄 Auto (Altitude)
                 </button>
-                <button id="btnRecenterShip" title="Re-alinhar e focar a câmera na posição da nave/jogador" style="background: rgba(255,204,68,0.15); border: 1px solid rgba(255,204,68,0.4); color: #ffcc44; padding: 2px 8px; border-radius: 3px; font-size: 10px; font-weight: bold; cursor: pointer;">
+                <button id="btnRecenterShip" data-i18n="surface.recenter_ship" data-i18n-title="surface.recenter_ship_title" title="Re-alinhar e focar a câmera na posição da nave/jogador" style="background: rgba(255,204,68,0.15); border: 1px solid rgba(255,204,68,0.4); color: #ffcc44; padding: 2px 8px; border-radius: 3px; font-size: 10px; font-weight: bold; cursor: pointer;">
                     📍 Focar Nave
                 </button>
             </div>
@@ -732,12 +734,12 @@
             <!-- Lado Esquerdo da Bússola: Corpo Celeste & Gravidade -->
             <div class="hud-panel-glass" style="display: flex; align-items: center; gap: 12px; padding: 6px 14px; border-radius: 6px; border-bottom: 2px solid #00d4ff;">
                 <div style="display: flex; flex-direction: column; text-align: right;">
-                    <span style="font-size: 9px; color: #8da4be; font-weight: bold; letter-spacing: 0.5px;">🪐 CORPO CELESTE</span>
+                    <span style="font-size: 9px; color: #8da4be; font-weight: bold; letter-spacing: 0.5px;" data-i18n="surface.body_label">🪐 CORPO CELESTE</span>
                     <span id="surfacePlanetName" style="font-size: 13px; font-weight: bold; color: #fff; font-family: monospace; white-space: nowrap;">---</span>
                 </div>
                 <div style="width: 1px; height: 26px; background: rgba(255,255,255,0.15);"></div>
                 <div style="display: flex; flex-direction: column; text-align: right;">
-                    <span style="font-size: 9px; color: #8da4be; font-weight: bold; letter-spacing: 0.5px;">⚖️ GRAVIDADE</span>
+                    <span style="font-size: 9px; color: #8da4be; font-weight: bold; letter-spacing: 0.5px;" data-i18n="surface.gravity_label">⚖️ GRAVIDADE</span>
                     <span id="surfaceGravityText" style="font-size: 13px; font-weight: bold; color: #ffaa00; font-family: monospace;">---</span>
                 </div>
             </div>
@@ -745,7 +747,7 @@
             <!-- Centro: Bússola Holográfica & Fita de Rumo -->
             <div class="hud-panel-glass" style="width: 360px; padding: 6px 14px; border-top: 2px solid #2bfca8; display: flex; flex-direction: column; align-items: center; gap: 3px;">
                 <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
-                    <span style="font-size: 9px; color: #8da4be; font-weight: bold; letter-spacing: 0.5px;">🧭 BÚSSOLA / RUMO</span>
+                    <span style="font-size: 9px; color: #8da4be; font-weight: bold; letter-spacing: 0.5px;" data-i18n="surface.compass_label">🧭 BÚSSOLA / RUMO</span>
                     <span id="surfaceHeadingReadout" style="font-size: 13px; font-weight: bold; color: #2bfca8; font-family: monospace;">---</span>
                 </div>
                 <!-- Fita graduada da bússola com agulha central -->
@@ -763,12 +765,12 @@
             <!-- Lado Direito da Bússola: Atmosfera & Pressão -->
             <div class="hud-panel-glass" style="display: flex; align-items: center; gap: 12px; padding: 6px 14px; border-radius: 6px; border-bottom: 2px solid #2bfca8;">
                 <div style="display: flex; flex-direction: column; text-align: left;">
-                    <span style="font-size: 9px; color: #8da4be; font-weight: bold; letter-spacing: 0.5px;">💨 ATMOSFERA</span>
+                    <span style="font-size: 9px; color: #8da4be; font-weight: bold; letter-spacing: 0.5px;" data-i18n="surface.atmosphere_label">💨 ATMOSFERA</span>
                     <span id="surfaceAtmosphereText" style="font-size: 13px; font-weight: bold; color: #2bfca8; white-space: nowrap;">---</span>
                 </div>
                 <div style="width: 1px; height: 26px; background: rgba(255,255,255,0.15);"></div>
                 <div style="display: flex; flex-direction: column; text-align: left;">
-                    <span style="font-size: 9px; color: #8da4be; font-weight: bold; letter-spacing: 0.5px;">🌡️ PRESSÃO</span>
+                    <span style="font-size: 9px; color: #8da4be; font-weight: bold; letter-spacing: 0.5px;" data-i18n="surface.pressure_label">🌡️ PRESSÃO</span>
                     <span id="surfacePressureText" style="font-size: 13px; font-weight: bold; color: #e0f4ff; font-family: monospace;">---</span>
                 </div>
             </div>
@@ -776,27 +778,27 @@
 
         <!-- Esquerda: Altímetro & GPS de Superfície -->
         <div class="hud-panel-glass" style="position: absolute; top: 100px; left: 20px; width: 260px; z-index: 1010; border-left: 3px solid #2bfca8;">
-            <div style="font-size: 11px; font-weight: bold; color: #2bfca8; margin-bottom: 8px; letter-spacing: 0.5px;">
+            <div style="font-size: 11px; font-weight: bold; color: #2bfca8; margin-bottom: 8px; letter-spacing: 0.5px;" data-i18n="surface.altimeter_title">
                 📐 ALTÍMETRO & TELEMETRIA
             </div>
 
             <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 4px;">
-                <span style="color: #8da4be; font-size: 11px;">Altitude:</span>
+                <span style="color: #8da4be; font-size: 11px;" data-i18n="surface.altitude_label">Altitude:</span>
                 <span id="surfaceAltitudeText" style="font-size: 22px; font-weight: bold; color: #2bfca8; font-family: monospace;">0 m</span>
             </div>
-            <div id="surfaceFlightStateBadge" style="display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 10px; font-weight: bold; background: rgba(43,252,168,0.2); color: #2bfca8; margin-bottom: 12px;">
-                POUSADO NA SUPERFÍCIE
+            <div id="surfaceFlightStateBadge" style="display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 10px; font-weight: bold; background: rgba(43,252,168,0.2); color: #2bfca8; margin-bottom: 12px;" data-i18n="surface.state_landed_ship">
+                NAVE POUSADA
             </div>
 
             <!-- Coordenadas GPS -->
             <div style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 8px; margin-top: 4px;">
-                <div style="font-size: 11px; color: #8da4be; font-weight: bold; margin-bottom: 4px;">COORDENADAS GPS</div>
+                <div style="font-size: 11px; color: #8da4be; font-weight: bold; margin-bottom: 4px;" data-i18n="surface.gps_title">COORDENADAS GPS</div>
                 <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 2px;">
-                    <span style="color: #a4bedc;">Latitude:</span>
+                    <span style="color: #a4bedc;" data-i18n="surface.lat_label">Latitude:</span>
                     <b id="surfaceLatText" style="color: #fff; font-family: monospace;">---</b>
                 </div>
                 <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 8px;">
-                    <span style="color: #a4bedc;">Longitude:</span>
+                    <span style="color: #a4bedc;" data-i18n="surface.lon_label">Longitude:</span>
                     <b id="surfaceLonText" style="color: #fff; font-family: monospace;">---</b>
                 </div>
             </div>
@@ -804,13 +806,13 @@
             <!-- Ponto de Pouso (Touchdown) -->
             <div style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 8px;">
                 <div style="margin-bottom: 4px;">
-                    <span style="font-size: 11px; color: #ffaa00; font-weight: bold;">LOCAL DE POUSO</span>
+                    <span style="font-size: 11px; color: #ffaa00; font-weight: bold;" data-i18n="surface.touchdown_title">LOCAL DE POUSO</span>
                 </div>
                 <div style="font-size: 11px; color: #a4bedc; margin-bottom: 2px;">
-                    Coordenadas: <b id="surfaceTouchdownCoordsText" style="color: #ffaa00; font-family: monospace;">---</b>
+                    <span data-i18n="surface.coords_label">Coordenadas:</span> <b id="surfaceTouchdownCoordsText" style="color: #ffaa00; font-family: monospace;">---</b>
                 </div>
                 <div style="display: flex; justify-content: space-between; font-size: 12px; margin-top: 4px;">
-                    <span style="color: #a4bedc;">Distância da Nave:</span>
+                    <span style="color: #a4bedc;" data-i18n="surface.ship_dist_label">Distância da Nave:</span>
                     <b id="surfaceDistTouchdownText" style="color: #2bfca8; font-family: monospace; font-size: 13px;">0 m</b>
                 </div>
             </div>
@@ -819,7 +821,7 @@
         <!-- Esquerda Inferior: Hodômetro de Exobiologia & Diversidade Genética -->
         <div id="surfaceBioPanel" class="hud-panel-glass" style="position: absolute; top: 375px; left: 20px; width: 260px; z-index: 1010; border-left: 3px solid #00ffaa;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                <div style="font-size: 11px; font-weight: bold; color: #00ffaa; letter-spacing: 0.5px;">
+                <div style="font-size: 11px; font-weight: bold; color: #00ffaa; letter-spacing: 0.5px;" data-i18n="surface.bio_title">
                     🧬 HODÔMETRO EXOBIOLOGIA
                 </div>
                 <span id="bioSamplePill" style="font-size: 10px; padding: 2px 6px; border-radius: 3px; font-weight: bold; background: rgba(0,255,170,0.15); color: #00ffaa; border: 1px solid rgba(0,255,170,0.4);">
@@ -830,36 +832,36 @@
             <!-- Indicadores dos 3 Slots de Amostragem -->
             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; margin-bottom: 8px;">
                 <div id="bioSlot1" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 4px; text-align: center;">
-                    <div style="font-size: 9px; color: #8da4be;">AMOSTRA 1</div>
+                    <div style="font-size: 9px; color: #8da4be;" data-i18n="surface.bio_sample_1">AMOSTRA 1</div>
                     <div id="bioSlot1Status" style="font-size: 11px; font-weight: bold; color: #557088;">---</div>
                 </div>
                 <div id="bioSlot2" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 4px; text-align: center;">
-                    <div style="font-size: 9px; color: #8da4be;">AMOSTRA 2</div>
+                    <div style="font-size: 9px; color: #8da4be;" data-i18n="surface.bio_sample_2">AMOSTRA 2</div>
                     <div id="bioSlot2Status" style="font-size: 11px; font-weight: bold; color: #557088;">---</div>
                 </div>
                 <div id="bioSlot3" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 4px; text-align: center;">
-                    <div style="font-size: 9px; color: #8da4be;">AMOSTRA 3</div>
+                    <div style="font-size: 9px; color: #8da4be;" data-i18n="surface.bio_sample_3">AMOSTRA 3</div>
                     <div id="bioSlot3Status" style="font-size: 11px; font-weight: bold; color: #557088;">---</div>
                 </div>
             </div>
 
             <!-- Nome da Espécie e Gênero -->
             <div style="margin-bottom: 6px;">
-                <div style="font-size: 10px; color: #8da4be;">ESPÉCIE EM AMOSTRAGEM</div>
-                <div id="bioSpeciesText" style="font-size: 12px; font-weight: bold; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Aguardando amostragem...</div>
+                <div style="font-size: 10px; color: #8da4be;" data-i18n="surface.bio_species_label">ESPÉCIE EM AMOSTRAGEM</div>
+                <div id="bioSpeciesText" style="font-size: 12px; font-weight: bold; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" data-i18n="surface.bio_waiting_sample">Aguardando amostragem...</div>
             </div>
 
             <!-- Distância da Colônia & Hodômetro -->
             <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(0,255,170,0.2); border-radius: 6px; padding: 8px;">
                 <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">
-                    <span style="font-size: 10px; color: #8da4be;">Distância da Amostra:</span>
+                    <span style="font-size: 10px; color: #8da4be;" data-i18n="surface.bio_dist_label">Distância da Amostra:</span>
                     <span id="bioDistanceText" style="font-size: 17px; font-weight: bold; color: #00ffaa; font-family: monospace;">---</span>
                 </div>
                 <!-- Barra de Progresso de Diversidade -->
                 <div style="width: 100%; height: 5px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden; margin-bottom: 6px;">
                     <div id="bioDiversityProgressBar" style="width: 0%; height: 100%; background: #00ffaa; transition: width 0.3s ease;"></div>
                 </div>
-                <div id="bioStatusBanner" style="font-size: 10px; font-weight: bold; text-align: center; padding: 4px; border-radius: 3px; background: rgba(255,255,255,0.05); color: #8da4be;">
+                <div id="bioStatusBanner" style="font-size: 10px; font-weight: bold; text-align: center; padding: 4px; border-radius: 3px; background: rgba(255,255,255,0.05); color: #8da4be;" data-i18n="surface.bio_waiting_scan">
                     Aguardando scan inicial...
                 </div>
             </div>
@@ -871,49 +873,50 @@
         <div class="hud-panel-glass" style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 1010; display: flex; align-items: center; gap: 14px; font-size: 11px; padding: 8px 18px; flex-wrap: wrap; justify-content: center;">
             <div style="display: flex; align-items: center; gap: 5px;">
                 <div style="width: 10px; height: 10px; background: #2bfca8; border-radius: 50%; box-shadow: 0 0 6px #2bfca8;"></div>
-                <span>Posição Atual</span>
+                <span data-i18n="surface.legend_current_pos">Posição Atual</span>
             </div>
             <div style="display: flex; align-items: center; gap: 5px;">
                 <div style="width: 10px; height: 10px; border: 2px solid #ffaa00; border-radius: 50%; box-shadow: 0 0 6px #ffaa00;"></div>
-                <span>Nave</span>
+                <span data-i18n="surface.legend_ship">Nave</span>
             </div>
             <div style="display: flex; align-items: center; gap: 5px;">
                 <div style="width: 9px; height: 9px; background: #00d4ff; border-radius: 2px; box-shadow: 0 0 6px #00d4ff;"></div>
-                <span>Colônia</span>
+                <span data-i18n="surface.legend_colony">Colônia</span>
             </div>
             <div style="display: flex; align-items: center; gap: 5px;">
                 <div style="width: 9px; height: 9px; background: #ffaa00; border-radius: 2px; box-shadow: 0 0 6px #ffaa00;"></div>
-                <span>Extração</span>
+                <span data-i18n="surface.legend_extraction">Extração</span>
             </div>
             <div style="display: flex; align-items: center; gap: 5px;">
                 <div style="width: 9px; height: 9px; background: #ff3311; transform: rotate(45deg); box-shadow: 0 0 6px #ff3311;"></div>
-                <span>Destroços</span>
+                <span data-i18n="surface.legend_wreckage">Destroços</span>
             </div>
             <div style="display: flex; align-items: center; gap: 5px;">
                 <div style="width: 9px; height: 9px; background: #00e5ff; border-radius: 2px; box-shadow: 0 0 6px #00e5ff;"></div>
-                <span>Pesquisa</span>
+                <span data-i18n="surface.legend_research">Pesquisa</span>
             </div>
             <div style="display: flex; align-items: center; gap: 5px;">
                 <div style="width: 9px; height: 9px; background: #ff6d00; border-radius: 50%; box-shadow: 0 0 6px #ff6d00;"></div>
-                <span>Geológico</span>
+                <span data-i18n="surface.legend_geological">Geológico</span>
             </div>
             <div style="display: flex; align-items: center; gap: 5px;">
                 <div style="width: 9px; height: 9px; background: #d500f9; transform: rotate(45deg); box-shadow: 0 0 6px #d500f9;"></div>
-                <span>Ruína / Lore</span>
+                <span data-i18n="surface.legend_ruin">Ruína / Lore</span>
             </div>
             <div style="display: flex; align-items: center; gap: 5px;">
                 <div style="width: 9px; height: 9px; background: #00ffaa; transform: rotate(45deg); box-shadow: 0 0 6px #00ffaa;"></div>
-                <span>Bio-Amostra</span>
+                <span data-i18n="surface.legend_bio">Bio-Amostra</span>
             </div>
             <div style="display: flex; align-items: center; gap: 5px;">
                 <div style="width: 12px; height: 12px; border: 1.5px dashed #00ffaa; border-radius: 50%;"></div>
-                <span>Raio Colônia</span>
+                <span data-i18n="surface.legend_colony_radius">Raio Colônia</span>
             </div>
         </div>
     </div>
 
-    <script src="/js/splash.js?v=20261110-2"></script>
-    <script src="/js/explorer.js"></script>
-    <script src="/js/surface-navigator.js?v=20261110-6"></script>
+    <script src="/js/i18n.js?v=20261112-1"></script>
+    <script src="/js/splash.js?v=20261112-1"></script>
+    <script src="/js/explorer.js?v=20261112-1"></script>
+    <script src="/js/surface-navigator.js?v=20261112-1"></script>
 </body>
 </html>
