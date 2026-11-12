@@ -1,0 +1,2244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Commander Scan — Live Galactic Heatmap</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: #020610;
+            color: #d4e8ff;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* Top Header */
+        header {
+            background: rgba(8, 19, 38, 0.94);
+            border-bottom: 1px solid rgba(0, 212, 255, 0.25);
+            backdrop-filter: blur(10px);
+            padding: 8px 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 100;
+            flex-shrink: 0;
+        }
+
+        .header-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header-title h1 {
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            color: #00d4ff;
+            text-transform: uppercase;
+        }
+
+        .badge-live {
+            background: rgba(43, 252, 168, 0.18);
+            border: 1px solid rgba(43, 252, 168, 0.5);
+            color: #2bfca8;
+            font-size: 10.5px;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 4px;
+            font-family: monospace;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .badge-live::before {
+            content: '';
+            width: 7px;
+            height: 7px;
+            background: #2bfca8;
+            border-radius: 50%;
+            display: inline-block;
+            box-shadow: 0 0 6px #2bfca8;
+            animation: pulse 1.6s infinite ease-in-out;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.85); }
+        }
+
+        .btn-github {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #8da4be;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 3px 6px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            line-height: 1;
+        }
+
+        .btn-github:hover {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(0, 212, 255, 0.5);
+            box-shadow: 0 0 8px rgba(0, 212, 255, 0.35);
+            transform: translateY(-1px);
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 12px;
+            color: #8da4be;
+        }
+
+        .header-controls b {
+            color: #fff;
+            font-family: monospace;
+        }
+
+        /* Mode Selector */
+        .view-mode-group {
+            display: flex;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.45);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-radius: 6px;
+            padding: 2px;
+            gap: 2px;
+        }
+
+        .btn-mode {
+            background: transparent;
+            border: none;
+            color: #8da4be;
+            font-size: 11.5px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .btn-mode:hover {
+            color: #fff;
+            background: rgba(0, 212, 255, 0.12);
+        }
+
+        .btn-mode.active {
+            background: rgba(0, 212, 255, 0.25);
+            color: #00d4ff;
+            box-shadow: 0 0 8px rgba(0, 212, 255, 0.35);
+        }
+
+        .btn-mode#btnModeScans.active {
+            background: rgba(255, 204, 0, 0.25);
+            color: #ffcc00;
+            box-shadow: 0 0 8px rgba(255, 204, 0, 0.4);
+        }
+
+        .btn-mode#btnModeDocking.active {
+            background: rgba(43, 252, 168, 0.25);
+            color: #2bfca8;
+            box-shadow: 0 0 8px rgba(43, 252, 168, 0.4);
+        }
+
+        /* Flow Subfilters */
+        .flow-subfilters {
+            display: flex;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.45);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 6px;
+            padding: 2px;
+            gap: 3px;
+        }
+
+        .btn-subfilter {
+            background: transparent;
+            border: none;
+            color: #8da4be;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .btn-subfilter:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .btn-subfilter.active {
+            background: rgba(255, 255, 255, 0.15);
+            color: #fff;
+        }
+
+        .btn-subfilter.filter-dep.active {
+            background: rgba(0, 180, 255, 0.25);
+            color: #00d4ff;
+            box-shadow: 0 0 8px rgba(0, 180, 255, 0.4);
+        }
+
+        .btn-subfilter.filter-arr.active {
+            background: rgba(255, 68, 68, 0.25);
+            color: #ff5555;
+            box-shadow: 0 0 8px rgba(255, 68, 68, 0.4);
+        }
+
+        .badge-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .dot-dep { background: #00d4ff; box-shadow: 0 0 6px #00d4ff; }
+        .dot-arr { background: #ff4444; box-shadow: 0 0 6px #ff4444; }
+
+        .zoom-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(0, 212, 255, 0.25);
+            padding: 2px 6px;
+            border-radius: 6px;
+        }
+
+        .btn-tool {
+            background: rgba(0, 212, 255, 0.12);
+            border: 1px solid rgba(0, 212, 255, 0.35);
+            color: #00d4ff;
+            width: 26px;
+            height: 24px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 13px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+        }
+
+        .btn-tool:hover {
+            background: rgba(0, 212, 255, 0.3);
+            border-color: #00d4ff;
+            color: #fff;
+        }
+
+        .zoom-level-text {
+            font-size: 11px;
+            font-family: monospace;
+            color: #2bfca8;
+            min-width: 44px;
+            text-align: center;
+        }
+
+        /* App Workspace Layout: Left Sidebar + Right Map */
+        .app-workspace {
+            flex: 1;
+            display: flex;
+            flex-direction: row;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Left Sidebar: 2-Column Telemetry & Traffic Panels */
+        .sidebar-panel {
+            width: 710px;
+            min-width: 710px;
+            max-width: 710px;
+            background: rgba(4, 10, 22, 0.96);
+            border-right: 1px solid rgba(0, 212, 255, 0.22);
+            display: flex;
+            flex-direction: row;
+            gap: 12px;
+            padding: 14px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            z-index: 50;
+            box-shadow: 4px 0 24px rgba(0, 0, 0, 0.5);
+            user-select: none;
+        }
+
+        .sidebar-col {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .sidebar-panel::-webkit-scrollbar {
+            width: 5px;
+        }
+        .sidebar-panel::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+        }
+        .sidebar-panel::-webkit-scrollbar-thumb {
+            background: rgba(0, 212, 255, 0.25);
+            border-radius: 3px;
+        }
+        .sidebar-panel::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 212, 255, 0.45);
+        }
+
+        /* Right Map Viewport (Movement Strictly Confined to this Container) */
+        .map-viewport {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            background: radial-gradient(circle at center, #07152d 0%, #020610 85%);
+            cursor: grab;
+        }
+
+        .map-viewport:active {
+            cursor: grabbing;
+        }
+
+        .galaxy-stage {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4000px;
+            height: 4000px;
+            transform-origin: 0 0;
+            box-shadow: 0 0 50px rgba(0, 212, 255, 0.2);
+            border: 1px solid rgba(0, 212, 255, 0.35);
+        }
+
+        .galaxy-image {
+            width: 4000px;
+            height: 4000px;
+            display: block;
+            pointer-events: none;
+            user-select: none;
+            image-rendering: auto;
+        }
+
+        .heat-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4000px;
+            height: 4000px;
+            pointer-events: none;
+        }
+
+        /* Reference Markers */
+        .marker {
+            position: absolute;
+            /* Dynamically counter-scales to maintain a crisp, readable screen size at any zoom level */
+            transform: translate(-50%, -50%) scale(calc(1 / var(--zoom-scale, 0.25)));
+            transform-origin: center center;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .marker-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            box-shadow: 0 0 10px currentColor;
+        }
+
+        .marker-label {
+            font-size: 10px;
+            font-weight: 700;
+            font-family: monospace;
+            margin-top: 3px;
+            text-shadow: 0 0 4px #000, 0 0 8px #000, 0 0 12px #000;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
+        #markerSagA {
+            top: 50%;
+            left: 50%;
+            color: #ffaa00;
+        }
+        #markerSagA .marker-dot { background: #ffaa00; }
+
+        #markerSol {
+            top: 70.32%;
+            left: 50%;
+            color: #00d4ff;
+        }
+        #markerSol .marker-dot { background: #00d4ff; }
+
+        /* HUD Sidebar Cards */
+        .hud-card {
+            background: rgba(8, 18, 36, 0.82);
+            border: 1px solid rgba(0, 212, 255, 0.25);
+            border-radius: 8px;
+            padding: 11px 13px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .hud-card.card-top {
+            height: 132px;
+            box-sizing: border-box;
+        }
+
+        .hud-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+
+        .card-title-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .card-pulse-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #00d4ff;
+            box-shadow: 0 0 8px #00d4ff;
+            animation: pulse-glow 2s infinite ease-in-out;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 0.6; transform: scale(0.9); }
+            50% { opacity: 1.0; transform: scale(1.15); }
+        }
+
+        .hud-card-title {
+            font-size: 11px;
+            font-weight: 700;
+            font-family: monospace;
+            color: #00d4ff;
+            letter-spacing: 0.6px;
+            text-transform: uppercase;
+        }
+
+        .badge-tag {
+            font-size: 9px;
+            font-family: monospace;
+            font-weight: 700;
+            padding: 1.5px 6px;
+            border-radius: 4px;
+        }
+        .tag-cyan { background: rgba(0, 212, 255, 0.15); color: #00d4ff; border: 1px solid rgba(0, 212, 255, 0.35); }
+        .tag-amber { background: rgba(255, 180, 0, 0.15); color: #ffb400; border: 1px solid rgba(255, 180, 0, 0.35); }
+        .tag-green { background: rgba(43, 252, 168, 0.15); color: #2bfca8; border: 1px solid rgba(43, 252, 168, 0.35); }
+
+        .section-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 10.5px;
+            margin-bottom: 4px;
+        }
+
+        .section-label {
+            color: #8da4be;
+            font-weight: 600;
+        }
+
+        .section-highlight {
+            font-family: monospace;
+            color: #2bfca8;
+            font-size: 11px;
+        }
+
+        /* 5-Minute Chart */
+        .chart-container {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            height: 48px;
+            gap: 5px;
+            padding: 4px 4px 0 4px;
+            background: rgba(0, 0, 0, 0.35);
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            margin-top: 4px;
+        }
+
+        .chart-col {
+            flex: 1;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+        }
+
+        .chart-val {
+            font-size: 9px;
+            font-family: monospace;
+            color: #8da4be;
+            margin-bottom: 2px;
+            line-height: 1;
+        }
+
+        .chart-bar {
+            width: 100%;
+            background: linear-gradient(to top, rgba(0, 160, 255, 0.35), rgba(0, 212, 255, 0.85));
+            border-radius: 3px 3px 0 0;
+            min-height: 3px;
+            transition: height 0.35s ease;
+            box-shadow: 0 0 6px rgba(0, 212, 255, 0.25);
+        }
+
+        .chart-col.current .chart-bar {
+            background: linear-gradient(to top, rgba(43, 252, 168, 0.35), rgba(43, 252, 168, 0.95));
+            box-shadow: 0 0 8px rgba(43, 252, 168, 0.35);
+        }
+
+        .chart-col.current .chart-val {
+            color: #2bfca8;
+            font-weight: 700;
+        }
+
+        .chart-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 9px;
+            font-family: monospace;
+            color: #6a88a8;
+            padding: 2px 4px 0 4px;
+        }
+
+        /* Top 5 Lists */
+        .hud-list {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            margin-top: 4px;
+        }
+
+        .hud-list-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 5px 8px;
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .hud-list-item:hover {
+            background: rgba(0, 212, 255, 0.12);
+            border-color: rgba(0, 212, 255, 0.4);
+            transform: translateX(2px);
+        }
+
+        .item-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            overflow: hidden;
+        }
+
+        .item-rank {
+            font-size: 10px;
+            font-family: monospace;
+            font-weight: 700;
+            color: #8da4be;
+            min-width: 18px;
+        }
+        .item-rank.rank-1 { color: #ffd700; text-shadow: 0 0 6px rgba(255, 215, 0, 0.4); }
+        .item-rank.rank-2 { color: #e0e0e0; }
+        .item-rank.rank-3 { color: #cd7f32; }
+
+        .item-info {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .item-name {
+            font-size: 11px;
+            font-weight: 600;
+            color: #e5f1ff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .item-sub {
+            font-size: 9.5px;
+            color: #6a88a8;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .item-count-box {
+            text-align: right;
+            margin-left: 8px;
+            flex-shrink: 0;
+        }
+
+        .item-count {
+            font-size: 12px;
+            font-family: monospace;
+            font-weight: 700;
+            color: #00d4ff;
+        }
+        .item-count.count-amber { color: #ffb400; text-shadow: 0 0 6px rgba(255, 180, 0, 0.35); }
+        .item-count.count-green { color: #2bfca8; text-shadow: 0 0 6px rgba(43, 252, 168, 0.35); }
+
+        .item-unit {
+            font-size: 8.5px;
+            color: #8da4be;
+            text-transform: uppercase;
+            display: block;
+        }
+
+        .empty-list {
+            font-size: 10px;
+            color: #6a88a8;
+            font-style: italic;
+            text-align: center;
+            padding: 8px 0;
+        }
+
+        /* Docking Hubs Grid */
+        .docking-metrics-grid {
+            display: flex;
+            gap: 8px;
+            margin-top: 6px;
+            flex: 1;
+        }
+
+        .metric-box {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(43, 252, 168, 0.25);
+            border-radius: 6px;
+            padding: 8px 4px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .metric-val {
+            display: block;
+            font-size: 20px;
+            font-weight: 700;
+            font-family: monospace;
+            color: #2bfca8;
+            text-shadow: 0 0 8px rgba(43, 252, 168, 0.35);
+            line-height: 1.1;
+        }
+
+        .metric-sub {
+            display: block;
+            font-size: 9px;
+            color: #8da4be;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 4px;
+        }
+
+        /* Trade Route Cards */
+        .trade-route-item {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 6px;
+            padding: 7px 9px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            transition: all 0.15s ease;
+        }
+
+        .trade-route-item:hover {
+            background: rgba(0, 212, 255, 0.08);
+            border-color: rgba(0, 212, 255, 0.35);
+        }
+
+        .trade-header-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .trade-comm-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: #ffd700;
+            text-shadow: 0 0 6px rgba(255, 215, 0, 0.3);
+        }
+
+        .trade-profit-badge {
+            font-size: 10px;
+            font-family: monospace;
+            font-weight: 700;
+            color: #2bfca8;
+            background: rgba(43, 252, 168, 0.12);
+            border: 1px solid rgba(43, 252, 168, 0.35);
+            padding: 1px 5px;
+            border-radius: 4px;
+        }
+
+        .trade-step-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 10px;
+        }
+
+        .step-tag {
+            font-size: 8px;
+            font-weight: 700;
+            font-family: monospace;
+            padding: 1px 4px;
+            border-radius: 3px;
+            min-width: 28px;
+            text-align: center;
+        }
+        .tag-buy { background: rgba(0, 212, 255, 0.2); color: #00d4ff; border: 1px solid rgba(0, 212, 255, 0.4); }
+        .tag-sell { background: rgba(255, 180, 0, 0.2); color: #ffb400; border: 1px solid rgba(255, 180, 0, 0.4); }
+
+        .step-loc {
+            flex: 1;
+            margin: 0 6px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: #d1e2f6;
+            cursor: pointer;
+        }
+        .step-loc:hover {
+            color: #00d4ff;
+            text-decoration: underline;
+        }
+        .step-loc small {
+            color: #6a88a8;
+        }
+
+        .step-price {
+            font-family: monospace;
+            font-weight: 600;
+            color: #8da4be;
+            white-space: nowrap;
+        }
+
+        .trade-footer-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 9px;
+            color: #6a88a8;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding-top: 3px;
+            margin-top: 1px;
+        }
+
+        .trade-meta b {
+            color: #d1e2f6;
+        }
+
+        .trade-t9-badge {
+            color: #2bfca8;
+            font-weight: 700;
+            font-family: monospace;
+        }
+
+        /* Loop trade specific styling */
+        .loop-leg {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 9.5px;
+            color: #8da4be;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 2.5px 5px;
+            border-radius: 4px;
+        }
+
+        .loop-leg-arrow {
+            color: #00d4ff;
+            font-weight: bold;
+            margin-right: 4px;
+        }
+        .loop-leg-arrow.down {
+            color: #ffb400;
+        }
+
+        .loop-comm {
+            color: #e5f1ff;
+            font-weight: 600;
+        }
+
+        .loop-leg-profit {
+            color: #2bfca8;
+            font-family: monospace;
+            font-weight: 700;
+            margin-left: auto;
+        }
+
+        /* Footer Credits */
+        footer {
+            background: rgba(4, 10, 20, 0.95);
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 6px 18px;
+            font-size: 11px;
+            color: #6a88a8;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+            z-index: 100;
+        }
+
+        footer a {
+            color: #00d4ff;
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        .nav-hint {
+            color: #8da4be;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-title">
+            <h1>🛰️ Commander Scan — Live Heatmap</h1>
+            <span class="badge-live">LIVE 30-MIN WINDOW</span>
+            <a class="btn-github" href="https://github.com/icemagno/elite-explorer" target="_blank" rel="noopener noreferrer" title="GitHub: icemagno/elite-explorer">
+                <svg viewBox="0 0 16 16" width="15" height="15" fill="currentColor">
+                    <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+                </svg>
+            </a>
+        </div>
+        <div class="header-controls">
+            <!-- Mode Switcher: Global Traffic vs Arrivals/Departures vs System Scans vs Docking -->
+            <div class="view-mode-group">
+                <button class="btn-mode active" id="btnModeGlobal" title="All Active Traffic Heatmap">Global</button>
+                <button class="btn-mode" id="btnModeFlow" title="Arrivals and Departures Flow">Arrivals / Departures</button>
+                <button class="btn-mode" id="btnModeScans" title="Exploration & System Scans (Yellow)">Scans</button>
+                <button class="btn-mode" id="btnModeDocking" title="Station & Fleet Carrier Docking (Green)">Docking</button>
+            </div>
+
+            <!-- Subfilters for Arrivals / Departures -->
+            <div class="flow-subfilters" id="flowSubfilters" style="display: none;">
+                <button class="btn-subfilter active" id="filterAllFlow" title="Show both Departures and Arrivals">All</button>
+                <button class="btn-subfilter filter-dep" id="filterDepartures" title="Show Outgoing Signals (Blue)"><span class="badge-dot dot-dep"></span> Departures (<span id="countDep">0</span>)</button>
+                <button class="btn-subfilter filter-arr" id="filterArrivals" title="Show Incoming Signals (Red)"><span class="badge-dot dot-arr"></span> Arrivals (<span id="countArr">0</span>)</button>
+            </div>
+
+            <div class="zoom-toolbar">
+                <button class="btn-tool" id="btnZoomOut" title="Zoom Out (-)">−</button>
+                <span class="zoom-level-text" id="zoomLevelText">100%</span>
+                <button class="btn-tool" id="btnZoomIn" title="Zoom In (+)">+</button>
+                <button class="btn-tool" id="btnResetView" title="Reset View (Center & Fit)">⊙</button>
+            </div>
+            <span>Signals: <b id="statSignals" style="color: #2bfca8; font-family: monospace;">0.0/s</b></span>
+            <span>Refresh: <b id="statTimer">30s</b></span>
+        </div>
+    </header>
+
+    <div class="app-workspace">
+        <!-- Left Sidebar: 2-Column Telemetry HUD Cards -->
+        <aside class="sidebar-panel" id="sidebarPanel">
+            <!-- Left Column: Discovery + Systems -->
+            <div class="sidebar-col">
+                <!-- Card 1: Live Discovery & Telemetry (5m Window) -->
+                <div class="hud-card card-top">
+                    <div class="hud-card-header">
+                        <div class="card-title-group">
+                            <span class="card-pulse-dot"></span>
+                            <span class="hud-card-title">Live Discovery</span>
+                        </div>
+                        <span class="badge-tag tag-cyan">5m Window</span>
+                    </div>
+                    <div class="section-row" style="margin-top: 6px;">
+                        <span class="section-label">Discovered Cmdrs: <b id="statCount" style="color: #00d4ff; font-family: monospace; font-size: 11.5px; margin-left: 2px;">0</b></span>
+                        <span class="section-highlight"><b id="cardDiscoveredTotal">0</b> new in 5m</span>
+                    </div>
+                    
+                    <!-- Mini Bar Chart -->
+                    <div class="chart-container" id="discoveredChart">
+                        <div class="chart-col"><span class="chart-val">0</span><div class="chart-bar" style="height: 10%;"></div></div>
+                        <div class="chart-col"><span class="chart-val">0</span><div class="chart-bar" style="height: 10%;"></div></div>
+                        <div class="chart-col"><span class="chart-val">0</span><div class="chart-bar" style="height: 10%;"></div></div>
+                        <div class="chart-col"><span class="chart-val">0</span><div class="chart-bar" style="height: 10%;"></div></div>
+                        <div class="chart-col current"><span class="chart-val">0</span><div class="chart-bar" style="height: 10%;"></div></div>
+                    </div>
+                    <div class="chart-labels">
+                        <span>-4m</span>
+                        <span>-3m</span>
+                        <span>-2m</span>
+                        <span>-1m</span>
+                        <span style="color: #2bfca8; font-weight: bold;">now</span>
+                    </div>
+                </div>
+
+                <!-- Card 2: Top 5 Busiest Systems -->
+                <div class="hud-card">
+                    <div class="hud-card-header">
+                        <div class="card-title-group">
+                            <span style="color: #ffd700; font-size: 13px;">⭐</span>
+                            <span class="hud-card-title">Top 5 Busiest Systems</span>
+                        </div>
+                        <span class="badge-tag tag-amber">30m Rolling</span>
+                    </div>
+                    <div class="hud-list" id="topSystemsList">
+                        <div class="empty-list">Awaiting galactic telemetry...</div>
+                    </div>
+                </div>
+
+                <!-- Card 3: Single-Hop Trade Routes -->
+                <div class="hud-card">
+                    <div class="hud-card-header">
+                        <div class="card-title-group">
+                            <span style="color: #ffd700; font-size: 13px;">🚀</span>
+                            <span class="hud-card-title">Single-Hop Trade (≤ 25 Ly)</span>
+                        </div>
+                        <span class="badge-tag tag-cyan">Max Profit</span>
+                    </div>
+                    <div class="hud-list" id="singleHopTradeList">
+                        <div class="empty-list">Monitoring commodity markets...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Docking Overview (Yellow Box) + Top 5 Stations (Red Box) + Loop Trade -->
+            <div class="sidebar-col">
+                <!-- Card 4: Docking Overview (Área Amarela) -->
+                <div class="hud-card card-top">
+                    <div class="hud-card-header">
+                        <div class="card-title-group">
+                            <span style="color: #00d4ff; font-size: 13px;">🛸</span>
+                            <span class="hud-card-title">Docking Overview</span>
+                        </div>
+                        <span class="badge-tag tag-green">30m Rolling</span>
+                    </div>
+                    <div class="docking-metrics-grid">
+                        <div class="metric-box">
+                            <span class="metric-val" id="cardDockPorts">0</span>
+                            <span class="metric-sub">Active Ports</span>
+                        </div>
+                        <div class="metric-box">
+                            <span class="metric-val" id="cardDockTotal">0</span>
+                            <span class="metric-sub">Total Docks</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 5: Top 5 Busiest Stations (Área Vermelha) -->
+                <div class="hud-card">
+                    <div class="hud-card-header">
+                        <div class="card-title-group">
+                            <span style="color: #2bfca8; font-size: 13px;">⚓</span>
+                            <span class="hud-card-title">Top 5 Busiest Stations</span>
+                        </div>
+                        <span class="badge-tag tag-green">30m Rolling</span>
+                    </div>
+                    <div class="hud-list" id="topStationsList">
+                        <div class="empty-list">Awaiting docking telemetry...</div>
+                    </div>
+                </div>
+
+                <!-- Card 6: Roundtrip Loop Trade -->
+                <div class="hud-card">
+                    <div class="hud-card-header">
+                        <div class="card-title-group">
+                            <span style="color: #2bfca8; font-size: 13px;">🔄</span>
+                            <span class="hud-card-title">Roundtrip Loop Trade</span>
+                        </div>
+                        <span class="badge-tag tag-green">Loop Arbitrage</span>
+                    </div>
+                    <div class="hud-list" id="loopTradeList">
+                        <div class="empty-list">Calculating roundtrip trade loops...</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Right Container: 4K Galaxy Map Viewport -->
+        <main class="map-viewport" id="viewport">
+            <div class="galaxy-stage" id="galaxyStage">
+                <!-- Layer 1: Galaxy Image -->
+                <img class="galaxy-image" src="/img/mw.jpg" alt="Milky Way Galaxy Map - ESA">
+                
+                <!-- Layer 2: Heatmap Canvas (4000x4000 native) -->
+                <canvas class="heat-canvas" id="heatCanvas" width="4000" height="4000"></canvas>
+
+                <!-- Layer 3: Reference Markers -->
+                <div class="marker" id="markerSagA">
+                    <div class="marker-dot"></div>
+                    <span class="marker-label">Sagittarius A*</span>
+                </div>
+                <div class="marker" id="markerSol">
+                    <div class="marker-dot"></div>
+                    <span class="marker-label">☉ Sol</span>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <footer>
+        <div>
+            Image Credit: <a href="https://www.esa.int/" target="_blank" rel="noopener noreferrer">European Space Agency (ESA)</a> • Elite Dangerous Projection
+        </div>
+        <div class="nav-hint">
+            Drag to pan • Mouse wheel or + / − buttons to zoom • Pinch on touch
+        </div>
+        <div>
+            Retention: Rolling 30 minutes • Refresh: 30s
+        </div>
+    </footer>
+
+    <script>
+        (function() {
+            const viewport = document.getElementById('viewport');
+            const stage = document.getElementById('galaxyStage');
+            const canvas = document.getElementById('heatCanvas');
+            const ctx = canvas.getContext('2d');
+            const statCount = document.getElementById('statCount');
+            const statSignals = document.getElementById('statSignals');
+            const statTimer = document.getElementById('statTimer');
+            const zoomLevelText = document.getElementById('zoomLevelText');
+
+            const sidebarPanel = document.getElementById('sidebarPanel');
+            const cardDiscoveredTotal = document.getElementById('cardDiscoveredTotal');
+            const discoveredChart = document.getElementById('discoveredChart');
+            const topSystemsList = document.getElementById('topSystemsList');
+            const topStationsList = document.getElementById('topStationsList');
+            const cardDockPorts = document.getElementById('cardDockPorts');
+            const cardDockTotal = document.getElementById('cardDockTotal');
+            const singleHopTradeList = document.getElementById('singleHopTradeList');
+            const loopTradeList = document.getElementById('loopTradeList');
+
+            const btnZoomIn = document.getElementById('btnZoomIn');
+            const btnZoomOut = document.getElementById('btnZoomOut');
+            const btnResetView = document.getElementById('btnResetView');
+
+            // Mode and Filter buttons
+            const btnModeGlobal = document.getElementById('btnModeGlobal');
+            const btnModeFlow = document.getElementById('btnModeFlow');
+            const btnModeScans = document.getElementById('btnModeScans');
+            const btnModeDocking = document.getElementById('btnModeDocking');
+            const flowSubfilters = document.getElementById('flowSubfilters');
+            const filterAllFlow = document.getElementById('filterAllFlow');
+            const filterDepartures = document.getElementById('filterDepartures');
+            const filterArrivals = document.getElementById('filterArrivals');
+            const countDep = document.getElementById('countDep');
+            const countArr = document.getElementById('countArr');
+
+            // View Mode: 'global', 'flow', 'scans', or 'docking'
+            let currentMode = 'global';
+            // Flow Filter: 'all', 'departures', or 'arrivals'
+            let currentFlowFilter = 'all';
+
+            let globalPoints = [];
+            let flowDepartures = [];
+            let flowArrivals = [];
+            let scanPoints = [];
+            let dockingPoints = [];
+            let topSystemsData = [];
+            let prevTopSystemsStr = '';
+
+            // Native 1:1 dimensions matching ESA imagery (4000 x 4000 px)
+            const STAGE_SIZE = 4000;
+            stage.style.width = `${STAGE_SIZE}px`;
+            stage.style.height = `${STAGE_SIZE}px`;
+
+            // Crisp internal canvas resolution (4000 x 4000 px native)
+            canvas.width = STAGE_SIZE;
+            canvas.height = STAGE_SIZE;
+
+            // Navigation state: Zoom and Pan
+            let baseFitScale = 0.25;
+            let scale = 0.25;
+            let posX = 0;
+            let posY = 0;
+            let minScale = 0.1;
+            let maxScale = 6.0;
+
+            let isDragging = false;
+            let startDragX = 0;
+            let startDragY = 0;
+            let startPosX = 0;
+            let startPosY = 0;
+
+            let secondsUntilRefresh = 30;
+            let rerenderTimer = null;
+
+            function scheduleHeatmapRerender(delay = 40) {
+                if (rerenderTimer) clearTimeout(rerenderTimer);
+                rerenderTimer = setTimeout(() => {
+                    renderHeatmap();
+                }, delay);
+            }
+
+            function applyTransform() {
+                stage.style.transform = `translate(${posX}px, ${posY}px) scale(${scale})`;
+                stage.style.setProperty('--zoom-scale', scale);
+                const zoomPercent = Math.round((scale / baseFitScale) * 100);
+                zoomLevelText.textContent = `${zoomPercent}%`;
+            }
+
+            function resetToFit(fullFit = false) {
+                const vw = viewport.clientWidth;
+                const vh = viewport.clientHeight;
+                baseFitScale = Math.min(vw / STAGE_SIZE, vh / STAGE_SIZE) * 0.94;
+                minScale = baseFitScale * 0.45;
+                maxScale = baseFitScale * 25.0; // Up to 2500% zoom
+
+                if (fullFit) {
+                    scale = baseFitScale;
+                    posX = (vw - STAGE_SIZE * scale) / 2;
+                    posY = (vh - STAGE_SIZE * scale) / 2;
+                } else {
+                    // Inicia com zoom preenchendo toda a tela sem sobras laterais (~218%), enquadrando o corredor ativo Sol / Sag A*
+                    scale = baseFitScale * 2.18;
+                    const targetU = 0.50;
+                    const targetV = 0.615;
+                    posX = (vw / 2) - (targetU * STAGE_SIZE * scale);
+                    posY = (vh / 2) - (targetV * STAGE_SIZE * scale);
+                }
+                applyTransform();
+                scheduleHeatmapRerender(10);
+            }
+
+            // Focal zoom centered on cursor or viewport center
+            function zoomAt(factor, focalX, focalY) {
+                const oldScale = scale;
+                const newScale = Math.max(minScale, Math.min(maxScale, oldScale * factor));
+                if (newScale === oldScale) return;
+
+                // Keep focal point anchored under cursor:
+                const stageX = (focalX - posX) / oldScale;
+                const stageY = (focalY - posY) / oldScale;
+
+                scale = newScale;
+                posX = focalX - stageX * newScale;
+                posY = focalY - stageY * newScale;
+                applyTransform();
+                scheduleHeatmapRerender(40);
+            }
+
+            // Mouse / Pointer events for pan & drag
+            viewport.addEventListener('mousedown', (e) => {
+                if (e.button !== 0) return; // Primary mouse button only
+                isDragging = true;
+                startDragX = e.clientX;
+                startDragY = e.clientY;
+                startPosX = posX;
+                startPosY = posY;
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                const dx = e.clientX - startDragX;
+                const dy = e.clientY - startDragY;
+                posX = startPosX + dx;
+                posY = startPosY + dy;
+                applyTransform();
+            });
+
+            window.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+
+            // Mouse wheel zoom
+            viewport.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const rect = viewport.getBoundingClientRect();
+                const focalX = e.clientX - rect.left;
+                const focalY = e.clientY - rect.top;
+                const factor = e.deltaY < 0 ? 1.18 : (1 / 1.18);
+                zoomAt(factor, focalX, focalY);
+            }, { passive: false });
+
+            // Toolbar buttons
+            btnZoomIn.addEventListener('click', () => {
+                const rect = viewport.getBoundingClientRect();
+                zoomAt(1.25, rect.width / 2, rect.height / 2);
+            });
+
+            btnZoomOut.addEventListener('click', () => {
+                const rect = viewport.getBoundingClientRect();
+                zoomAt(1 / 1.25, rect.width / 2, rect.height / 2);
+            });
+
+            btnResetView.addEventListener('click', () => {
+                // Alterna entre a visão inicial sem sobras e a visão 100% da galáxia completa
+                if (Math.abs(scale - baseFitScale * 2.18) < 0.15) {
+                    resetToFit(true);
+                } else {
+                    resetToFit(false);
+                }
+            });
+
+            // Touch support for tablets and mobile (pinch-to-zoom & single-finger drag)
+            let touchStartDist = 0;
+            let touchStartScale = 1;
+
+            viewport.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 1) {
+                    isDragging = true;
+                    startDragX = e.touches[0].clientX;
+                    startDragY = e.touches[0].clientY;
+                    startPosX = posX;
+                    startPosY = posY;
+                } else if (e.touches.length === 2) {
+                    isDragging = false;
+                    const dx = e.touches[0].clientX - e.touches[1].clientX;
+                    const dy = e.touches[0].clientY - e.touches[1].clientY;
+                    touchStartDist = Math.hypot(dx, dy);
+                    touchStartScale = scale;
+                }
+            }, { passive: true });
+
+            viewport.addEventListener('touchmove', (e) => {
+                if (e.touches.length === 1 && isDragging) {
+                    const dx = e.touches[0].clientX - startDragX;
+                    const dy = e.touches[0].clientY - startDragY;
+                    posX = startPosX + dx;
+                    posY = startPosY + dy;
+                    applyTransform();
+                } else if (e.touches.length === 2 && touchStartDist > 0) {
+                    const dx = e.touches[0].clientX - e.touches[1].clientX;
+                    const dy = e.touches[0].clientY - e.touches[1].clientY;
+                    const dist = Math.hypot(dx, dy);
+                    const factor = dist / touchStartDist;
+                    const rect = viewport.getBoundingClientRect();
+                    const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+                    const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+                    zoomAt(factor * (touchStartScale / scale), midX, midY);
+                }
+            }, { passive: true });
+
+            viewport.addEventListener('touchend', () => {
+                isDragging = false;
+                touchStartDist = 0;
+            });
+
+            // Render dynamic heatmap dispatcher
+            function renderHeatmap() {
+                if (currentMode === 'global') {
+                    renderGlobalHeatmap();
+                } else if (currentMode === 'flow') {
+                    renderFlowHeatmap();
+                } else if (currentMode === 'scans') {
+                    renderScanHeatmap();
+                } else if (currentMode === 'docking') {
+                    renderDockingHeatmap();
+                }
+            }
+
+            // Global traffic heatmap (astrophysical palette: cyan -> emerald -> golden amber -> warm star cream)
+            function renderGlobalHeatmap() {
+                const w = canvas.width;
+                const h = canvas.height;
+                ctx.clearRect(0, 0, w, h);
+                if (globalPoints && globalPoints.length > 0) {
+                    const zoomFactor = Math.max(1.0, scale / (baseFitScale || 0.25));
+                    const pointRadius = Math.max(6, Math.round(46 / Math.pow(zoomFactor, 0.54)));
+
+                    const stampSize = pointRadius * 2;
+                    const stampCanvas = document.createElement('canvas');
+                    stampCanvas.width = stampSize;
+                    stampCanvas.height = stampSize;
+                    const sCtx = stampCanvas.getContext('2d');
+                    const center = pointRadius;
+
+                    const totalCount = globalPoints.length || 1;
+                    const alpha = Math.min(0.20, Math.max(0.07, 130 / Math.sqrt(totalCount * 14)));
+
+                    const grad = sCtx.createRadialGradient(center, center, 0, center, center, pointRadius);
+                    grad.addColorStop(0.00, `rgba(255, 238, 195, ${alpha * 1.15})`);
+                    grad.addColorStop(0.20, `rgba(255, 175, 45, ${alpha * 0.90})`);
+                    grad.addColorStop(0.45, `rgba(43, 230, 165, ${alpha * 0.65})`);
+                    grad.addColorStop(0.72, `rgba(0, 190, 255, ${alpha * 0.35})`);
+                    grad.addColorStop(0.92, `rgba(0, 140, 255, ${alpha * 0.10})`);
+                    grad.addColorStop(1.00, 'rgba(0, 100, 255, 0.0)');
+
+                    sCtx.fillStyle = grad;
+                    sCtx.beginPath();
+                    sCtx.arc(center, center, pointRadius, 0, Math.PI * 2);
+                    sCtx.fill();
+
+                    ctx.save();
+                    ctx.globalCompositeOperation = 'lighter';
+                    const offset = pointRadius;
+                    for (let i = 0; i < globalPoints.length; i++) {
+                        const pt = globalPoints[i];
+                        ctx.drawImage(stampCanvas, pt[0] * w - offset, pt[1] * h - offset);
+                    }
+                    ctx.restore();
+                }
+                renderTopSystemsOverlay();
+            }
+
+            // Flow heatmap: Outgoing/Departures (Electric Blue) and Incoming/Arrivals (Fiery Red)
+            function renderFlowHeatmap() {
+                const w = canvas.width;
+                const h = canvas.height;
+                ctx.clearRect(0, 0, w, h);
+
+                const showDep = (currentFlowFilter === 'all' || currentFlowFilter === 'departures');
+                const showArr = (currentFlowFilter === 'all' || currentFlowFilter === 'arrivals');
+
+                const zoomFactor = Math.max(1.0, scale / (baseFitScale || 0.25));
+                const pointRadius = Math.max(6, Math.round(44 / Math.pow(zoomFactor, 0.54)));
+                const stampSize = pointRadius * 2;
+                const center = pointRadius;
+                const offset = pointRadius;
+
+                ctx.save();
+                ctx.globalCompositeOperation = 'lighter';
+
+                // 1. Departures Layer (Electric Blue / Cyan)
+                if (showDep && flowDepartures.length > 0) {
+                    const depStamp = document.createElement('canvas');
+                    depStamp.width = stampSize;
+                    depStamp.height = stampSize;
+                    const dCtx = depStamp.getContext('2d');
+                    const totalDep = flowDepartures.length || 1;
+                    const alphaDep = Math.min(0.24, Math.max(0.08, 120 / Math.sqrt(totalDep * 12)));
+
+                    const dGrad = dCtx.createRadialGradient(center, center, 0, center, center, pointRadius);
+                    dGrad.addColorStop(0.00, `rgba(200, 245, 255, ${alphaDep * 1.20})`);
+                    dGrad.addColorStop(0.20, `rgba(0, 215, 255, ${alphaDep * 0.95})`);
+                    dGrad.addColorStop(0.50, `rgba(0, 130, 255, ${alphaDep * 0.65})`);
+                    dGrad.addColorStop(0.75, `rgba(0, 60, 240, ${alphaDep * 0.30})`);
+                    dGrad.addColorStop(1.00, 'rgba(0, 30, 180, 0.0)');
+
+                    dCtx.fillStyle = dGrad;
+                    dCtx.beginPath();
+                    dCtx.arc(center, center, pointRadius, 0, Math.PI * 2);
+                    dCtx.fill();
+
+                    for (let i = 0; i < flowDepartures.length; i++) {
+                        const pt = flowDepartures[i];
+                        ctx.drawImage(depStamp, pt[0] * w - offset, pt[1] * h - offset);
+                    }
+                }
+
+                // 2. Arrivals Layer (Fiery Red / Neon Crimson)
+                if (showArr && flowArrivals.length > 0) {
+                    const arrStamp = document.createElement('canvas');
+                    arrStamp.width = stampSize;
+                    arrStamp.height = stampSize;
+                    const aCtx = arrStamp.getContext('2d');
+                    const totalArr = flowArrivals.length || 1;
+                    const alphaArr = Math.min(0.24, Math.max(0.08, 120 / Math.sqrt(totalArr * 12)));
+
+                    const aGrad = aCtx.createRadialGradient(center, center, 0, center, center, pointRadius);
+                    aGrad.addColorStop(0.00, `rgba(255, 240, 210, ${alphaArr * 1.20})`);
+                    aGrad.addColorStop(0.20, `rgba(255, 70, 40, ${alphaArr * 0.95})`);
+                    aGrad.addColorStop(0.50, `rgba(235, 15, 25, ${alphaArr * 0.65})`);
+                    aGrad.addColorStop(0.75, `rgba(180, 0, 35, ${alphaArr * 0.30})`);
+                    aGrad.addColorStop(1.00, 'rgba(120, 0, 25, 0.0)');
+
+                    aCtx.fillStyle = aGrad;
+                    aCtx.beginPath();
+                    aCtx.arc(center, center, pointRadius, 0, Math.PI * 2);
+                    aCtx.fill();
+
+                    for (let i = 0; i < flowArrivals.length; i++) {
+                        const pt = flowArrivals[i];
+                        ctx.drawImage(arrStamp, pt[0] * w - offset, pt[1] * h - offset);
+                    }
+                }
+
+                ctx.restore();
+
+                // 3. Discreet tactical labels for arrivals:
+                // Only latest destination of active travelers, shown at regional zoom (zoomFactor >= 2.0x)
+                if (showArr) {
+                    renderArrivalLabels(w, h, zoomFactor);
+                }
+                renderTopSystemsOverlay();
+            }
+
+            // Render discreet tactical system labels for arrivals
+            function renderArrivalLabels(w, h, zoomFactor) {
+                if (!flowArrivals || flowArrivals.length === 0) return;
+                if (zoomFactor < 2.0) return;
+
+                const fontPx = Math.max(7, Math.round(8.5 / scale));
+                const labelOffset = Math.round(5 / scale);
+                const renderedNames = new Set();
+
+                // Cluster suppression: pontos com vizinhos num raio de 55px na tela são suprimidos para evitar poluição
+                const MIN_ISOLATION_PX = 55;
+                const minIsoCanvas = MIN_ISOLATION_PX / scale;
+                const minIsoCanvasSq = minIsoCanvas * minIsoCanvas;
+
+                const isCluster = new Uint8Array(flowArrivals.length);
+                for (let i = 0; i < flowArrivals.length; i++) {
+                    const ax = flowArrivals[i][0] * w;
+                    const ay = flowArrivals[i][1] * h;
+                    for (let j = i + 1; j < flowArrivals.length; j++) {
+                        const dx = ax - flowArrivals[j][0] * w;
+                        const dy = ay - flowArrivals[j][1] * h;
+                        if (dx * dx + dy * dy < minIsoCanvasSq) {
+                            isCluster[i] = 1;
+                            isCluster[j] = 1;
+                        }
+                    }
+                }
+
+                ctx.save();
+                ctx.font = `500 ${fontPx}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace`;
+                ctx.fillStyle = 'rgba(255, 240, 215, 0.95)';
+                ctx.shadowColor = '#000000';
+                ctx.shadowBlur = Math.round(3 / scale);
+
+                const placedBoxes = [];
+
+                for (let i = 0; i < flowArrivals.length; i++) {
+                    if (isCluster[i] === 1) continue; // Pula nós que fazem parte de clusters
+
+                    const pt = flowArrivals[i];
+                    const px = pt[0] * w;
+                    const py = pt[1] * h;
+                    const name = pt[2];
+
+                    if (!name || name.trim() === '') continue;
+                    if (renderedNames.has(name)) continue;
+
+                    const textW = ctx.measureText(name).width;
+                    const box = { x1: px + labelOffset, y1: py - fontPx, x2: px + labelOffset + textW, y2: py + fontPx * 0.5 };
+                    let collision = false;
+                    for (let b = 0; b < placedBoxes.length; b++) {
+                        const pb = placedBoxes[b];
+                        if (!(box.x2 < pb.x1 || box.x1 > pb.x2 || box.y2 < pb.y1 || box.y1 > pb.y2)) {
+                            collision = true;
+                            break;
+                        }
+                    }
+                    if (collision) continue;
+
+                    renderedNames.add(name);
+                    placedBoxes.push(box);
+                    ctx.fillText(name, px + labelOffset, py + Math.round(3 / scale));
+                }
+                ctx.restore();
+            }
+
+            // Exploration Scans Heatmap (Solar Yellow / Radiant Amber)
+            function renderScanHeatmap() {
+                const w = canvas.width;
+                const h = canvas.height;
+                ctx.clearRect(0, 0, w, h);
+                if (scanPoints && scanPoints.length > 0) {
+                    const zoomFactor = Math.max(1.0, scale / (baseFitScale || 0.25));
+                    const pointRadius = Math.max(6, Math.round(44 / Math.pow(zoomFactor, 0.54)));
+                    const stampSize = pointRadius * 2;
+                    const center = pointRadius;
+                    const offset = pointRadius;
+
+                    // Pre-render radiant solar yellow stamp
+                    const scanStamp = document.createElement('canvas');
+                    scanStamp.width = stampSize;
+                    scanStamp.height = stampSize;
+                    const sCtx = scanStamp.getContext('2d');
+                    const totalScans = scanPoints.length || 1;
+                    const alpha = Math.min(0.25, Math.max(0.08, 120 / Math.sqrt(totalScans * 10)));
+
+                    const grad = sCtx.createRadialGradient(center, center, 0, center, center, pointRadius);
+                    grad.addColorStop(0.00, `rgba(255, 255, 230, ${alpha * 1.25})`);
+                    grad.addColorStop(0.25, `rgba(255, 215, 0, ${alpha * 0.95})`);
+                    grad.addColorStop(0.55, `rgba(255, 170, 0, ${alpha * 0.60})`);
+                    grad.addColorStop(0.80, `rgba(220, 110, 0, ${alpha * 0.25})`);
+                    grad.addColorStop(1.00, 'rgba(180, 80, 0, 0.0)');
+
+                    sCtx.fillStyle = grad;
+                    sCtx.beginPath();
+                    sCtx.arc(center, center, pointRadius, 0, Math.PI * 2);
+                    sCtx.fill();
+
+                    ctx.save();
+                    ctx.globalCompositeOperation = 'lighter';
+
+                    for (let i = 0; i < scanPoints.length; i++) {
+                        const pt = scanPoints[i];
+                        const count = pt[2] || 1;
+                        const passes = Math.min(3, Math.max(1, Math.round(Math.log2(count + 1))));
+                        const px = pt[0] * w - offset;
+                        const py = pt[1] * h - offset;
+                        for (let p = 0; p < passes; p++) {
+                            ctx.drawImage(scanStamp, px, py);
+                        }
+                    }
+                    ctx.restore();
+
+                    // Discreet tactical labels when zoomed in (zoomFactor >= 2.0x)
+                    if (zoomFactor >= 2.0) {
+                        renderScanLabels(w, h, zoomFactor);
+                    }
+                }
+                renderTopSystemsOverlay();
+            }
+
+            function renderScanLabels(w, h, zoomFactor) {
+                if (!scanPoints || scanPoints.length === 0) return;
+                if (zoomFactor < 2.0) return;
+
+                const fontPx = Math.max(7, Math.round(8.5 / scale));
+                const labelOffset = Math.round(5 / scale);
+                const renderedNames = new Set();
+
+                // Cluster suppression: pontos com vizinhos num raio de 55px na tela são suprimidos para evitar poluição
+                const MIN_ISOLATION_PX = 55;
+                const minIsoCanvas = MIN_ISOLATION_PX / scale;
+                const minIsoCanvasSq = minIsoCanvas * minIsoCanvas;
+
+                const isCluster = new Uint8Array(scanPoints.length);
+                for (let i = 0; i < scanPoints.length; i++) {
+                    const ax = scanPoints[i][0] * w;
+                    const ay = scanPoints[i][1] * h;
+                    for (let j = i + 1; j < scanPoints.length; j++) {
+                        const dx = ax - scanPoints[j][0] * w;
+                        const dy = ay - scanPoints[j][1] * h;
+                        if (dx * dx + dy * dy < minIsoCanvasSq) {
+                            isCluster[i] = 1;
+                            isCluster[j] = 1;
+                        }
+                    }
+                }
+
+                ctx.save();
+                ctx.font = `500 ${fontPx}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace`;
+                ctx.fillStyle = 'rgba(255, 230, 110, 0.95)';
+                ctx.shadowColor = '#000000';
+                ctx.shadowBlur = Math.round(3 / scale);
+
+                const placedBoxes = [];
+
+                for (let i = 0; i < scanPoints.length; i++) {
+                    if (isCluster[i] === 1) continue; // Pula nós que fazem parte de clusters
+
+                    const pt = scanPoints[i];
+                    const px = pt[0] * w;
+                    const py = pt[1] * h;
+                    const count = pt[2] || 1;
+                    const name = pt[3];
+
+                    if (!name || name.trim() === '') continue;
+                    if (renderedNames.has(name)) continue;
+
+                    const labelText = count > 1 ? `${name} (${count})` : name;
+                    const textW = ctx.measureText(labelText).width;
+                    const box = { x1: px + labelOffset, y1: py - fontPx, x2: px + labelOffset + textW, y2: py + fontPx * 0.5 };
+                    let collision = false;
+                    for (let b = 0; b < placedBoxes.length; b++) {
+                        const pb = placedBoxes[b];
+                        if (!(box.x2 < pb.x1 || box.x1 > pb.x2 || box.y2 < pb.y1 || box.y1 > pb.y2)) {
+                            collision = true;
+                            break;
+                        }
+                    }
+                    if (collision) continue;
+
+                    renderedNames.add(name);
+                    placedBoxes.push(box);
+                    ctx.fillText(labelText, px + labelOffset, py + Math.round(3 / scale));
+                }
+                ctx.restore();
+            }
+
+            // Docking Heatmap (Emerald Matrix Green / Radiant Mint)
+            function renderDockingHeatmap() {
+                const w = canvas.width;
+                const h = canvas.height;
+                ctx.clearRect(0, 0, w, h);
+                if (dockingPoints && dockingPoints.length > 0) {
+                    const zoomFactor = Math.max(1.0, scale / (baseFitScale || 0.25));
+                    const pointRadius = Math.max(6, Math.round(44 / Math.pow(zoomFactor, 0.54)));
+                    const stampSize = pointRadius * 2;
+                    const center = pointRadius;
+                    const offset = pointRadius;
+
+                    // Pre-render radiant emerald/mint stamp
+                    const dockStamp = document.createElement('canvas');
+                    dockStamp.width = stampSize;
+                    dockStamp.height = stampSize;
+                    const dCtx = dockStamp.getContext('2d');
+                    const totalDocks = dockingPoints.length || 1;
+                    const alpha = Math.min(0.25, Math.max(0.08, 120 / Math.sqrt(totalDocks * 10)));
+
+                    const grad = dCtx.createRadialGradient(center, center, 0, center, center, pointRadius);
+                    grad.addColorStop(0.00, `rgba(235, 255, 245, ${alpha * 1.25})`);
+                    grad.addColorStop(0.20, `rgba(43, 252, 168, ${alpha * 0.95})`);
+                    grad.addColorStop(0.55, `rgba(0, 200, 120, ${alpha * 0.60})`);
+                    grad.addColorStop(0.80, `rgba(0, 130, 80, ${alpha * 0.25})`);
+                    grad.addColorStop(1.00, 'rgba(0, 80, 50, 0.0)');
+
+                    dCtx.fillStyle = grad;
+                    dCtx.beginPath();
+                    dCtx.arc(center, center, pointRadius, 0, Math.PI * 2);
+                    dCtx.fill();
+
+                    ctx.save();
+                    ctx.globalCompositeOperation = 'lighter';
+
+                    for (let i = 0; i < dockingPoints.length; i++) {
+                        const pt = dockingPoints[i];
+                        const count = pt[2] || 1;
+                        const passes = Math.min(3, Math.max(1, Math.round(Math.log2(count + 1))));
+                        const px = pt[0] * w - offset;
+                        const py = pt[1] * h - offset;
+                        for (let p = 0; p < passes; p++) {
+                            ctx.drawImage(dockStamp, px, py);
+                        }
+                    }
+                    ctx.restore();
+
+                    // Discreet tactical labels when zoomed in (zoomFactor >= 2.0x)
+                    if (zoomFactor >= 2.0) {
+                        renderDockingLabels(w, h, zoomFactor);
+                    }
+                }
+                renderTopSystemsOverlay();
+            }
+
+            function renderDockingLabels(w, h, zoomFactor) {
+                if (!dockingPoints || dockingPoints.length === 0) return;
+                if (zoomFactor < 2.0) return;
+
+                const fontPx = Math.max(7, Math.round(8.5 / scale));
+                const labelOffset = Math.round(5 / scale);
+                const renderedNames = new Set();
+
+                // Cluster suppression: pontos com vizinhos num raio de 55px na tela são suprimidos
+                const MIN_ISOLATION_PX = 55;
+                const minIsoCanvas = MIN_ISOLATION_PX / scale;
+                const minIsoCanvasSq = minIsoCanvas * minIsoCanvas;
+
+                const isCluster = new Uint8Array(dockingPoints.length);
+                for (let i = 0; i < dockingPoints.length; i++) {
+                    const ax = dockingPoints[i][0] * w;
+                    const ay = dockingPoints[i][1] * h;
+                    for (let j = i + 1; j < dockingPoints.length; j++) {
+                        const dx = ax - dockingPoints[j][0] * w;
+                        const dy = ay - dockingPoints[j][1] * h;
+                        if (dx * dx + dy * dy < minIsoCanvasSq) {
+                            isCluster[i] = 1;
+                            isCluster[j] = 1;
+                        }
+                    }
+                }
+
+                ctx.save();
+                ctx.font = `500 ${fontPx}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace`;
+                ctx.fillStyle = 'rgba(180, 255, 220, 0.95)';
+                ctx.shadowColor = '#000000';
+                ctx.shadowBlur = Math.round(3 / scale);
+
+                const placedBoxes = [];
+
+                for (let i = 0; i < dockingPoints.length; i++) {
+                    if (isCluster[i] === 1) continue; // Pula nós em clusters de portos
+
+                    const pt = dockingPoints[i];
+                    const px = pt[0] * w;
+                    const py = pt[1] * h;
+                    const count = pt[2] || 1;
+                    const name = pt[3];
+                    const station = pt[4];
+
+                    if (!name || name.trim() === '') continue;
+                    if (renderedNames.has(name)) continue;
+
+                    const labelText = (count > 1) ? `${name} (${count})` : (station ? `${name} [${station}]` : name);
+                    const textW = ctx.measureText(labelText).width;
+                    const box = { x1: px + labelOffset, y1: py - fontPx, x2: px + labelOffset + textW, y2: py + fontPx * 0.5 };
+                    let collision = false;
+                    for (let b = 0; b < placedBoxes.length; b++) {
+                        const pb = placedBoxes[b];
+                        if (!(box.x2 < pb.x1 || box.x1 > pb.x2 || box.y2 < pb.y1 || box.y1 > pb.y2)) {
+                            collision = true;
+                            break;
+                        }
+                    }
+                    if (collision) continue;
+
+                    renderedNames.add(name);
+                    placedBoxes.push(box);
+                    ctx.fillText(labelText, px + labelOffset, py + Math.round(3 / scale));
+                }
+                ctx.restore();
+            }
+
+            // Helper for rounded rect badges
+            function drawRoundRect(c, x, y, bw, bh, r) {
+                c.beginPath();
+                if (c.roundRect) {
+                    c.roundRect(x, y, bw, bh, r);
+                } else {
+                    c.rect(x, y, bw, bh);
+                }
+                c.fill();
+                c.stroke();
+            }
+
+            // Top 5 Systems Tactical HUD Overlay on Galaxy Map (escondido por enquanto a pedido do usuário)
+            function renderTopSystemsOverlay() {
+                // Escondido por enquanto devido à concentração na Bolha
+                return;
+                if (!topSystemsData || topSystemsData.length === 0) return;
+                const w = canvas.width;
+                const h = canvas.height;
+
+                ctx.save();
+
+                // Dynamic dimensions scaled to keep screen size uniform across all zoom levels
+                const fontPx = Math.max(8, Math.round(9.5 / scale));
+                const padX = Math.round(5 / scale);
+                const padY = Math.round(3 / scale);
+                const starRadius = Math.max(3, Math.round(4.0 / scale));
+                const reticleRadius = Math.max(5, Math.round(7.5 / scale));
+                const boxH = fontPx + padY * 2;
+                const cornerRadius = Math.round(3 / scale);
+                const lineDist = Math.max(14 / scale, Math.round(18 / scale));
+
+                ctx.font = `600 ${fontPx}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace`;
+
+                const placedBoxes = [];
+
+                // Natural radial anchor angles based on rank
+                const naturalOffsets = [
+                    { dx: lineDist, dy: -lineDist - boxH },              // #1 Top-Right
+                    { dx: lineDist, dy: -boxH / 2 },                     // #2 Right
+                    { dx: lineDist, dy: lineDist },                      // #3 Bottom-Right
+                    { dx: -lineDist, dy: -lineDist - boxH, isLeft: true },// #4 Top-Left
+                    { dx: -lineDist, dy: lineDist, isLeft: true }        // #5 Bottom-Left
+                ];
+
+                for (let i = 0; i < topSystemsData.length; i++) {
+                    const item = topSystemsData[i];
+                    if (!item || item.u === undefined || item.v === undefined || !item.system) continue;
+
+                    const sx = item.u * w;
+                    const sy = item.v * h;
+
+                    // Color theme by rank
+                    let rankColor, glowColor, bgBorder;
+                    if (i === 0) {
+                        rankColor = '#ffd700'; // Gold #1
+                        glowColor = 'rgba(255, 215, 0, 0.7)';
+                        bgBorder = 'rgba(255, 215, 0, 0.85)';
+                    } else if (i === 1) {
+                        rankColor = '#00e5ff'; // Cyan #2
+                        glowColor = 'rgba(0, 229, 255, 0.65)';
+                        bgBorder = 'rgba(0, 229, 255, 0.8)';
+                    } else if (i === 2) {
+                        rankColor = '#ff9d00'; // Amber #3
+                        glowColor = 'rgba(255, 157, 0, 0.6)';
+                        bgBorder = 'rgba(255, 157, 0, 0.75)';
+                    } else {
+                        rankColor = '#2bfca8'; // Mint Green #4, #5
+                        glowColor = 'rgba(43, 252, 168, 0.55)';
+                        bgBorder = 'rgba(43, 252, 168, 0.7)';
+                    }
+
+                    // 1. Draw Target Reticle / Star Marker at (sx, sy)
+                    ctx.save();
+                    ctx.shadowColor = rankColor;
+                    ctx.shadowBlur = Math.round(5 / scale);
+                    ctx.strokeStyle = rankColor;
+                    ctx.lineWidth = Math.max(1, 1.2 / scale);
+
+                    // Diamond reticle
+                    ctx.beginPath();
+                    ctx.moveTo(sx, sy - reticleRadius);
+                    ctx.lineTo(sx + reticleRadius, sy);
+                    ctx.lineTo(sx, sy + reticleRadius);
+                    ctx.lineTo(sx - reticleRadius, sy);
+                    ctx.closePath();
+                    ctx.stroke();
+
+                    // Central glowing star core
+                    ctx.fillStyle = rankColor;
+                    ctx.beginPath();
+                    ctx.arc(sx, sy, starRadius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+
+                    // 2. Measure text components
+                    const rankStr = `#${i + 1} `;
+                    const sysStr = `${item.system} `;
+                    const countStr = `(${item.count})`;
+                    const rankW = ctx.measureText(rankStr).width;
+                    const sysW = ctx.measureText(sysStr).width;
+                    const countW = ctx.measureText(countStr).width;
+                    const totalTextW = rankW + sysW + countW;
+                    const boxW = totalTextW + padX * 2;
+
+                    // 3. Collision-avoiding callout position
+                    const pref = naturalOffsets[i % naturalOffsets.length];
+                    const prefBx = pref.isLeft ? (sx + pref.dx - boxW) : (sx + pref.dx);
+                    const prefBy = sy + pref.dy;
+
+                    const candidates = [
+                        { bx: prefBx, by: prefBy },
+                        { bx: sx + lineDist, by: sy - lineDist - boxH },
+                        { bx: sx + lineDist, by: sy - boxH / 2 },
+                        { bx: sx + lineDist, by: sy + lineDist },
+                        { bx: sx - lineDist - boxW, by: sy - lineDist - boxH },
+                        { bx: sx - lineDist - boxW, by: sy - boxH / 2 },
+                        { bx: sx - lineDist - boxW, by: sy + lineDist },
+                        { bx: sx - boxW / 2, by: sy - lineDist - boxH * 1.5 },
+                        { bx: sx - boxW / 2, by: sy + lineDist + boxH * 0.5 }
+                    ];
+
+                    let bestPos = candidates[0];
+                    for (let c = 0; c < candidates.length; c++) {
+                        const cand = candidates[c];
+                        const box = { x1: cand.bx, y1: cand.by, x2: cand.bx + boxW, y2: cand.by + boxH };
+                        let hit = false;
+                        for (let p = 0; p < placedBoxes.length; p++) {
+                            const pb = placedBoxes[p];
+                            if (!(box.x2 < pb.x1 || box.x1 > pb.x2 || box.y2 < pb.y1 || box.y1 > pb.y2)) {
+                                hit = true;
+                                break;
+                            }
+                        }
+                        if (!hit) {
+                            bestPos = cand;
+                            break;
+                        }
+                    }
+
+                    // Register placed box
+                    placedBoxes.push({
+                        x1: bestPos.bx,
+                        y1: bestPos.by,
+                        x2: bestPos.bx + boxW,
+                        y2: bestPos.by + boxH
+                    });
+
+                    // 4. Draw sleek HUD leader line from star position (sx, sy) to badge
+                    ctx.save();
+                    ctx.strokeStyle = glowColor;
+                    ctx.lineWidth = Math.max(1, 1 / scale);
+                    ctx.beginPath();
+                    ctx.moveTo(sx, sy);
+                    const targetX = (bestPos.bx > sx) ? bestPos.bx : bestPos.bx + boxW;
+                    const targetY = bestPos.by + boxH / 2;
+                    ctx.lineTo(targetX, targetY);
+                    ctx.stroke();
+                    ctx.restore();
+
+                    // 5. Draw Badge Box
+                    ctx.save();
+                    ctx.fillStyle = 'rgba(6, 15, 30, 0.88)';
+                    ctx.strokeStyle = bgBorder;
+                    ctx.lineWidth = Math.max(1, 1 / scale);
+                    ctx.shadowColor = glowColor;
+                    ctx.shadowBlur = Math.round(4 / scale);
+                    drawRoundRect(ctx, bestPos.bx, bestPos.by, boxW, boxH, cornerRadius);
+
+                    // 6. Draw Badge Text
+                    ctx.shadowColor = '#000000';
+                    ctx.shadowBlur = Math.round(3 / scale);
+                    ctx.textBaseline = 'middle';
+                    const textY = bestPos.by + boxH / 2;
+
+                    // Rank
+                    ctx.fillStyle = rankColor;
+                    ctx.fillText(rankStr, bestPos.bx + padX, textY);
+
+                    // System name
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillText(sysStr, bestPos.bx + padX + rankW, textY);
+
+                    // Count
+                    ctx.fillStyle = rankColor;
+                    ctx.fillText(countStr, bestPos.bx + padX + rankW + sysW, textY);
+
+                    ctx.restore();
+                }
+
+                ctx.restore();
+            }
+
+            // Mode Selector UI Handlers
+            btnModeGlobal.addEventListener('click', () => {
+                if (currentMode === 'global') return;
+                currentMode = 'global';
+                btnModeGlobal.classList.add('active');
+                btnModeFlow.classList.remove('active');
+                btnModeScans.classList.remove('active');
+                btnModeDocking.classList.remove('active');
+                flowSubfilters.style.display = 'none';
+                fetchHeatmapData();
+            });
+
+            btnModeFlow.addEventListener('click', () => {
+                if (currentMode === 'flow') return;
+                currentMode = 'flow';
+                btnModeFlow.classList.add('active');
+                btnModeGlobal.classList.remove('active');
+                btnModeScans.classList.remove('active');
+                btnModeDocking.classList.remove('active');
+                flowSubfilters.style.display = 'flex';
+                fetchHeatmapData();
+            });
+
+            btnModeScans.addEventListener('click', () => {
+                if (currentMode === 'scans') return;
+                currentMode = 'scans';
+                btnModeScans.classList.add('active');
+                btnModeGlobal.classList.remove('active');
+                btnModeFlow.classList.remove('active');
+                btnModeDocking.classList.remove('active');
+                flowSubfilters.style.display = 'none';
+                fetchHeatmapData();
+            });
+
+            btnModeDocking.addEventListener('click', () => {
+                if (currentMode === 'docking') return;
+                currentMode = 'docking';
+                btnModeDocking.classList.add('active');
+                btnModeGlobal.classList.remove('active');
+                btnModeFlow.classList.remove('active');
+                btnModeScans.classList.remove('active');
+                flowSubfilters.style.display = 'none';
+                fetchHeatmapData();
+            });
+
+            // Subfilter Handlers
+            function updateSubfilterUI(activeBtn, filter) {
+                currentFlowFilter = filter;
+                [filterAllFlow, filterDepartures, filterArrivals].forEach(b => b.classList.remove('active'));
+                activeBtn.classList.add('active');
+                renderFlowHeatmap();
+            }
+
+            filterAllFlow.addEventListener('click', () => updateSubfilterUI(filterAllFlow, 'all'));
+            filterDepartures.addEventListener('click', () => updateSubfilterUI(filterDepartures, 'departures'));
+            filterArrivals.addEventListener('click', () => updateSubfilterUI(filterArrivals, 'arrivals'));
+
+            if (sidebarPanel) {
+                ['mousedown', 'touchstart', 'wheel', 'pointerdown'].forEach(ev => {
+                    sidebarPanel.addEventListener(ev, e => e.stopPropagation());
+                });
+            }
+
+            function centerMapOn(u, v) {
+                if (u === undefined || v === undefined) return;
+                const vw = viewport.clientWidth;
+                const vh = viewport.clientHeight;
+                scale = Math.max(scale, 2.2);
+                posX = (vw / 2) - (u * STAGE_SIZE * scale);
+                posY = (vh / 2) - (v * STAGE_SIZE * scale);
+                applyTransform();
+                scheduleHeatmapRerender();
+            }
+            window._centerMapOn = centerMapOn;
+
+            function renderTopSystems(systems) {
+                if (!topSystemsList) return;
+                if (!systems || systems.length === 0) {
+                    topSystemsList.innerHTML = '<div class="empty-list">Awaiting galactic telemetry...</div>';
+                    return;
+                }
+                let html = '';
+                for (let i = 0; i < systems.length; i++) {
+                    const item = systems[i];
+                    const rankClass = `rank-${i + 1}`;
+                    html += `
+                        <div class="hud-list-item" onclick="window._centerMapOn(${item.u}, ${item.v})" title="Focus on ${item.system}">
+                            <div class="item-left">
+                                <span class="item-rank ${rankClass}">#${i + 1}</span>
+                                <div class="item-info">
+                                    <span class="item-name">${item.system}</span>
+                                    <span class="item-sub">Active Star System</span>
+                                </div>
+                            </div>
+                            <div class="item-count-box">
+                                <span class="item-count count-amber">${item.count}</span>
+                                <span class="item-unit">Cmdrs</span>
+                            </div>
+                        </div>
+                    `;
+                }
+                topSystemsList.innerHTML = html;
+            }
+
+            function renderTopStations(stations) {
+                if (!topStationsList) return;
+                if (!stations || stations.length === 0) {
+                    topStationsList.innerHTML = '<div class="empty-list">Awaiting docking telemetry...</div>';
+                    return;
+                }
+                let html = '';
+                for (let i = 0; i < stations.length; i++) {
+                    const item = stations[i];
+                    const rankClass = `rank-${i + 1}`;
+                    const typeLabel = item.type ? item.type : 'Starport';
+                    html += `
+                        <div class="hud-list-item" onclick="window._centerMapOn(${item.u}, ${item.v})" title="Focus on ${item.system}">
+                            <div class="item-left">
+                                <span class="item-rank ${rankClass}">#${i + 1}</span>
+                                <div class="item-info">
+                                    <span class="item-name">${item.station}</span>
+                                    <span class="item-sub">${item.system} • ${typeLabel}</span>
+                                </div>
+                            </div>
+                            <div class="item-count-box">
+                                <span class="item-count count-green">${item.count}</span>
+                                <span class="item-unit">Docks</span>
+                            </div>
+                        </div>
+                    `;
+                }
+                topStationsList.innerHTML = html;
+            }
+
+            function renderDiscoveredChart(buckets, minuteFloor) {
+                if (!buckets || buckets.length < 5 || !discoveredChart) return;
+                const maxVal = Math.max(1, Math.max(...buckets));
+                let html = '';
+                const baseTime = minuteFloor || (Math.floor(Date.now() / 60000) * 60000);
+                for (let i = 0; i < 5; i++) {
+                    const val = buckets[i];
+                    const pct = Math.max(8, Math.round((val / maxVal) * 100));
+                    const isNow = (i === 4);
+                    const bTime = new Date(baseTime - (4 - i) * 60000);
+                    const timeStr = String(bTime.getHours()).padStart(2, '0') + ':' + String(bTime.getMinutes()).padStart(2, '0');
+                    const tooltip = isNow
+                        ? `${timeStr} (In progress): ${val} new commanders accumulated`
+                        : `${timeStr} (Consolidated): ${val} commanders discovered`;
+                    html += `
+                        <div class="chart-col ${isNow ? 'current' : ''}" title="${tooltip}">
+                            <span class="chart-val">${val}</span>
+                            <div class="chart-bar" style="height: ${pct}%;"></div>
+                        </div>
+                    `;
+                }
+                discoveredChart.innerHTML = html;
+            }
+
+            function renderSingleHopTrades(trades) {
+                if (!singleHopTradeList) return;
+                if (!trades || trades.length === 0) {
+                    singleHopTradeList.innerHTML = '<div class="empty-list">Monitoring commodity markets...</div>';
+                    return;
+                }
+                let html = '';
+                for (let i = 0; i < trades.length; i++) {
+                    const r = trades[i];
+                    html += `
+                        <div class="trade-route-item">
+                            <div class="trade-header-row">
+                                <span class="trade-comm-title">${r.commodity}</span>
+                                <span class="trade-profit-badge">+${Number(r.profitDelta).toLocaleString()} Cr/t</span>
+                            </div>
+                            <div class="trade-step-row">
+                                <span class="step-tag tag-buy">BUY</span>
+                                <span class="step-loc" onclick="window._centerMapOn(${r.buyU}, ${r.buyV})" title="Locate ${r.buyStation} on map">${r.buyStation} <small>• ${r.buySystem}</small></span>
+                                <span class="step-price">${Number(r.buyPrice).toLocaleString()} Cr <small>(${Number(r.buyStock).toLocaleString()}t)</small></span>
+                            </div>
+                            <div class="trade-step-row">
+                                <span class="step-tag tag-sell">SELL</span>
+                                <span class="step-loc" onclick="window._centerMapOn(${r.sellU}, ${r.sellV})" title="Locate ${r.sellStation} on map">${r.sellStation} <small>• ${r.sellSystem}</small></span>
+                                <span class="step-price">${Number(r.sellPrice).toLocaleString()} Cr <small>(${Number(r.sellDemand).toLocaleString()}t)</small></span>
+                            </div>
+                            <div class="trade-footer-row">
+                                <span class="trade-meta">Dist: <b>${r.distanceLy} Ly</b> • Pad: <b>${r.pad}</b></span>
+                                <span class="trade-t9-badge">~${r.t9Profit} / Type-9</span>
+                            </div>
+                        </div>
+                    `;
+                }
+                singleHopTradeList.innerHTML = html;
+            }
+
+            function renderLoopTrades(loops) {
+                if (!loopTradeList) return;
+                if (!loops || loops.length === 0) {
+                    loopTradeList.innerHTML = '<div class="empty-list">Calculating roundtrip trade loops...</div>';
+                    return;
+                }
+                let html = '';
+                for (let i = 0; i < loops.length; i++) {
+                    const l = loops[i];
+                    html += `
+                        <div class="trade-route-item">
+                            <div class="trade-header-row">
+                                <span class="trade-comm-title" style="color: #00d4ff;">${l.title}</span>
+                                <span class="trade-profit-badge">+${Number(l.totalProfit).toLocaleString()} Cr/t Loop</span>
+                            </div>
+                            <div class="loop-leg" onclick="window._centerMapOn(${l.u1}, ${l.v1})" title="Locate on map" style="cursor: pointer;">
+                                <div><span class="loop-leg-arrow">↗</span><span class="loop-comm">${l.outComm}:</span> ${l.outFromStation} ➔ ${l.outToStation}</div>
+                                <span class="loop-leg-profit">+${Number(l.outProfit).toLocaleString()}/t</span>
+                            </div>
+                            <div class="loop-leg" onclick="window._centerMapOn(${l.u2}, ${l.v2})" title="Locate on map" style="cursor: pointer;">
+                                <div><span class="loop-leg-arrow down">↙</span><span class="loop-comm">${l.backComm}:</span> ${l.backFromStation} ➔ ${l.backToStation}</div>
+                                <span class="loop-leg-profit">+${Number(l.backProfit).toLocaleString()}/t</span>
+                            </div>
+                            <div class="trade-footer-row">
+                                <span class="trade-meta">Dist: <b>${l.distanceLy} Ly</b> • 1 Jump • Pad: <b>${l.pad}</b></span>
+                                <span class="trade-t9-badge">~${l.t9Profit} / Roundtrip</span>
+                            </div>
+                        </div>
+                    `;
+                }
+                loopTradeList.innerHTML = html;
+            }
+
+            async function fetchLiveStatus() {
+                try {
+                    const res = await fetch('/api/status');
+                    if (!res.ok) return;
+                    const data = await res.json();
+                    if (data.signalsPerSec !== undefined) {
+                        statSignals.textContent = `${Number(data.signalsPerSec).toFixed(1)}/s`;
+                    }
+                    if (data.activeCommanders !== undefined) {
+                        statCount.textContent = data.activeCommanders;
+                    }
+
+                    // Floating Card & Sidebar live telemetry updates
+                    if (data.totalDiscovered5m !== undefined && cardDiscoveredTotal) {
+                        cardDiscoveredTotal.textContent = data.totalDiscovered5m;
+                    }
+                    if (data.discovered5m) {
+                        renderDiscoveredChart(data.discovered5m, data.minuteFloor);
+                    }
+                    if (data.dockingPorts !== undefined && cardDockPorts) {
+                        cardDockPorts.textContent = data.dockingPorts;
+                    }
+                    if (data.totalDocks !== undefined && cardDockTotal) {
+                        cardDockTotal.textContent = data.totalDocks;
+                    }
+                    if (data.topSystems) {
+                        const newStr = JSON.stringify(data.topSystems);
+                        if (newStr !== prevTopSystemsStr) {
+                            prevTopSystemsStr = newStr;
+                            topSystemsData = data.topSystems;
+                            renderTopSystems(topSystemsData);
+                            scheduleHeatmapRerender(10);
+                        }
+                    }
+                    if (data.topStations) {
+                        renderTopStations(data.topStations);
+                    }
+                    if (data.singleHopTrades) {
+                        renderSingleHopTrades(data.singleHopTrades);
+                    }
+                    if (data.loopTrades) {
+                        renderLoopTrades(data.loopTrades);
+                    }
+                } catch (e) {
+                    // Silent heartbeat
+                }
+            }
+
+            async function fetchHeatmapData() {
+                try {
+                    if (currentMode === 'global') {
+                        const res = await fetch('/api/heatmap');
+                        if (!res.ok) return;
+                        const data = await res.json();
+                        globalPoints = data.points || [];
+                        if (data.signalsPerSec !== undefined) {
+                            statSignals.textContent = `${Number(data.signalsPerSec).toFixed(1)}/s`;
+                        }
+                        renderGlobalHeatmap();
+                    } else if (currentMode === 'flow') {
+                        const res = await fetch('/api/flow');
+                        if (!res.ok) return;
+                        const data = await res.json();
+                        flowDepartures = data.departures || [];
+                        flowArrivals = data.arrivals || [];
+                        countDep.textContent = data.departuresCount || flowDepartures.length;
+                        countArr.textContent = data.arrivalsCount || flowArrivals.length;
+                        if (data.signalsPerSec !== undefined) {
+                            statSignals.textContent = `${Number(data.signalsPerSec).toFixed(1)}/s`;
+                        }
+                        renderFlowHeatmap();
+                    } else if (currentMode === 'scans') {
+                        const res = await fetch('/api/scans');
+                        if (!res.ok) return;
+                        const data = await res.json();
+                        scanPoints = data.points || [];
+                        if (data.signalsPerSec !== undefined) {
+                            statSignals.textContent = `${Number(data.signalsPerSec).toFixed(1)}/s`;
+                        }
+                        renderScanHeatmap();
+                    } else if (currentMode === 'docking') {
+                        const res = await fetch('/api/docking');
+                        if (!res.ok) return;
+                        const data = await res.json();
+                        dockingPoints = data.points || [];
+                        if (data.signalsPerSec !== undefined) {
+                            statSignals.textContent = `${Number(data.signalsPerSec).toFixed(1)}/s`;
+                        }
+                        renderDockingHeatmap();
+                    }
+                } catch (e) {
+                    console.warn('Error updating heatmap data:', e);
+                }
+            }
+
+            setInterval(() => {
+                // Heartbeat live stats every 1 second
+                fetchLiveStatus();
+
+                secondsUntilRefresh--;
+                if (secondsUntilRefresh <= 0) {
+                    secondsUntilRefresh = 30;
+                    fetchHeatmapData();
+                }
+                statTimer.textContent = `${secondsUntilRefresh}s`;
+            }, 1000);
+
+            window.addEventListener('resize', () => {
+                // Preserve stage framing on window resize
+                applyTransform();
+            });
+
+            // Initialization
+            resetToFit();
+            fetchHeatmapData();
+        })();
+    </script>
+</body>
+</html>

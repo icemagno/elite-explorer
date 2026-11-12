@@ -202,6 +202,11 @@ public class TradeRouteController {
         return ResponseEntity.ok(eddnTrafficService.getRecentEvents(since));
     }
 
+    @GetMapping("/galaxy/traffic/online-count")
+    public ResponseEntity<Map<String, Object>> getOnlineCommandersCount() {
+        return ResponseEntity.ok(Map.of("count", eddnTrafficService.countActiveCommandersInCube()));
+    }
+
     // Telemetria de Superfície e Pouso Planetário em Tempo Real
     @GetMapping("/player/surface-status")
     public ResponseEntity<PlanetaryStatusDTO> getPlanetaryStatus() {

@@ -1634,9 +1634,32 @@ setInterval(renderTrafficCard, 10000);
 
 // Polling de saltos de Comandantes ao vivo (EDDN) a cada 1.2 segundos
 setInterval(pollTrafficEvents, 1200);
+setInterval(pollTrafficOnlineCount, 3000);
 
 // Dispara checagem inicial de tráfego
 pollTrafficEvents();
+pollTrafficOnlineCount();
+
+let lastTrafficOnlineCount = 0;
+
+function renderTrafficOnlineCount(count) {
+    lastTrafficOnlineCount = Number.isFinite(count) ? count : 0;
+    const el = document.getElementById('trafficOnlineEstimate');
+    if (el) {
+        el.textContent = tr('galaxy.traffic_online_estimate', lastTrafficOnlineCount);
+    }
+}
+
+async function pollTrafficOnlineCount() {
+    try {
+        const res = await fetch('/api/galaxy/traffic/online-count');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data && typeof data.count === 'number') {
+            renderTrafficOnlineCount(data.count);
+        }
+    } catch (_) {}
+}
 
 async function pollTrafficEvents() {
     if (!currentCubeCenter) return;
@@ -1987,6 +2010,7 @@ async function checkEdsmStatus() {
 window.addEventListener('elite:languageChanged', () => {
     updateToggleHabitedButton();
     updateTrafficAudioButton();
+    renderTrafficOnlineCount(lastTrafficOnlineCount);
     if (lastGalaxyCubeData) {
         updateStatsSummary(lastGalaxyCubeData);
     }

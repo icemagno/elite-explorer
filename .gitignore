@@ -26,8 +26,12 @@ replay_pid*
 # Maven build
 target/
 
-# Local runtime cache
+# Local runtime cache & SQLite databases
 cache/
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
 
 # IDE & OS
 .idea/
