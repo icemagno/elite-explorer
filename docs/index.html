@@ -708,6 +708,18 @@
                         <span class="media-code">002.mp4</span>
                     </div>
                 </article>
+
+                <article class="media-card">
+                    <div class="video-wrapper">
+                        <video controls playsinline preload="metadata" poster="./005.png">
+                            <source src="./005-a.mp4" type="video/mp4">
+                        </video>
+                    </div>
+                    <div class="media-meta">
+                        <span class="media-title" data-i18n="video3Title">Navigation &amp; Route Tracking</span>
+                        <span class="media-code">005-a.mp4</span>
+                    </div>
+                </article>
             </div>
         </section>
 
@@ -751,6 +763,14 @@
                     <figcaption class="media-meta">
                         <span class="media-title" data-i18n="shot4">HUD Capture 04</span>
                         <span class="media-code">003.png</span>
+                    </figcaption>
+                </figure>
+
+                <figure class="shot-card" data-lightbox="./005.png">
+                    <img src="./005.png" alt="Elite Explorer Copilot Stratum collection 005" loading="lazy">
+                    <figcaption class="media-meta">
+                        <span class="media-title" data-i18n="shot5">Stratum Collection</span>
+                        <span class="media-code">005.png</span>
                     </figcaption>
                 </figure>
             </div>
@@ -892,7 +912,7 @@ java -jar target/elite-explorer-1.0.0.jar</pre>
 
         // Lightbox gallery
         (function initLightbox() {
-            const sources = ['./0004.png', './001.png', './002.png', './003.png'];
+            const sources = ['./0004.png', './001.png', './002.png', './003.png', './005.png'];
             const modal = document.getElementById('lightbox');
             const lbImg = document.getElementById('lbImg');
             let currentIdx = 0;
@@ -959,6 +979,7 @@ java -jar target/elite-explorer-1.0.0.jar</pre>
                 videosSub: 'Recorded straight from the live HUD connected to Elite Dangerous telemetry.',
                 video1Title: 'System Demo — Clip 01',
                 video2Title: 'System Demo — Clip 02',
+                video3Title: 'Navigation & Route Tracking',
                 galleryKicker: 'HUD CAPTURES',
                 galleryTitle: 'Interface Screenshots',
                 gallerySub: 'Click any capture to inspect the telemetry panels and 3D views in full screen.',
@@ -966,6 +987,7 @@ java -jar target/elite-explorer-1.0.0.jar</pre>
                 shot2: 'HUD Capture 02',
                 shot3: 'HUD Capture 03',
                 shot4: 'HUD Capture 04',
+                shot5: 'Stratum Collection',
                 featuresKicker: 'CAPABILITIES',
                 featuresTitle: 'Built for Deep-Space Commanders',
                 f1Title: '3D Galactic Cube',
@@ -1004,6 +1026,7 @@ java -jar target/elite-explorer-1.0.0.jar</pre>
                 videosSub: 'Gravações diretas da interface conectada à telemetria do Elite Dangerous.',
                 video1Title: 'Demonstração — Vídeo 01',
                 video2Title: 'Demonstração — Vídeo 02',
+                video3Title: 'Navegação e Acompanhamento de Rota',
                 galleryKicker: 'CAPTURAS DO HUD',
                 galleryTitle: 'Telas da Interface',
                 gallerySub: 'Clique em qualquer imagem para visualizar em tela cheia.',
@@ -1011,6 +1034,7 @@ java -jar target/elite-explorer-1.0.0.jar</pre>
                 shot2: 'Captura do HUD 02',
                 shot3: 'Captura do HUD 03',
                 shot4: 'Captura do HUD 04',
+                shot5: 'Coleta de Stratum',
                 featuresKicker: 'FUNCIONALIDADES',
                 featuresTitle: 'Projetado para Exploradores',
                 f1Title: 'Cubo Galáctico 3D',
