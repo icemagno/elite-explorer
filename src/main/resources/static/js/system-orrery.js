@@ -995,7 +995,6 @@ function showBodyDetails(b) {
 
     const badgeTypeEl = document.getElementById('detailBadgeType');
     const landEl = document.getElementById('detailLandableBadge');
-    const btnSurf = document.getElementById('btnOpenInSurfaceView');
 
     if (isCluster) {
         badgeTypeEl.textContent = 'AGLOMERADO DE ASTEROIDES';
@@ -1007,7 +1006,6 @@ function showBodyDetails(b) {
         landEl.textContent = '⛏️ MINERAÇÃO NO VÁCUO (Laser / Explosão)';
         landEl.style.borderColor = 'rgba(255,170,0,0.5)';
         landEl.style.color = '#ffaa00';
-        if (btnSurf) btnSurf.style.display = 'none';
 
         document.getElementById('detailGravity').textContent = '0.00 G (Microgravidade)';
         document.getElementById('detailAtmosphere').textContent = 'Vácuo Espacial';
@@ -1025,18 +1023,11 @@ function showBodyDetails(b) {
             landEl.textContent = '🟢 POUSÁVEL COM NAVE / SRV';
             landEl.style.borderColor = 'rgba(43,252,168,0.5)';
             landEl.style.color = '#2bfca8';
-            if (btnSurf) {
-                btnSurf.style.display = 'block';
-                btnSurf.onclick = () => {
-                    window.location.href = `/index.html?view=surface&body=${encodeURIComponent(b.name)}`;
-                };
-            }
         } else {
             landEl.style.display = 'inline-block';
             landEl.textContent = '🔴 NÃO POUSÁVEL';
             landEl.style.borderColor = 'rgba(255,80,80,0.5)';
             landEl.style.color = '#ff6666';
-            if (btnSurf) btnSurf.style.display = 'none';
         }
 
         document.getElementById('detailRadius').textContent = b.radius ? `${Math.round(b.radius).toLocaleString('pt-BR')} km` : (b.solarRadius ? `${b.solarRadius.toFixed(2)} R☉` : '---');

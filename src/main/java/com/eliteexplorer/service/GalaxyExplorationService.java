@@ -6,6 +6,7 @@ import com.eliteexplorer.dto.StarSystemDTO;
 import com.eliteexplorer.dto.StationDTO;
 import com.eliteexplorer.dto.StratumCandidateDTO;
 import com.eliteexplorer.dto.VoidSectorDTO;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -21,6 +22,8 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.util.*;
 import java.util.regex.Matcher;
@@ -45,11 +48,13 @@ public class GalaxyExplorationService {
         this.planetHistoryService = planetHistoryService;
     }
 
-    // Cache em memória para evitar qualquer flood ao EDSM:
+    // Cache em memória e disco para evitar qualquer flood ao EDSM:
     // Chave: coordenadas arredondadas + tamanho do cubo
-    // Valor: Lista em cache com timestamp de expiração (TTL de 2 horas)
-    private static final long CACHE_TTL_MS = 2 * 60 * 60 * 1000; // 2 horas
+    // Valor: Lista em cache com timestamp de expiração (TTL de 7 dias; coordenadas estelares são estáticas)
+    private static final long CACHE_TTL_MS = 7L * 24 * 60 * 60 * 1000L; // 7 dias
     private final Map<String, CacheEntry> systemsCache = new ConcurrentHashMap<>();
+    private final Object cubeFetchLock = new Object();
+    private File cubeCacheDir = new File("cache/cubes");
     private final Map<String, List<StratumCandidateDTO>> systemBodiesCache = new ConcurrentHashMap<>();
     private final Map<String, List<SpanshConfirmedSystem>> spanshCache = new ConcurrentHashMap<>();
     private final Map<String, List<StationDTO>> stationsCache = new ConcurrentHashMap<>();
@@ -144,6 +149,7 @@ public class GalaxyExplorationService {
     public void init() {
         loadCacheFromDisk();
         loadDiscoveredSystemsFromDisk();
+        loadCubeCacheFromDisk();
         int workerCount = 1;
         for (int i = 1; i <= workerCount; i++) {
             Thread worker = new Thread(this::backgroundScanLoop, "EDSM-Worker-" + i);
@@ -192,6 +198,59 @@ public class GalaxyExplorationService {
             objectMapper.writerWithDefaultPrettyPrinter().writeValue(cacheFile, systemBodiesCache);
         } catch (Exception e) {
             log.warn("Erro ao salvar cache de corpos em disco: {}", e.getMessage());
+        }
+    }
+
+    void setCubeCacheDirForTest(File dir) {
+        this.cubeCacheDir = dir;
+    }
+
+    void loadCubeCacheFromDisk() {
+        if (cubeCacheDir == null || !cubeCacheDir.exists() || !cubeCacheDir.isDirectory()) {
+            return;
+        }
+        File[] files = cubeCacheDir.listFiles((dir, name) -> name.endsWith(".json"));
+        if (files == null || files.length == 0) {
+            return;
+        }
+        int loadedCubes = 0;
+        int loadedStars = 0;
+        for (File file : files) {
+            if (file.length() == 0) continue;
+            try {
+                CacheEntry entry = objectMapper.readValue(file, CacheEntry.class);
+                if (entry != null && entry.getSystems() != null && !entry.getSystems().isEmpty()) {
+                    String key = file.getName().substring(0, file.getName().length() - ".json".length());
+                    systemsCache.put(key, entry);
+                    loadedCubes++;
+                    loadedStars += entry.getSystems().size();
+                }
+            } catch (Exception e) {
+                log.warn("Não foi possível carregar cache de cubo em {}: {}", file.getName(), e.getMessage());
+            }
+        }
+        if (loadedCubes > 0) {
+            log.info("🧊 [CUBE DISK CACHE] Carregados {} cubos galácticos do disco ({} sistemas estelares prontos sem consultar EDSM).",
+                    loadedCubes, loadedStars);
+        }
+    }
+
+    synchronized void saveCubeCacheEntryToDisk(String cacheKey, CacheEntry entry) {
+        if (cubeCacheDir == null || cacheKey == null || cacheKey.isBlank() || entry == null
+                || entry.getSystems() == null || entry.getSystems().isEmpty()) {
+            return;
+        }
+        try {
+            if (!cubeCacheDir.exists()) {
+                cubeCacheDir.mkdirs();
+            }
+            String safeKey = cacheKey.replaceAll("[^a-zA-Z0-9._-]", "_");
+            File target = new File(cubeCacheDir, safeKey + ".json");
+            File temp = new File(cubeCacheDir, safeKey + ".json.tmp");
+            objectMapper.writeValue(temp, entry);
+            Files.move(temp.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        } catch (Exception e) {
+            log.warn("Erro ao salvar cache do cubo galáctico '{}' em disco: {}", cacheKey, e.getMessage());
         }
     }
 
@@ -517,33 +576,76 @@ public class GalaxyExplorationService {
         List<StratumCandidateDTO> confirmedBodies = new ArrayList<>();
     }
 
-    private static class CacheEntry {
-        final double cx, cy, cz, size;
+    private static class CubeFetchResult {
         final List<StarSystemDTO> systems;
-        final long timestamp;
+        final String source;
+        final String warningMessage;
+
+        CubeFetchResult(List<StarSystemDTO> systems, String source, String warningMessage) {
+            this.systems = systems;
+            this.source = source;
+            this.warningMessage = warningMessage;
+        }
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    static class CacheEntry {
+        private double cx, cy, cz, size;
+        private List<StarSystemDTO> systems = new java.util.concurrent.CopyOnWriteArrayList<>();
+        private long timestamp;
+
+        public CacheEntry() {
+        }
 
         CacheEntry(double cx, double cy, double cz, double size, List<StarSystemDTO> systems) {
             this.cx = cx;
             this.cy = cy;
             this.cz = cz;
             this.size = size;
-            this.systems = new java.util.concurrent.CopyOnWriteArrayList<>(systems);
+            this.systems = new java.util.concurrent.CopyOnWriteArrayList<>(systems != null ? systems : Collections.emptyList());
             this.timestamp = System.currentTimeMillis();
         }
 
-        boolean isExpired() {
-            return (System.currentTimeMillis() - timestamp) > CACHE_TTL_MS;
+        public double getCx() { return cx; }
+        public void setCx(double cx) { this.cx = cx; }
+        public double getCy() { return cy; }
+        public void setCy(double cy) { this.cy = cy; }
+        public double getCz() { return cz; }
+        public void setCz(double cz) { this.cz = cz; }
+        public double getSize() { return size; }
+        public void setSize(double size) { this.size = size; }
+        public long getTimestamp() { return timestamp; }
+        public void setTimestamp(long timestamp) { this.timestamp = timestamp; }
+        public List<StarSystemDTO> getSystems() { return systems; }
+        public void setSystems(List<StarSystemDTO> systems) {
+            this.systems = new java.util.concurrent.CopyOnWriteArrayList<>(systems != null ? systems : Collections.emptyList());
         }
 
-        boolean covers(double x, double y, double z) {
-            if (isExpired()) return false;
-            // O cubo baixado do EDSM tem 100 ly de extensão total (50 ly em cada direção a partir do centro).
-            // Se o jogador estiver a até 35 ly do centro do cubo baixado, todo o espaço visual de 90 ly
-            // já está coberto com dados em memória, sem necessidade de nova consulta ao servidor.
+        boolean hasSystems() {
+            return systems != null && !systems.isEmpty();
+        }
+
+        boolean isExpired() {
+            return timestamp <= 0 || (System.currentTimeMillis() - timestamp) > CACHE_TTL_MS;
+        }
+
+        double distanceTo(double x, double y, double z) {
             double dx = x - cx;
             double dy = y - cy;
             double dz = z - cz;
-            return (dx * dx + dy * dy + dz * dz) <= (35.0 * 35.0);
+            return Math.sqrt(dx * dx + dy * dy + dz * dz);
+        }
+
+        boolean covers(double x, double y, double z) {
+            if (!hasSystems() || isExpired()) return false;
+            // O cubo baixado do EDSM tem 100 ly de extensão total (50 ly em cada direção a partir do centro).
+            // Se o jogador estiver a até 35 ly do centro do cubo baixado, todo o espaço visual de 90 ly
+            // já está coberto com dados do cache, sem necessidade de nova consulta ao servidor.
+            return distanceTo(x, y, z) <= 35.0;
+        }
+
+        boolean overlapsWithin(double x, double y, double z, double maxRadiusLy) {
+            return hasSystems() && distanceTo(x, y, z) <= maxRadiusLy;
         }
     }
 
@@ -573,8 +675,11 @@ public class GalaxyExplorationService {
         response.setCenterZ(z != null ? z : 0.0);
         response.setCubeSize(visualMapSize);
 
-        // Busca o cubo completo de 100 ly no EDSM (incluindo gutter)
-        List<StarSystemDTO> rawSystems = new ArrayList<>(fetchSystemsFromEDSM(response.getCenterX(), response.getCenterY(), response.getCenterZ(), querySize));
+        // Busca o cubo completo de 100 ly no cache (memória/disco) ou EDSM
+        CubeFetchResult fetchResult = fetchSystemsWithSource(response.getCenterX(), response.getCenterY(), response.getCenterZ(), querySize);
+        List<StarSystemDTO> rawSystems = new ArrayList<>(fetchResult.systems);
+        response.setDataSource(fetchResult.source);
+        response.setWarningMessage(fetchResult.warningMessage);
 
         // 0. Garante que o sistema onde o comandante está atualmente sempre conste (mesmo que seja inédito no EDSM ou recém-descoberto)
         if (systemName != null && !systemName.isBlank() && !systemName.equalsIgnoreCase("Posição Atual") && !systemName.equalsIgnoreCase("Desconhecido")) {
@@ -598,6 +703,18 @@ public class GalaxyExplorationService {
                     rawSystems.add(localSys);
                 }
             }
+        }
+
+        // Recalcula a distância de cada estrela em relação ao centro atual do piloto
+        // (importante quando o cubo é reaproveitado de um cache deslocado até 35 ly)
+        double rcx = response.getCenterX();
+        double rcy = response.getCenterY();
+        double rcz = response.getCenterZ();
+        for (StarSystemDTO s : rawSystems) {
+            double dx = s.getX() - rcx;
+            double dy = s.getY() - rcy;
+            double dz = s.getZ() - rcz;
+            s.setDistance(Math.round(Math.sqrt(dx * dx + dy * dy + dz * dz) * 100.0) / 100.0);
         }
 
         // 1. Consulta presenças 100% confirmadas de Stratum Tectonicas no Spansh (EDDN) em toda a área
@@ -1003,79 +1120,152 @@ public class GalaxyExplorationService {
         }
     }
 
-    private List<StarSystemDTO> fetchSystemsFromEDSM(double cx, double cy, double cz, double size) {
-        double querySize = Math.min(100.0, Math.max(20.0, size));
-
-        // 1. Verifica se já existe um cubo baixado em cache cobrindo a região atual (raio de até 35 ly do centro do cubo)
+    CacheEntry findClosestCoveringEntry(double cx, double cy, double cz, double maxRadiusLy, boolean allowExpired) {
+        CacheEntry best = null;
+        double bestDist = Double.MAX_VALUE;
         for (CacheEntry entry : systemsCache.values()) {
-            if (entry.covers(cx, cy, cz)) {
-                double dist = Math.sqrt(Math.pow(cx - entry.cx, 2) + Math.pow(cy - entry.cy, 2) + Math.pow(cz - entry.cz, 2));
-                log.info("Cubo galáctico reaproveitado do CACHE local (distância do centro: {:.1f} ly, {} sistemas). Zero requisições ao EDSM.",
-                        dist, entry.systems.size());
-                return entry.systems;
+            if (!entry.hasSystems()) continue;
+            if (!allowExpired && entry.isExpired()) continue;
+            double dist = entry.distanceTo(cx, cy, cz);
+            if (dist <= maxRadiusLy && dist < bestDist) {
+                bestDist = dist;
+                best = entry;
             }
         }
+        return best;
+    }
 
-        String cacheKey = String.format(Locale.US, "%.0f_%.0f_%.0f_%.0f", cx, cy, cz, querySize);
+    private CubeFetchResult fetchSystemsWithSource(double cx, double cy, double cz, double size) {
+        double querySize = Math.min(100.0, Math.max(20.0, size));
 
-        List<StarSystemDTO> list = new ArrayList<>();
-        try {
-            // Arredonda para 2 casas
-            String url = String.format(Locale.US, "https://www.edsm.net/api-v1/cube-systems?x=%.2f&y=%.2f&z=%.2f&size=%.2f&showCoordinates=1&showPrimaryStar=1",
+        synchronized (cubeFetchLock) {
+            // 1. Verifica cache válido (memória + carregado do disco) cobrindo a região atual (até 35 ly do centro)
+            CacheEntry freshHit = findClosestCoveringEntry(cx, cy, cz, 35.0, false);
+            if (freshHit != null) {
+                double dist = freshHit.distanceTo(cx, cy, cz);
+                log.info("Cubo galáctico reaproveitado do CACHE local (distância do centro: {} ly, {} sistemas). Zero requisições ao EDSM.",
+                        String.format(Locale.US, "%.1f", dist), freshHit.systems.size());
+                return new CubeFetchResult(freshHit.systems, "CACHE", null);
+            }
+
+            // Prepara fallback de cache expirado/próximo caso o EDSM falhe ou limite taxa
+            CacheEntry staleFallback = findClosestCoveringEntry(cx, cy, cz, 50.0, true);
+
+            String cacheKey = String.format(Locale.US, "%.0f_%.0f_%.0f_%.0f", cx, cy, cz, querySize);
+            String url = String.format(Locale.US,
+                    "https://www.edsm.net/api-v1/cube-systems?x=%.2f&y=%.2f&z=%.2f&size=%.2f&showCoordinates=1&showPrimaryStar=1",
                     cx, cy, cz, querySize);
             log.info("Requisitando EDSM (miss no cache): {}", url);
 
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(url))
-                    .timeout(Duration.ofSeconds(15))
-                    .header("User-Agent", "EliteDangerous-ExplorerHUD/1.0")
-                    .GET()
-                    .build();
+            String lastError = null;
+            int maxAttempts = 3;
+            for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+                try {
+                    HttpRequest request = HttpRequest.newBuilder()
+                            .uri(URI.create(url))
+                            .timeout(Duration.ofSeconds(25))
+                            .header("User-Agent", "EliteDangerous-ExplorerHUD/1.0")
+                            .GET()
+                            .build();
 
-            HttpResponse<String> resp = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            if (resp.statusCode() != 200) {
-                log.warn("EDSM retornou HTTP {}. Utilizando sistemas em cache prévio se disponíveis.", resp.statusCode());
-                for (CacheEntry ce : systemsCache.values()) {
-                    if (!ce.systems.isEmpty()) {
-                        return ce.systems;
-                    }
-                }
-                return list;
-            }
-            if (resp.statusCode() == 200) {
-                JsonNode root = objectMapper.readTree(resp.body());
-                if (root.isArray()) {
-                    for (JsonNode item : root) {
-                        String name = item.path("name").asText();
-                        double distance = item.path("distance").asDouble(0.0);
-                        Integer bodyCount = item.has("bodyCount") ? item.path("bodyCount").asInt() : null;
-                        JsonNode coords = item.path("coords");
-                        double sx = coords.path("x").asDouble();
-                        double sy = coords.path("y").asDouble();
-                        double sz = coords.path("z").asDouble();
-                        boolean locked = item.path("coordsLocked").asBoolean(false);
-
-                        StarSystemDTO dto = new StarSystemDTO(name, sx, sy, sz, distance, bodyCount);
-                        dto.setCoordsLocked(locked);
-
-                        JsonNode primary = item.path("primaryStar");
-                        if (!primary.isMissingNode() && primary.isObject()) {
-                            dto.setStarType(primary.path("type").asText(null));
-                            if (primary.has("isScoopable")) {
-                                dto.setIsScoopable(primary.path("isScoopable").asBoolean());
+                    HttpResponse<String> resp = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+                    int status = resp.statusCode();
+                    if (status == 200) {
+                        JsonNode root = objectMapper.readTree(resp.body());
+                        if (root.isArray() && !root.isEmpty()) {
+                            List<StarSystemDTO> list = parseEdsmCubeArray(root);
+                            if (!list.isEmpty()) {
+                                CacheEntry entry = new CacheEntry(cx, cy, cz, querySize, list);
+                                systemsCache.put(cacheKey, entry);
+                                saveCubeCacheEntryToDisk(cacheKey, entry);
+                                log.info("Cubo galáctico baixado do EDSM ({} sistemas) e persistido em cache local.", list.size());
+                                return new CubeFetchResult(entry.systems, "EDSM", null);
                             }
                         }
-
-                        list.add(dto);
+                        lastError = "EDSM retornou resposta vazia";
+                        log.warn("{} (tentativa {}/{}).", lastError, attempt, maxAttempts);
+                    } else if (status == 429 || status >= 500) {
+                        lastError = "EDSM HTTP " + status;
+                        log.warn("EDSM retornou HTTP {} (tentativa {}/{}).", status, attempt, maxAttempts);
+                        if (attempt < maxAttempts) {
+                            long waitMs = resolveRetryDelayMs(resp, attempt);
+                            Thread.sleep(waitMs);
+                        }
+                    } else {
+                        lastError = "EDSM HTTP " + status;
+                        log.warn("EDSM retornou HTTP {} sem possibilidade de retry.", status);
+                        break;
                     }
-                    // Armazena no cache se retornou com sucesso
-                    systemsCache.put(cacheKey, new CacheEntry(cx, cy, cz, querySize, list));
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    lastError = "Requisição interrompida";
+                    break;
+                } catch (Exception e) {
+                    lastError = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+                    log.warn("Erro ao buscar sistemas do EDSM (tentativa {}/{}): {}", attempt, maxAttempts, lastError);
+                    if (attempt < maxAttempts) {
+                        try {
+                            Thread.sleep(1500L * attempt);
+                        } catch (InterruptedException ie) {
+                            Thread.currentThread().interrupt();
+                            break;
+                        }
+                    }
                 }
-            } else {
-                log.warn("EDSM retornou HTTP {}", resp.statusCode());
             }
-        } catch (Exception e) {
-            log.error("Erro ao buscar sistemas do EDSM: {}", e.getMessage());
+
+            if (staleFallback != null) {
+                double dist = staleFallback.distanceTo(cx, cy, cz);
+                log.warn("Falha no EDSM ({}). Utilizando cache local prévio ({} sistemas, centro a {} ly).",
+                        lastError, staleFallback.systems.size(), String.format(Locale.US, "%.1f", dist));
+                return new CubeFetchResult(staleFallback.systems, "STALE_CACHE",
+                        "EDSM indisponível (" + lastError + "). Exibindo cache local prévio.");
+            }
+
+            log.error("Falha ao baixar cubo galáctico do EDSM ({}) e nenhum cache local cobre a região [{}, {}, {}].",
+                    lastError, cx, cy, cz);
+            return new CubeFetchResult(Collections.emptyList(), "LOCAL_ONLY",
+                    "EDSM indisponível (" + lastError + "). Exibindo apenas sistemas locais descobertos.");
+        }
+    }
+
+    private long resolveRetryDelayMs(HttpResponse<String> resp, int attempt) {
+        Optional<String> retryAfter = resp.headers().firstValue("Retry-After");
+        if (retryAfter.isPresent()) {
+            try {
+                long seconds = Long.parseLong(retryAfter.get().trim());
+                return Math.min(10000L, Math.max(1000L, seconds * 1000L));
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return 1500L * attempt;
+    }
+
+    private List<StarSystemDTO> parseEdsmCubeArray(JsonNode root) {
+        List<StarSystemDTO> list = new ArrayList<>();
+        for (JsonNode item : root) {
+            String name = item.path("name").asText();
+            if (name == null || name.isBlank()) continue;
+            double distance = item.path("distance").asDouble(0.0);
+            Integer bodyCount = item.has("bodyCount") && !item.path("bodyCount").isNull()
+                    ? item.path("bodyCount").asInt() : null;
+            JsonNode coords = item.path("coords");
+            double sx = coords.path("x").asDouble();
+            double sy = coords.path("y").asDouble();
+            double sz = coords.path("z").asDouble();
+            boolean locked = item.path("coordsLocked").asBoolean(false);
+
+            StarSystemDTO dto = new StarSystemDTO(name, sx, sy, sz, distance, bodyCount);
+            dto.setCoordsLocked(locked);
+
+            JsonNode primary = item.path("primaryStar");
+            if (!primary.isMissingNode() && primary.isObject()) {
+                dto.setStarType(primary.path("type").asText(null));
+                if (primary.has("isScoopable")) {
+                    dto.setIsScoopable(primary.path("isScoopable").asBoolean());
+                }
+            }
+            list.add(dto);
         }
         return list;
     }

@@ -877,11 +877,22 @@ function renderGalaxyData(data) {
     }
 
     if (statsEl) {
+        let sourceBadge = '';
+        if (data.dataSource === 'CACHE') {
+            sourceBadge = `<div style="margin-top:4px;font-size:11px;color:#2bfca8;">● Fonte: Cache local (0 reqs EDSM)</div>`;
+        } else if (data.dataSource === 'EDSM') {
+            sourceBadge = `<div style="margin-top:4px;font-size:11px;color:#00d4ff;">● Fonte: EDSM (salvo em cache)</div>`;
+        } else if (data.dataSource === 'STALE_CACHE') {
+            sourceBadge = `<div style="margin-top:4px;font-size:11px;color:#ffaa00;">⚠ Cache prévio (EDSM offline) <button onclick="loadGalaxyCube()" style="margin-left:6px;padding:1px 6px;font-size:10px;cursor:pointer;">Atualizar</button></div>`;
+        } else if (data.dataSource === 'LOCAL_ONLY') {
+            sourceBadge = `<div style="margin-top:4px;font-size:11px;color:#ff6666;">⚠ EDSM falhou — apenas sistemas locais <button onclick="loadGalaxyCube()" style="margin-left:6px;padding:1px 6px;font-size:10px;cursor:pointer;">Tentar novamente</button></div>`;
+        }
         statsEl.innerHTML = `
             <div>Sistema Central: <b style="color: #fff;">${data.centralSystem}</b></div>
             <div>Cubo: <b>${cubeSize} x ${cubeSize} x ${cubeSize} ly</b></div>
             <div>Sistemas Conhecidos: <b style="color: #00d4ff;">${data.totalKnownSystems}</b></div>
             <div>Gaps Procedurais: <b style="color: #ffaa00;">${data.detectedVoidCount}</b></div>
+            ${sourceBadge}
         `;
     }
 

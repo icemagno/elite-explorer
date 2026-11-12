@@ -1,5 +1,8 @@
 package com.eliteexplorer.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class StratumCandidateDTO {
     private String planetName;
     private String atmosphere;

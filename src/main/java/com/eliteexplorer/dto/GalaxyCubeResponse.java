@@ -14,6 +14,8 @@ public class GalaxyCubeResponse {
     private List<StarSystemDTO> systems = new ArrayList<>();
     private List<VoidSectorDTO> voidSectors = new ArrayList<>();
     private List<RoutePointDTO> activeRoute = new ArrayList<>();
+    private String dataSource;
+    private String warningMessage;
 
     public GalaxyCubeResponse() {
     }
@@ -96,5 +98,21 @@ public class GalaxyCubeResponse {
 
     public void setVoidSectors(List<VoidSectorDTO> voidSectors) {
         this.voidSectors = voidSectors;
+    }
+
+    public String getDataSource() {
+        return dataSource;
+    }
+
+    public void setDataSource(String dataSource) {
+        this.dataSource = dataSource;
+    }
+
+    public String getWarningMessage() {
+        return warningMessage;
+    }
+
+    public void setWarningMessage(String warningMessage) {
+        this.warningMessage = warningMessage;
     }
 }

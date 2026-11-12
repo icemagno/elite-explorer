@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elite Explorer Copilot — Galactic, System &amp; Surface Navigation</title>
+    <style>
+        :root {
+            --bg-deep: #020610;
+            --bg-panel: rgba(8, 19, 38, 0.78);
+            --bg-panel-solid: #081326;
+            --border-cyan: rgba(0, 212, 255, 0.25);
+            --border-bright: rgba(0, 212, 255, 0.65);
+            --cyan: #00d4ff;
+            --emerald: #2bfca8;
+            --amber: #ffaa00;
+            --text-main: #e6f3ff;
+            --text-muted: #8da4be;
+            --font-sans: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+            --font-mono: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            background: var(--bg-deep);
+            color: var(--text-main);
+            font-family: var(--font-sans);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Starfield background canvas */
+        #starfield {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+            pointer-events: none;
+        }
+
+        .bg-grid-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            pointer-events: none;
+            background-image:
+                radial-gradient(circle at 20% 15%, rgba(0, 212, 255, 0.10), transparent 45%),
+                radial-gradient(circle at 80% 75%, rgba(43, 252, 168, 0.08), transparent 45%),
+                linear-gradient(rgba(0, 212, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 212, 255, 0.03) 1px, transparent 1px);
+            background-size: 100% 100%, 100% 100%, 48px 48px, 48px 48px;
+        }
+
+        /* Navbar */
+        .navbar {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(14px);
+            background: rgba(2, 8, 20, 0.85);
+            border-bottom: 1px solid var(--border-cyan);
+        }
+
+        .nav-inner {
+            max-width: 1240px;
+            margin: 0 auto;
+            padding: 14px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            color: #fff;
+            font-weight: 700;
+            letter-spacing: 1.2px;
+            font-size: 15px;
+            text-transform: uppercase;
+        }
+
+        .brand-dot {
+            width: 11px;
+            height: 11px;
+            border-radius: 50%;
+            background: var(--cyan);
+            box-shadow: 0 0 12px var(--cyan), 0 0 24px rgba(0, 212, 255, 0.5);
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 22px;
+            flex-wrap: wrap;
+        }
+
+        .nav-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 0.4px;
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover {
+            color: var(--cyan);
+        }
+
+        .lang-switch {
+            display: inline-flex;
+            border: 1px solid var(--border-cyan);
+            border-radius: 6px;
+            overflow: hidden;
+            background: rgba(0, 212, 255, 0.05);
+        }
+
+        .lang-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+            font-size: 11px;
+            font-weight: 700;
+            padding: 5px 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .lang-btn.active {
+            background: rgba(0, 212, 255, 0.22);
+            color: #fff;
+        }
+
+        /* Layout */
+        .container {
+            max-width: 1240px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        section {
+            padding: 72px 0;
+        }
+
+        .section-header {
+            margin-bottom: 36px;
+        }
+
+        .section-kicker {
+            display: inline-block;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--emerald);
+            margin-bottom: 8px;
+        }
+
+        .section-title {
+            font-size: clamp(24px, 3vw, 34px);
+            font-weight: 800;
+            letter-spacing: -0.4px;
+            color: #fff;
+        }
+
+        .section-subtitle {
+            color: var(--text-muted);
+            max-width: 680px;
+            margin-top: 8px;
+            font-size: 15px;
+        }
+
+        /* Hero */
+        .hero {
+            padding: 64px 0 48px;
+        }
+
+        .hero-grid {
+            display: grid;
+            grid-template-columns: 1.05fr 1.15fr;
+            gap: 40px;
+            align-items: center;
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            border-radius: 999px;
+            border: 1px solid rgba(43, 252, 168, 0.4);
+            background: rgba(43, 252, 168, 0.08);
+            color: var(--emerald);
+            font-family: var(--font-mono);
+            font-size: 11px;
+            letter-spacing: 0.8px;
+            margin-bottom: 18px;
+        }
+
+        .pulse {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--emerald);
+            box-shadow: 0 0 8px var(--emerald);
+            animation: pulseAnim 1.8s infinite ease-in-out;
+        }
+
+        @keyframes pulseAnim {
+            0%, 100% { transform: scale(0.9); opacity: 0.65; }
+            50% { transform: scale(1.25); opacity: 1; }
+        }
+
+        .hero h1 {
+            font-size: clamp(32px, 4.4vw, 52px);
+            line-height: 1.1;
+            font-weight: 900;
+            letter-spacing: -0.8px;
+            margin-bottom: 18px;
+            background: linear-gradient(135deg, #ffffff 10%, #7ae7ff 55%, #2bfca8 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .hero-desc {
+            font-size: 16px;
+            color: #b9cee4;
+            margin-bottom: 26px;
+            max-width: 560px;
+        }
+
+        .hero-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 28px;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0.4px;
+            text-decoration: none;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: transform 0.18s, box-shadow 0.2s, border-color 0.2s, background 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #00b8ff, #0077cc);
+            color: #fff;
+            box-shadow: 0 8px 24px rgba(0, 180, 255, 0.28);
+        }
+
+        .btn-secondary {
+            background: rgba(0, 212, 255, 0.08);
+            border-color: var(--border-cyan);
+            color: var(--cyan);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--border-bright);
+            background: rgba(0, 212, 255, 0.14);
+        }
+
+        .tech-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .tech-badge {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--text-muted);
+            padding: 4px 10px;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .hero-frame {
+            position: relative;
+            border-radius: 14px;
+            padding: 6px;
+            background: linear-gradient(145deg, rgba(0, 212, 255, 0.45), rgba(43, 252, 168, 0.2));
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.65), 0 0 40px rgba(0, 212, 255, 0.14);
+            cursor: zoom-in;
+        }
+
+        .hero-frame img {
+            width: 100%;
+            display: block;
+            border-radius: 10px;
+            background: #020813;
+        }
+
+        .hero-frame-tag {
+            position: absolute;
+            bottom: 16px;
+            right: 16px;
+            background: rgba(2, 8, 20, 0.85);
+            border: 1px solid var(--border-cyan);
+            color: var(--cyan);
+            font-family: var(--font-mono);
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: 6px;
+        }
+
+        /* Video Showcase */
+        .video-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 24px;
+        }
+
+        .media-card {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-cyan);
+            border-radius: 12px;
+            overflow: hidden;
+            transition: transform 0.22s, border-color 0.22s, box-shadow 0.22s;
+        }
+
+        .media-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--border-bright);
+            box-shadow: 0 18px 42px rgba(0, 212, 255, 0.14);
+        }
+
+        .video-wrapper {
+            position: relative;
+            background: #000;
+            aspect-ratio: 16 / 9;
+        }
+
+        .video-wrapper video {
+            width: 100%;
+            height: 100%;
+            display: block;
+            object-fit: cover;
+        }
+
+        .media-meta {
+            padding: 14px 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .media-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .media-code {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--cyan);
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        /* Screenshots Gallery */
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 22px;
+        }
+
+        .shot-card {
+            position: relative;
+            background: var(--bg-panel);
+            border: 1px solid var(--border-cyan);
+            border-radius: 12px;
+            overflow: hidden;
+            cursor: zoom-in;
+            transition: transform 0.22s, border-color 0.22s, box-shadow 0.22s;
+        }
+
+        .shot-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--emerald);
+            box-shadow: 0 18px 42px rgba(43, 252, 168, 0.14);
+        }
+
+        .shot-card img {
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            object-fit: cover;
+            display: block;
+            background: #020813;
+            transition: transform 0.35s ease;
+        }
+
+        .shot-card:hover img {
+            transform: scale(1.02);
+        }
+
+        /* Features */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 20px;
+        }
+
+        .feature-card {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-cyan);
+            border-radius: 12px;
+            padding: 24px;
+            transition: border-color 0.2s, transform 0.2s;
+        }
+
+        .feature-card:hover {
+            border-color: var(--border-bright);
+            transform: translateY(-3px);
+        }
+
+        .feature-icon {
+            font-size: 26px;
+            margin-bottom: 12px;
+            display: inline-block;
+        }
+
+        .feature-card h3 {
+            font-size: 16px;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+
+        .feature-card p {
+            font-size: 13.5px;
+            color: var(--text-muted);
+        }
+
+        /* Quick Start */
+        .quickstart-box {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-cyan);
+            border-radius: 14px;
+            padding: 28px;
+            display: grid;
+            grid-template-columns: 1.1fr 0.9fr;
+            gap: 28px;
+            align-items: center;
+        }
+
+        .steps-list {
+            list-style: none;
+            display: grid;
+            gap: 12px;
+        }
+
+        .steps-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            font-size: 14px;
+            color: #cbe0f5;
+        }
+
+        .step-num {
+            flex-shrink: 0;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: rgba(0, 212, 255, 0.16);
+            border: 1px solid var(--cyan);
+            color: var(--cyan);
+            font-family: var(--font-mono);
+            font-size: 12px;
+            font-weight: 700;
+            display: grid;
+            place-items: center;
+            margin-top: 2px;
+        }
+
+        .code-panel {
+            background: #030a18;
+            border: 1px solid rgba(0, 212, 255, 0.25);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .code-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 9px 14px;
+            background: rgba(0, 212, 255, 0.08);
+            border-bottom: 1px solid rgba(0, 212, 255, 0.2);
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--cyan);
+        }
+
+        .copy-btn {
+            background: rgba(0, 212, 255, 0.15);
+            border: 1px solid rgba(0, 212, 255, 0.4);
+            color: #fff;
+            border-radius: 4px;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            padding: 3px 9px;
+            cursor: pointer;
+        }
+
+        pre {
+            padding: 16px;
+            font-family: var(--font-mono);
+            font-size: 12.5px;
+            color: #dff5ff;
+            overflow-x: auto;
+        }
+
+        /* Lightbox */
+        .lightbox {
+            position: fixed;
+            inset: 0;
+            z-index: 999;
+            background: rgba(2, 6, 16, 0.92);
+            backdrop-filter: blur(8px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .lightbox.open {
+            display: flex;
+        }
+
+        .lightbox img {
+            max-width: min(94vw, 1500px);
+            max-height: 88vh;
+            border-radius: 10px;
+            border: 1px solid var(--border-bright);
+            box-shadow: 0 24px 80px rgba(0, 0, 0, 0.85);
+        }
+
+        .lightbox-btn {
+            position: fixed;
+            background: rgba(8, 19, 38, 0.85);
+            border: 1px solid var(--border-bright);
+            color: #fff;
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            font-size: 18px;
+            cursor: pointer;
+            display: grid;
+            place-items: center;
+        }
+
+        .lightbox-close { top: 20px; right: 24px; }
+        .lightbox-prev { left: 20px; top: 50%; transform: translateY(-50%); }
+        .lightbox-next { right: 20px; top: 50%; transform: translateY(-50%); }
+
+        footer {
+            border-top: 1px solid rgba(0, 212, 255, 0.15);
+            padding: 28px 0 42px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+
+        @media (max-width: 960px) {
+            .hero-grid,
+            .video-grid,
+            .gallery-grid,
+            .quickstart-box {
+                grid-template-columns: 1fr;
+            }
+            .features-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 620px) {
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+            .nav-links {
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="starfield"></canvas>
+    <div class="bg-grid-overlay"></div>
+
+    <header class="navbar">
+        <div class="nav-inner">
+            <a href="#top" class="brand">
+                <span class="brand-dot"></span>
+                <span>ELITE EXPLORER COPILOT</span>
+            </a>
+            <nav class="nav-links">
+                <a href="#videos" data-i18n="navVideos">Videos</a>
+                <a href="#gallery" data-i18n="navGallery">Gallery</a>
+                <a href="#features" data-i18n="navFeatures">Features</a>
+                <a href="#quickstart" data-i18n="navQuickstart">Quick Start</a>
+                <div class="lang-switch" role="group" aria-label="Language switch">
+                    <button class="lang-btn active" id="btnEn" type="button">EN</button>
+                    <button class="lang-btn" id="btnPt" type="button">PT</button>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <main id="top" class="container">
+        <!-- HERO -->
+        <section class="hero">
+            <div class="hero-grid">
+                <div>
+                    <div class="status-pill">
+                        <span class="pulse"></span>
+                        <span>EDSM • EDDN • SPANSH • INARA • JOURNAL SSE</span>
+                    </div>
+                    <h1 data-i18n="heroTitle">Explore the Milky Way with Live HUD Telemetry.</h1>
+                    <p class="hero-desc" data-i18n="heroDesc">
+                        A real-time space exploration, exobiology, and planetary surface navigation copilot for Elite Dangerous.
+                        Reads your local game logs directly and renders 3D galactic cubes, star system orreries, and a 2.5D Columbus surface HUD.
+                    </p>
+                    <div class="hero-actions">
+                        <a href="#videos" class="btn btn-primary" data-i18n="ctaVideos">▶ Watch Video Demos</a>
+                        <a href="#gallery" class="btn btn-secondary" data-i18n="ctaGallery">View Screenshots</a>
+                        <a href="#quickstart" class="btn btn-secondary" data-i18n="ctaDocs">Quick Start</a>
+                    </div>
+                    <div class="tech-badges">
+                        <span class="tech-badge">Java 22 + Spring Boot 3</span>
+                        <span class="tech-badge">Three.js WebGL</span>
+                        <span class="tech-badge">ZeroMQ EDDN Stream</span>
+                        <span class="tech-badge">Local Disk Cache</span>
+                    </div>
+                </div>
+
+                <div class="hero-frame" data-lightbox="./0004.png">
+                    <img src="./0004.png" alt="Elite Explorer Copilot main interface" loading="eager">
+                    <span class="hero-frame-tag" data-i18n="clickZoom">Click to expand</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- VIDEOS -->
+        <section id="videos">
+            <div class="section-header">
+                <span class="section-kicker" data-i18n="videosKicker">IN MOTION</span>
+                <h2 class="section-title" data-i18n="videosTitle">Live System Demonstrations</h2>
+                <p class="section-subtitle" data-i18n="videosSub">
+                    Recorded straight from the live HUD connected to Elite Dangerous telemetry.
+                </p>
+            </div>
+
+            <div class="video-grid">
+                <article class="media-card">
+                    <div class="video-wrapper">
+                        <video controls playsinline preload="metadata" poster="./001.png">
+                            <source src="./001.mp4" type="video/mp4">
+                        </video>
+                    </div>
+                    <div class="media-meta">
+                        <span class="media-title" data-i18n="video1Title">System Demo — Clip 01</span>
+                        <span class="media-code">001.mp4</span>
+                    </div>
+                </article>
+
+                <article class="media-card">
+                    <div class="video-wrapper">
+                        <video controls playsinline preload="metadata" poster="./002.png">
+                            <source src="./002.mp4" type="video/mp4">
+                        </video>
+                    </div>
+                    <div class="media-meta">
+                        <span class="media-title" data-i18n="video2Title">System Demo — Clip 02</span>
+                        <span class="media-code">002.mp4</span>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <!-- GALLERY -->
+        <section id="gallery">
+            <div class="section-header">
+                <span class="section-kicker" data-i18n="galleryKicker">HUD CAPTURES</span>
+                <h2 class="section-title" data-i18n="galleryTitle">Interface Screenshots</h2>
+                <p class="section-subtitle" data-i18n="gallerySub">
+                    Click any capture to inspect the telemetry panels and 3D views in full screen.
+                </p>
+            </div>
+
+            <div class="gallery-grid">
+                <figure class="shot-card" data-lightbox="./0004.png">
+                    <img src="./0004.png" alt="Elite Explorer Copilot capture 0004" loading="lazy">
+                    <figcaption class="media-meta">
+                        <span class="media-title" data-i18n="shot1">HUD Capture 01</span>
+                        <span class="media-code">0004.png</span>
+                    </figcaption>
+                </figure>
+
+                <figure class="shot-card" data-lightbox="./001.png">
+                    <img src="./001.png" alt="Elite Explorer Copilot capture 001" loading="lazy">
+                    <figcaption class="media-meta">
+                        <span class="media-title" data-i18n="shot2">HUD Capture 02</span>
+                        <span class="media-code">001.png</span>
+                    </figcaption>
+                </figure>
+
+                <figure class="shot-card" data-lightbox="./002.png">
+                    <img src="./002.png" alt="Elite Explorer Copilot capture 002" loading="lazy">
+                    <figcaption class="media-meta">
+                        <span class="media-title" data-i18n="shot3">HUD Capture 03</span>
+                        <span class="media-code">002.png</span>
+                    </figcaption>
+                </figure>
+
+                <figure class="shot-card" data-lightbox="./003.png">
+                    <img src="./003.png" alt="Elite Explorer Copilot capture 003" loading="lazy">
+                    <figcaption class="media-meta">
+                        <span class="media-title" data-i18n="shot4">HUD Capture 04</span>
+                        <span class="media-code">003.png</span>
+                    </figcaption>
+                </figure>
+            </div>
+        </section>
+
+        <!-- FEATURES -->
+        <section id="features">
+            <div class="section-header">
+                <span class="section-kicker" data-i18n="featuresKicker">CAPABILITIES</span>
+                <h2 class="section-title" data-i18n="featuresTitle">Built for Deep-Space Commanders</h2>
+            </div>
+
+            <div class="features-grid">
+                <div class="feature-card">
+                    <span class="feature-icon">🌌</span>
+                    <h3 data-i18n="f1Title">3D Galactic Cube</h3>
+                    <p data-i18n="f1Desc">Interactive Three.js stellar sector map with KGBFOAM classification, active NavRoute line, and persistent local cube cache.</p>
+                </div>
+
+                <div class="feature-card">
+                    <span class="feature-icon">🧬</span>
+                    <h3 data-i18n="f2Title">Stratum Tectonicas Radar</h3>
+                    <p data-i18n="f2Desc">Highlights nearby high-value exobiology candidates combining Spansh EDDN confirmations and planetary atmosphere filtering.</p>
+                </div>
+
+                <div class="feature-card">
+                    <span class="feature-icon">🕳️</span>
+                    <h3 data-i18n="f3Title">Procedural Void Hunter</h3>
+                    <p data-i18n="f3Desc">Detects sequence gaps across Stellar Forge mass boxes to pinpoint likely unexplored systems around your ship.</p>
+                </div>
+
+                <div class="feature-card">
+                    <span class="feature-icon">🪐</span>
+                    <h3 data-i18n="f4Title">3D Star System Orrery</h3>
+                    <p data-i18n="f4Desc">Visualizes orbits, moons, rings, surface materials, landability, and DSS bio/geo counts in real time.</p>
+                </div>
+
+                <div class="feature-card">
+                    <span class="feature-icon">🎯</span>
+                    <h3 data-i18n="f5Title">2.5D Surface HUD</h3>
+                    <p data-i18n="f5Desc">Seamless switch between global -180°/+180° map and 1,200 m tactical radar with exobiology 3-sample diversity rings.</p>
+                </div>
+
+                <div class="feature-card">
+                    <span class="feature-icon">🛰️</span>
+                    <h3 data-i18n="f6Title">Live Journal &amp; Community Sync</h3>
+                    <p data-i18n="f6Desc">Streams Journal, Status.json, and EDDN traffic via SSE, with optional EDSM sync and INARA trade route integration.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- QUICK START -->
+        <section id="quickstart">
+            <div class="section-header">
+                <span class="section-kicker" data-i18n="qsKicker">DEPLOYMENT</span>
+                <h2 class="section-title" data-i18n="qsTitle">Up and Running in Seconds</h2>
+            </div>
+
+            <div class="quickstart-box">
+                <ol class="steps-list">
+                    <li>
+                        <span class="step-num">1</span>
+                        <span data-i18n="qs1">Install Java 22 on Windows alongside Elite Dangerous.</span>
+                    </li>
+                    <li>
+                        <span class="step-num">2</span>
+                        <span data-i18n="qs2">Optionally add your EDSM API key in iniciar.bat (Commander name is detected automatically from the Journal).</span>
+                    </li>
+                    <li>
+                        <span class="step-num">3</span>
+                        <span data-i18n="qs3">Double-click iniciar.bat and open http://localhost:8080 from your PC or tablet on the local network.</span>
+                    </li>
+                </ol>
+
+                <div class="code-panel">
+                    <div class="code-header">
+                        <span>powershell / cmd</span>
+                        <button class="copy-btn" id="copyBtn" type="button" data-i18n="copy">Copy</button>
+                    </div>
+                    <pre id="codeBlock">mvn clean package -DskipTests
+java -jar target/elite-explorer-1.0.0.jar</pre>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p data-i18n="footerText">Elite Explorer Copilot — Fan-made exploration companion for Elite Dangerous. Fly safe, Commander. o7</p>
+        </div>
+    </footer>
+
+    <!-- Lightbox Modal -->
+    <div id="lightbox" class="lightbox" aria-hidden="true">
+        <button class="lightbox-btn lightbox-close" id="lbClose" type="button" aria-label="Close">✕</button>
+        <button class="lightbox-btn lightbox-prev" id="lbPrev" type="button" aria-label="Previous">‹</button>
+        <img id="lbImg" src="" alt="Expanded capture">
+        <button class="lightbox-btn lightbox-next" id="lbNext" type="button" aria-label="Next">›</button>
+    </div>
+
+    <script>
+        // Animated subtle starfield
+        (function initStarfield() {
+            const canvas = document.getElementById('starfield');
+            const ctx = canvas.getContext('2d');
+            let stars = [];
+
+            function resize() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                const count = Math.min(180, Math.floor((canvas.width * canvas.height) / 10000));
+                stars = Array.from({ length: count }, () => ({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    r: Math.random() * 1.4 + 0.3,
+                    a: Math.random() * 0.7 + 0.2,
+                    v: (Math.random() - 0.5) * 0.15
+                }));
+            }
+
+            function tick() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                for (const s of stars) {
+                    s.y += s.v;
+                    if (s.y < 0) s.y = canvas.height;
+                    if (s.y > canvas.height) s.y = 0;
+                    ctx.fillStyle = `rgba(180, 230, 255, ${s.a})`;
+                    ctx.beginPath();
+                    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                requestAnimationFrame(tick);
+            }
+
+            window.addEventListener('resize', resize);
+            resize();
+            tick();
+        })();
+
+        // Lightbox gallery
+        (function initLightbox() {
+            const sources = ['./0004.png', './001.png', './002.png', './003.png'];
+            const modal = document.getElementById('lightbox');
+            const lbImg = document.getElementById('lbImg');
+            let currentIdx = 0;
+
+            function showAt(idx) {
+                currentIdx = (idx + sources.length) % sources.length;
+                lbImg.src = sources[currentIdx];
+                modal.classList.add('open');
+                modal.setAttribute('aria-hidden', 'false');
+            }
+
+            function close() {
+                modal.classList.remove('open');
+                modal.setAttribute('aria-hidden', 'true');
+            }
+
+            document.querySelectorAll('[data-lightbox]').forEach(el => {
+                el.addEventListener('click', () => {
+                    const src = el.getAttribute('data-lightbox');
+                    const idx = sources.indexOf(src);
+                    showAt(idx >= 0 ? idx : 0);
+                });
+            });
+
+            document.getElementById('lbClose').addEventListener('click', close);
+            document.getElementById('lbPrev').addEventListener('click', (e) => { e.stopPropagation(); showAt(currentIdx - 1); });
+            document.getElementById('lbNext').addEventListener('click', (e) => { e.stopPropagation(); showAt(currentIdx + 1); });
+            modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+            document.addEventListener('keydown', (e) => {
+                if (!modal.classList.contains('open')) return;
+                if (e.key === 'Escape') close();
+                if (e.key === 'ArrowLeft') showAt(currentIdx - 1);
+                if (e.key === 'ArrowRight') showAt(currentIdx + 1);
+            });
+        })();
+
+        // Copy button
+        document.getElementById('copyBtn').addEventListener('click', async () => {
+            const text = document.getElementById('codeBlock').textContent;
+            const btn = document.getElementById('copyBtn');
+            try {
+                await navigator.clipboard.writeText(text);
+                const old = btn.textContent;
+                btn.textContent = '✓';
+                setTimeout(() => { btn.textContent = old; }, 1500);
+            } catch (_) {}
+        });
+
+        // Bilingual EN / PT switcher
+        const translations = {
+            en: {
+                navVideos: 'Videos',
+                navGallery: 'Gallery',
+                navFeatures: 'Features',
+                navQuickstart: 'Quick Start',
+                heroTitle: 'Explore the Milky Way with Live HUD Telemetry.',
+                heroDesc: 'A real-time space exploration, exobiology, and planetary surface navigation copilot for Elite Dangerous. Reads your local game logs directly and renders 3D galactic cubes, star system orreries, and a 2.5D Columbus surface HUD.',
+                ctaVideos: '▶ Watch Video Demos',
+                ctaGallery: 'View Screenshots',
+                ctaDocs: 'Quick Start',
+                clickZoom: 'Click to expand',
+                videosKicker: 'IN MOTION',
+                videosTitle: 'Live System Demonstrations',
+                videosSub: 'Recorded straight from the live HUD connected to Elite Dangerous telemetry.',
+                video1Title: 'System Demo — Clip 01',
+                video2Title: 'System Demo — Clip 02',
+                galleryKicker: 'HUD CAPTURES',
+                galleryTitle: 'Interface Screenshots',
+                gallerySub: 'Click any capture to inspect the telemetry panels and 3D views in full screen.',
+                shot1: 'HUD Capture 01',
+                shot2: 'HUD Capture 02',
+                shot3: 'HUD Capture 03',
+                shot4: 'HUD Capture 04',
+                featuresKicker: 'CAPABILITIES',
+                featuresTitle: 'Built for Deep-Space Commanders',
+                f1Title: '3D Galactic Cube',
+                f1Desc: 'Interactive Three.js stellar sector map with KGBFOAM classification, active NavRoute line, and persistent local cube cache.',
+                f2Title: 'Stratum Tectonicas Radar',
+                f2Desc: 'Highlights nearby high-value exobiology candidates combining Spansh EDDN confirmations and planetary atmosphere filtering.',
+                f3Title: 'Procedural Void Hunter',
+                f3Desc: 'Detects sequence gaps across Stellar Forge mass boxes to pinpoint likely unexplored systems around your ship.',
+                f4Title: '3D Star System Orrery',
+                f4Desc: 'Visualizes orbits, moons, rings, surface materials, landability, and DSS bio/geo counts in real time.',
+                f5Title: '2.5D Surface HUD',
+                f5Desc: 'Seamless switch between global -180°/+180° map and 1,200 m tactical radar with exobiology 3-sample diversity rings.',
+                f6Title: 'Live Journal & Community Sync',
+                f6Desc: 'Streams Journal, Status.json, and EDDN traffic via SSE, with optional EDSM sync and INARA trade route integration.',
+                qsKicker: 'DEPLOYMENT',
+                qsTitle: 'Up and Running in Seconds',
+                qs1: 'Install Java 22 on Windows alongside Elite Dangerous.',
+                qs2: 'Optionally add your EDSM API key in iniciar.bat (Commander name is detected automatically from the Journal).',
+                qs3: 'Double-click iniciar.bat and open http://localhost:8080 from your PC or tablet on the local network.',
+                copy: 'Copy',
+                footerText: 'Elite Explorer Copilot — Fan-made exploration companion for Elite Dangerous. Fly safe, Commander. o7'
+            },
+            pt: {
+                navVideos: 'Vídeos',
+                navGallery: 'Galeria',
+                navFeatures: 'Recursos',
+                navQuickstart: 'Como Iniciar',
+                heroTitle: 'Explore a Via Láctea com Telemetria ao Vivo.',
+                heroDesc: 'Um copiloto em tempo real para exploração espacial, exobiologia e navegação de superfície em Elite Dangerous. Lê os logs locais do jogo e renderiza cubos galácticos 3D, orrery do sistema e HUD planetário 2.5D.',
+                ctaVideos: '▶ Assistir Demonstrações',
+                ctaGallery: 'Ver Capturas',
+                ctaDocs: 'Como Iniciar',
+                clickZoom: 'Clique para ampliar',
+                videosKicker: 'EM AÇÃO',
+                videosTitle: 'Demonstrações do Sistema',
+                videosSub: 'Gravações diretas da interface conectada à telemetria do Elite Dangerous.',
+                video1Title: 'Demonstração — Vídeo 01',
+                video2Title: 'Demonstração — Vídeo 02',
+                galleryKicker: 'CAPTURAS DO HUD',
+                galleryTitle: 'Telas da Interface',
+                gallerySub: 'Clique em qualquer imagem para visualizar em tela cheia.',
+                shot1: 'Captura do HUD 01',
+                shot2: 'Captura do HUD 02',
+                shot3: 'Captura do HUD 03',
+                shot4: 'Captura do HUD 04',
+                featuresKicker: 'FUNCIONALIDADES',
+                featuresTitle: 'Projetado para Exploradores',
+                f1Title: 'Cubo Galáctico 3D',
+                f1Desc: 'Mapa estelar Three.js com classificação KGBFOAM, rota NavRoute ativa e cache persistente em disco.',
+                f2Title: 'Radar de Stratum Tectonicas',
+                f2Desc: 'Destaca alvos de alta recompensa em exobiologia combinando confirmações do Spansh e filtragem atmosférica.',
+                f3Title: 'Caçador de Vazios Procedurais',
+                f3Desc: 'Identifica lacunas na numeração da Stellar Forge para apontar possíveis sistemas ainda virgens ao redor da nave.',
+                f4Title: 'Orrery 3D do Sistema',
+                f4Desc: 'Exibe órbitas, luas, anéis, materiais de superfície, pousabilidade e sinais bio/geo detectados no DSS.',
+                f5Title: 'HUD de Superfície 2.5D',
+                f5Desc: 'Alternância automática entre mapa global -180°/+180° e radar tático de 1.200 m com odômetro de 3 amostras.',
+                f6Title: 'Journal ao Vivo & Comunidade',
+                f6Desc: 'Atualização via SSE do Journal/Status.json e tráfego EDDN, com sincronia EDSM opcional e rotas INARA.',
+                qsKicker: 'EXECUÇÃO',
+                qsTitle: 'Pronto em Poucos Segundos',
+                qs1: 'Instale o Java 22 no Windows junto com o Elite Dangerous.',
+                qs2: 'Opcionalmente adicione sua chave EDSM no iniciar.bat (o nome do Comandante é lido automaticamente do Journal).',
+                qs3: 'Execute o iniciar.bat e acesse http://localhost:8080 no navegador do PC ou tablet na mesma rede.',
+                copy: 'Copiar',
+                footerText: 'Elite Explorer Copilot — Ferramenta feita por fãs para Elite Dangerous. Voos seguros, Comandante. o7'
+            }
+        };
+
+        function setLang(lang) {
+            const dict = translations[lang] || translations.en;
+            document.documentElement.lang = lang === 'pt' ? 'pt-BR' : 'en';
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (dict[key]) el.textContent = dict[key];
+            });
+            document.getElementById('btnEn').classList.toggle('active', lang === 'en');
+            document.getElementById('btnPt').classList.toggle('active', lang === 'pt');
+        }
+
+        document.getElementById('btnEn').addEventListener('click', () => setLang('en'));
+        document.getElementById('btnPt').addEventListener('click', () => setLang('pt'));
+    </script>
+</body>
+</html>
