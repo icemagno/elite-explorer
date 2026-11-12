@@ -1027,7 +1027,7 @@ function showBodyDetails(b) {
     panel.style.display = 'block';
 
     const isCluster = isBeltCluster(b);
-    const locale = window.i18n ? window.i18n.getLocale() : 'pt-BR';
+    const locale = window.i18n ? window.i18n.getLocale() : 'en-US';
 
     document.getElementById('detailBodyName').textContent = b.name;
     document.getElementById('detailBodyClass').textContent = b.subType || b.type;

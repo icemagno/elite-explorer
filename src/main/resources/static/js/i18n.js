@@ -1142,10 +1142,7 @@
                 if (SUPPORTED_LANGS.includes(stored)) return stored;
             } catch (_) {}
 
-            const nav = (navigator.language || navigator.userLanguage || 'pt').toLowerCase();
-            if (nav.startsWith('en')) return 'en';
-            if (nav.startsWith('es')) return 'es';
-            return 'pt';
+            return 'en';
         }
 
         _persist(lang) {
@@ -1158,14 +1155,14 @@
         }
 
         getLocale() {
-            return (LOCALE_META[this.currentLang] || LOCALE_META.pt).code;
+            return (LOCALE_META[this.currentLang] || LOCALE_META.en).code;
         }
 
         t(key, ...params) {
-            const dict = TRANSLATIONS[this.currentLang] || TRANSLATIONS.pt;
+            const dict = TRANSLATIONS[this.currentLang] || TRANSLATIONS.en;
             let val = dict[key];
             if (val === undefined) {
-                val = TRANSLATIONS.pt[key];
+                val = TRANSLATIONS.en[key];
             }
             if (val === undefined) {
                 return key;

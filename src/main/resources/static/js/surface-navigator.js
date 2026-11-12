@@ -919,7 +919,7 @@ function updateSurfaceTelemetry(data) {
     // 6. Atualiza Elementos do HUD (Bússola e textos sempre atualizam conforme telemetria)
     updateCompassTape(heading);
 
-    const locale = window.i18n ? window.i18n.getLocale() : 'pt-BR';
+    const locale = window.i18n ? window.i18n.getLocale() : 'en-US';
     const altEl = document.getElementById('surfaceAltitudeText');
     const stateEl = document.getElementById('surfaceFlightStateBadge');
     if (altEl) {
@@ -1093,7 +1093,7 @@ function isSurfaceAudioEnabled() {
 function speakSurfaceAlert(text) {
     if (!text || !isSurfaceAudioEnabled() || !('speechSynthesis' in window)) return;
     try {
-        const locale = window.i18n ? window.i18n.getLocale() : 'pt-BR';
+        const locale = window.i18n ? window.i18n.getLocale() : 'en-US';
         window.speechSynthesis.cancel();
         if (typeof window.speechSynthesis.resume === 'function') {
             window.speechSynthesis.resume();
@@ -1248,7 +1248,7 @@ function updateBioTelemetry(data, moved) {
     const bannerEl = document.getElementById('bioStatusBanner');
 
     if (distEl && barEl && bannerEl) {
-        const locale = window.i18n ? window.i18n.getLocale() : 'pt-BR';
+        const locale = window.i18n ? window.i18n.getLocale() : 'en-US';
         if (count === 0) {
             distEl.textContent = '---';
             barEl.style.width = '0%';

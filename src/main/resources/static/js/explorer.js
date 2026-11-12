@@ -4,7 +4,7 @@
  */
 
 const tr = (key, ...args) => (window.t ? window.t(key, ...args) : key);
-const getLocale = () => (window.i18n ? window.i18n.getLocale() : 'pt-BR');
+const getLocale = () => (window.i18n ? window.i18n.getLocale() : 'en-US');
 
 // Paleta de Cores Estelares (KGBFOAM + Especiais + Outras)
 const STAR_COLORS = {
