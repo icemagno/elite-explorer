@@ -29,6 +29,9 @@ target/
 # Local runtime cache
 cache/
 
+# Local launcher with personal API credentials
+iniciar.bat
+
 # IDE & OS
 .idea/
 *.iml
