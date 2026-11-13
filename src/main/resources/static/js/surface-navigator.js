@@ -1569,12 +1569,15 @@ function showSurfaceView() {
     if (cubeView) cubeView.style.display = 'none';
     if (surfaceView) surfaceView.style.display = 'block';
     if (btnSwitch) {
-        btnSwitch.innerHTML = `🪐 ${surfaceTr('nav.surface')}`;
+        if (!document.getElementById('navSurfaceBadge')) {
+            btnSwitch.innerHTML = `🪐 ${surfaceTr('nav.surface')}`;
+        }
         btnSwitch.style.borderColor = '#2bfca8';
         btnSwitch.style.background = 'rgba(43,252,168,0.25)';
     }
 
     isSurfaceViewActive = true;
+    window.isSurfaceViewActive = true;
     userManuallyClosedSurface = false;
 
     // Inicializa Three.js da superfície no primeiro acionamento
@@ -1586,6 +1589,9 @@ function showSurfaceView() {
     }
 
     updateSurfaceTelemetry(lastSurfaceData);
+    if (window.CopilotNav && typeof window.CopilotNav.refreshState === 'function') {
+        window.CopilotNav.refreshState();
+    }
 }
 
 function hideSurfaceView() {
@@ -1601,6 +1607,7 @@ function hideSurfaceView() {
     }
 
     isSurfaceViewActive = false;
+    window.isSurfaceViewActive = false;
     userManuallyClosedSurface = true;
 
     if (btnSwitch && lastSurfaceData) {
@@ -1610,12 +1617,21 @@ function hideSurfaceView() {
             btnSwitch.style.opacity = '1.0';
             btnSwitch.style.cursor = 'pointer';
             btnSwitch.style.pointerEvents = 'auto';
-            btnSwitch.innerHTML = `🪐 ${surfaceTr('nav.surface')}`;
+            if (!document.getElementById('navSurfaceBadge')) {
+                btnSwitch.innerHTML = `🪐 ${surfaceTr('nav.surface')}`;
+            }
             btnSwitch.style.borderColor = 'rgba(43,252,168,0.5)';
             btnSwitch.style.background = 'rgba(43,252,168,0.12)';
         }
     }
+
+    if (window.CopilotNav && typeof window.CopilotNav.refreshState === 'function') {
+        window.CopilotNav.refreshState();
+    }
 }
+
+window.showSurfaceView = showSurfaceView;
+window.hideSurfaceView = hideSurfaceView;
 
 function checkIsNearSurface(data) {
     if (!data) return false;
@@ -1642,7 +1658,9 @@ function handleSurfaceDataUpdate(data) {
     const isNearSurface = checkIsNearSurface(data);
 
     if (btnSwitch) {
-        btnSwitch.innerHTML = `🪐 ${surfaceTr('nav.surface')}`;
+        if (!document.getElementById('navSurfaceBadge')) {
+            btnSwitch.innerHTML = `🪐 ${surfaceTr('nav.surface')}`;
+        }
         if (isNearSurface) {
             btnSwitch.disabled = false;
             btnSwitch.style.opacity = '1.0';

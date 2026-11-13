@@ -935,3 +935,468 @@ body {
     display: none;
     z-index: 9999;
 }
+
+/* ==========================================================================
+   UNIFIED HUD FLOATING SIDEBAR & TOP NAV TRIGGER
+   ========================================================================== */
+
+/* Top Left Floating Trigger */
+.copilot-top-nav-trigger {
+    position: fixed;
+    top: 15px;
+    left: 20px;
+    z-index: 1000;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    pointer-events: auto;
+    user-select: none;
+}
+
+.copilot-menu-btn {
+    background: rgba(8, 20, 36, 0.92);
+    border: 1px solid rgba(0, 212, 255, 0.45);
+    color: #00d4ff;
+    padding: 7px 14px;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 1px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+    outline: none;
+}
+
+.copilot-menu-btn:hover {
+    background: rgba(0, 212, 255, 0.22);
+    border-color: #00d4ff;
+    color: #ffffff;
+    box-shadow: 0 0 15px rgba(0, 212, 255, 0.5);
+    transform: translateY(-1px);
+}
+
+.copilot-menu-icon {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    justify-content: center;
+    width: 14px;
+}
+
+.copilot-menu-icon span {
+    display: block;
+    height: 2px;
+    background: currentColor;
+    border-radius: 1px;
+    transition: all 0.2s;
+}
+
+.copilot-trigger-status {
+    background: rgba(8, 20, 36, 0.88);
+    border: 1px solid rgba(255, 170, 0, 0.4);
+    border-radius: 6px;
+    padding: 7px 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Consolas', monospace;
+    font-size: 12px;
+    color: #d8e5f2;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.copilot-trigger-status:hover {
+    border-color: #ffaa00;
+    background: rgba(255, 170, 0, 0.15);
+    box-shadow: 0 0 12px rgba(255, 170, 0, 0.35);
+    transform: translateY(-1px);
+}
+
+.trigger-cmdr {
+    color: #ffaa00;
+    font-weight: bold;
+}
+
+.trigger-sep {
+    color: #4b637d;
+}
+
+.trigger-sys {
+    color: #2bfca8;
+    font-weight: bold;
+}
+
+.trigger-edsm {
+    color: #00d4ff;
+    font-size: 11px;
+    margin-left: 2px;
+}
+
+/* Backdrop Overlay */
+.copilot-sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(2, 6, 14, 0.65);
+    backdrop-filter: blur(4px);
+    z-index: 10001;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+}
+
+.copilot-sidebar-backdrop.is-open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* Retractable Sidebar (Drawer) */
+.copilot-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 350px;
+    height: 100vh;
+    max-width: 90vw;
+    background: rgba(6, 14, 26, 0.96);
+    border-right: 1px solid rgba(0, 212, 255, 0.35);
+    box-shadow: 12px 0 40px rgba(0, 0, 0, 0.9), inset -1px 0 20px rgba(0, 212, 255, 0.06);
+    backdrop-filter: blur(16px);
+    z-index: 10002;
+    display: flex;
+    flex-direction: column;
+    transform: translateX(-100%);
+    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    box-sizing: border-box;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.copilot-sidebar.is-open {
+    transform: translateX(0);
+}
+
+/* Sidebar Header */
+.sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 20px;
+    border-bottom: 1px solid rgba(0, 212, 255, 0.2);
+    background: rgba(4, 10, 20, 0.7);
+}
+
+.sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.sidebar-logo {
+    width: 34px;
+    height: 34px;
+    border-radius: 6px;
+    background: rgba(0, 212, 255, 0.15);
+    border: 1px solid rgba(0, 212, 255, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 10px rgba(0, 212, 255, 0.2);
+}
+
+.sidebar-app-name {
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    color: #ffffff;
+    text-transform: uppercase;
+}
+
+.sidebar-app-sub {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    color: #00d4ff;
+    font-family: 'Consolas', monospace;
+}
+
+.sidebar-close-btn {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #8da4be;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.sidebar-close-btn:hover {
+    background: rgba(248, 81, 73, 0.2);
+    border-color: #f85149;
+    color: #ffffff;
+}
+
+/* Pilot & Telemetry Card */
+.sidebar-pilot-card {
+    margin: 16px 18px;
+    padding: 12px 14px;
+    background: rgba(12, 22, 38, 0.85);
+    border: 1px solid rgba(0, 212, 255, 0.25);
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    box-shadow: inset 0 0 10px rgba(0, 212, 255, 0.04);
+}
+
+.pilot-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
+    gap: 8px;
+}
+
+.pilot-label {
+    color: #8da4be;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+}
+
+.pilot-val {
+    font-family: 'Consolas', monospace;
+    font-size: 12px;
+    font-weight: bold;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 185px;
+}
+
+.cmdr-gold {
+    color: #ffaa00;
+}
+
+.sys-cyan {
+    color: #00d4ff;
+}
+
+.edsm-badge {
+    font-size: 11px;
+    color: #2bfca8;
+    font-family: 'Consolas', monospace;
+}
+
+/* Nav Section */
+.sidebar-nav-section {
+    padding: 0 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+}
+
+.sidebar-section-title {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    color: #6a88a8;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+    margin-top: 6px;
+}
+
+.sidebar-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 14px;
+    background: rgba(12, 25, 45, 0.6);
+    border: 1px solid rgba(0, 212, 255, 0.2);
+    border-radius: 6px;
+    color: #d8e5f2;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    position: relative;
+    cursor: pointer;
+    text-align: left;
+    width: 100%;
+    box-sizing: border-box;
+    font-family: inherit;
+}
+
+.sidebar-nav-item:hover {
+    background: rgba(0, 212, 255, 0.18);
+    border-color: rgba(0, 212, 255, 0.6);
+    color: #ffffff;
+    transform: translateX(3px);
+}
+
+.sidebar-nav-item.active {
+    background: rgba(0, 212, 255, 0.22);
+    border-color: #00d4ff;
+    color: #ffffff;
+    box-shadow: 0 0 14px rgba(0, 212, 255, 0.25);
+}
+
+.sidebar-nav-item.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 6px;
+    bottom: 6px;
+    width: 3px;
+    background: #00d4ff;
+    border-radius: 0 2px 2px 0;
+    box-shadow: 0 0 8px #00d4ff;
+}
+
+.sidebar-nav-item.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    background: rgba(10, 18, 30, 0.4);
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+.sidebar-nav-item .nav-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.sidebar-nav-item .nav-label-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+}
+
+.sidebar-nav-item .nav-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #ffffff;
+    letter-spacing: 0.3px;
+}
+
+.sidebar-nav-item .nav-desc {
+    font-size: 10px;
+    color: #8da4be;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.nav-status-badge {
+    font-size: 9px;
+    font-weight: 800;
+    font-family: 'Consolas', monospace;
+    padding: 2px 6px;
+    border-radius: 3px;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+}
+
+.nav-status-badge.disabled {
+    background: rgba(140, 160, 180, 0.12);
+    border: 1px solid rgba(140, 160, 180, 0.3);
+    color: #8da4be;
+}
+
+.nav-status-badge.online {
+    background: rgba(43, 252, 168, 0.18);
+    border: 1px solid rgba(43, 252, 168, 0.6);
+    color: #2bfca8;
+    box-shadow: 0 0 8px rgba(43, 252, 168, 0.3);
+}
+
+/* Language Section */
+.sidebar-lang-section {
+    padding: 14px 18px;
+    border-top: 1px solid rgba(0, 212, 255, 0.15);
+    margin-top: 12px;
+}
+
+.sidebar-lang-container {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 6px;
+}
+
+/* Footer */
+.sidebar-footer {
+    padding: 12px 18px;
+    border-top: 1px solid rgba(0, 212, 255, 0.12);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 10px;
+    color: #6a88a8;
+    font-family: 'Consolas', monospace;
+    background: rgba(3, 8, 16, 0.5);
+}
+
+.version-badge {
+    background: rgba(0, 212, 255, 0.1);
+    border: 1px solid rgba(0, 212, 255, 0.3);
+    color: #00d4ff;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-weight: bold;
+}
+
+.sidebar-author-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 1px;
+    line-height: 1.2;
+}
+
+.author-name {
+    color: #e6edf3;
+    font-weight: 600;
+    font-size: 11px;
+}
+
+.author-email {
+    color: #8da4be;
+    text-decoration: none;
+    font-size: 10px;
+    transition: color 0.2s ease;
+}
+
+.author-email:hover {
+    color: #00d4ff;
+    text-decoration: underline;
+}
+
+@media (max-width: 600px) {
+    .copilot-top-nav-trigger {
+        top: 10px;
+        left: 10px;
+        gap: 6px;
+    }
+    .copilot-trigger-status {
+        font-size: 11px;
+        padding: 6px 10px;
+        max-width: 200px;
+        overflow: hidden;
+    }
+}

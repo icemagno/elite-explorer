@@ -556,26 +556,6 @@
         <span id="cubeLoadingText" data-i18n="galaxy.loading_default">Aguarde... Carregando dados estelares</span>
     </div>
 
-    <!-- Top Left Live Coordinates Badge -->
-    <div class="top-nav-bar">
-        <div id="playerCoordsDisplay" class="coords-badge" data-i18n="galaxy.syncing_journal">
-            Sincronizando com Journal...
-        </div>
-        <div id="edsmSyncDisplay" class="coords-badge" style="color: #00d4ff; border-color: rgba(0, 212, 255, 0.45); box-shadow: 0 0 12px rgba(0, 212, 255, 0.15); cursor: default;" data-i18n="galaxy.edsm_connecting" data-i18n-title="galaxy.edsm_title" title="Transmissão contínua de telemetria e descobertas para o EDSM">
-            🛰️ EDSM: Conectando...
-        </div>
-        <a href="/index.html" class="coords-badge" style="background: rgba(0,212,255,0.2); border-color: #00d4ff; color: #fff; text-decoration: none; font-weight: bold; cursor: default;">
-            <span>🌌</span> <span data-i18n="nav.galaxy_cube">Cubo Galáctico</span>
-        </a>
-        <a href="/system-orrery.html" id="btnSwitchToOrrery" class="coords-badge" style="background: rgba(255,170,0,0.12); border-color: rgba(255,170,0,0.5); color: #ffaa00; text-decoration: none; cursor: pointer; font-weight: bold; transition: all 0.2s;" data-i18n-title="nav.system_title" title="Abrir o Mapa 3D do Sistema Estelar">
-            <span>🪐</span> <span data-i18n="nav.system">Sistema</span>
-        </a>
-        <button id="btnSwitchToSurface" class="coords-badge" style="opacity: 0.35; cursor: not-allowed; pointer-events: none; background: rgba(43,252,168,0.12); border-color: rgba(43,252,168,0.5); color: #2bfca8; font-weight: bold; transition: all 0.2s;" data-i18n-title="nav.surface_disabled_title" title="Disponível apenas quando a nave estiver em órbita ou na superfície de um planeta">
-            <span>🪐</span> <span data-i18n="nav.surface">Superfície</span>
-        </button>
-        <div data-lang-switcher></div>
-    </div>
-
     <!-- Left HUD Column (Target Details & Stations) -->
     <div class="hud-left-column">
         <!-- Selected Target Card (Pinned Selection) -->
@@ -921,6 +901,7 @@
     </div>
 
     <script src="/js/i18n.js?v=20261112-10"></script>
+    <script src="/js/nav-sidebar.js?v=20261113-1"></script>
     <script src="/js/splash.js?v=20261112-10"></script>
     <script src="/js/explorer.js?v=20261112-10"></script>
     <script src="/js/surface-navigator.js?v=20261112-10"></script>

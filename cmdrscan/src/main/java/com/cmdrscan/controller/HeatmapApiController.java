@@ -40,6 +40,11 @@ public class HeatmapApiController {
         return ResponseEntity.ok(cmdrScanService.getDockingData());
     }
 
+    @GetMapping("/market/top")
+    public ResponseEntity<java.util.List<Map<String, Object>>> getMarketTop() {
+        return ResponseEntity.ok(cmdrScanService.getSingleHopTradeRoutes());
+    }
+
     @GetMapping("/status")
     public ResponseEntity<Map<String, Object>> getStatus() {
         Map<String, Object> disc = cmdrScanService.getDiscoveredStats5m();

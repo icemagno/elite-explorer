@@ -12,7 +12,7 @@
     </parent>
     <groupId>com.eliteexplorer</groupId>
     <artifactId>elite-explorer</artifactId>
-    <version>1.0.0</version>
+    <version>0.0.1</version>
     <name>Elite Explorer Copilot</name>
     <description>Elite Explorer Copilot - Galaxy, System and Planetary Surface Explorer</description>
     <properties>

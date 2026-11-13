@@ -308,11 +308,6 @@ public class JournalWatcherService {
                         String body = root.path("Body").asText("");
                         if (!body.isBlank()) {
                             ps.setBodyName(body);
-                            if (root.has("NearestDestination")) {
-                                String rawDest = root.path("NearestDestination").asText("");
-                                String locDest = root.path("NearestDestination_Localised").asText(rawDest);
-                                surfaceFeatureService.recordKnownPointOfInterest(rawDest, locDest, body, lat, lon, sys);
-                            }
                             surfaceFeatureService.syncPlanetaryStatusSignals(ps, sys, body);
                         }
                     }
@@ -619,15 +614,7 @@ public class JournalWatcherService {
                         planetHistoryService.recordTouchdown(starSystem, systemAddress > 0 ? systemAddress : null, body, bodyId >= 0 ? bodyId : null, timestamp);
                     }
 
-                    // Registra ponto de interesse ou local de mineração real onde o jogador pousou
-                    if (root.has("NearestDestination")) {
-                        String rawDest = root.path("NearestDestination").asText("");
-                        String locDest = root.path("NearestDestination_Localised").asText(rawDest);
-                        if (!rawDest.isBlank() && !body.isBlank()) {
-                            surfaceFeatureService.recordKnownPointOfInterest(rawDest, locDest, body, tdLat, tdLon, starSystem);
-                            surfaceFeatureService.syncPlanetaryStatusSignals(ps, starSystem, body);
-                        }
-                    }
+                    surfaceFeatureService.syncPlanetaryStatusSignals(ps, starSystem, body);
 
                     if (isLiveUpdate) {
                         sseNotificationService.broadcastEvent("surface_status", ps);
@@ -639,18 +626,10 @@ public class JournalWatcherService {
                     if (isBioCollectionCompleted(ps)) {
                         clearBioTelemetry(ps);
                     }
-                    if (root.has("NearestDestination")) {
-                        String rawDest = root.path("NearestDestination").asText("");
-                        String locDest = root.path("NearestDestination_Localised").asText(rawDest);
-                        double lat = root.has("Latitude") ? root.path("Latitude").asDouble() : (ps.getLatitude() != null ? ps.getLatitude() : 0.0);
-                        double lon = root.has("Longitude") ? root.path("Longitude").asDouble() : (ps.getLongitude() != null ? ps.getLongitude() : 0.0);
-                        String body = root.path("Body").asText(ps.getBodyName());
-                        String starSystem = root.path("StarSystem").asText(ps.getCurrentSystem());
-                        if (!rawDest.isBlank() && !body.isBlank()) {
-                            surfaceFeatureService.recordKnownPointOfInterest(rawDest, locDest, body, lat, lon, starSystem);
-                            surfaceFeatureService.syncPlanetaryStatusSignals(ps, starSystem, body);
-                        }
-                    }
+                    String body = root.path("Body").asText(ps.getBodyName());
+                    String starSystem = root.path("StarSystem").asText(ps.getCurrentSystem());
+                    surfaceFeatureService.syncPlanetaryStatusSignals(ps, starSystem, body);
+
                     if (isLiveUpdate) {
                         sseNotificationService.broadcastEvent("surface_status", ps);
                     }
@@ -1080,7 +1059,17 @@ public class JournalWatcherService {
     }
 
     public PlanetaryStatusDTO getPlanetaryStatus() {
-        return planetaryStatusRef.get();
+        PlanetaryStatusDTO ps = planetaryStatusRef.get();
+        if (ps != null) {
+            PlayerStatus p = playerStatusRef.get();
+            if (p != null) {
+                ps.setCommander(p.getCommander());
+                if (ps.getCurrentSystem() == null || ps.getCurrentSystem().isBlank()) {
+                    ps.setCurrentSystem(p.getCurrentSystem());
+                }
+            }
+        }
+        return ps;
     }
 
     private void updateSurfaceFeatureDistances(PlanetaryStatusDTO ps) {

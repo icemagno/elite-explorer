@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="market.page_title">Elite Explorer Copilot - Mercado Single-Hop</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .hud-container {
+            padding-top: 65px;
+        }
+
+        /* Market Grid & Card Styles (Identical to CmdrScan HUD Card) */
+        .market-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            border-radius: 8px;
+            padding: 12px 18px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(8px);
+        }
+
+        .market-meta-group {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .meta-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: #8b949e;
+        }
+
+        .meta-pill strong {
+            color: #e6edf3;
+            font-family: var(--font-mono);
+        }
+
+        .meta-pill.cyan strong {
+            color: #00d2ff;
+        }
+
+        .meta-pill.gold strong {
+            color: #ffd700;
+        }
+
+        .meta-pill.green strong {
+            color: #2bfca8;
+        }
+
+        .cargo-input-wrap {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(0, 212, 255, 0.35);
+            border-radius: 6px;
+            padding: 4px 8px;
+        }
+
+        .cargo-input-wrap label {
+            font-size: 12px;
+            color: #8b949e;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .cargo-input-field {
+            width: 70px;
+            background: transparent;
+            border: none;
+            color: #2bfca8;
+            font-family: var(--font-mono);
+            font-size: 14px;
+            font-weight: 700;
+            text-align: right;
+            outline: none;
+        }
+
+        .cargo-input-field::-webkit-inner-spin-button {
+            opacity: 1;
+        }
+
+        .btn-refresh {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(0, 212, 255, 0.12);
+            border: 1px solid rgba(0, 212, 255, 0.4);
+            color: #00d2ff;
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-refresh:hover {
+            background: rgba(0, 212, 255, 0.25);
+            border-color: #00d2ff;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
+        }
+
+        /* 4 Columns x 5 Rows Grid */
+        .market-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
+        }
+
+        @media (max-width: 1500px) {
+            .market-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (max-width: 1100px) {
+            .market-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 680px) {
+            .market-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Single-Hop Card - Pixel Identical to CmdrScan Card */
+        .market-card {
+            background: rgba(8, 16, 26, 0.95);
+            border: 1px solid rgba(0, 212, 255, 0.22);
+            border-radius: 8px;
+            padding: 10px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            transition: all 0.2s ease;
+            position: relative;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        }
+
+        .market-card:hover {
+            border-color: rgba(0, 212, 255, 0.65);
+            background: rgba(10, 22, 38, 0.98);
+            box-shadow: 0 6px 18px rgba(0, 212, 255, 0.15);
+            transform: translateY(-2px);
+        }
+
+        /* Card Header */
+        .card-top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 4px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .card-category-title {
+            font-size: 11px;
+            font-weight: 700;
+            font-family: var(--font-mono);
+            color: #00d2ff;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .card-pill-tag {
+            font-size: 9px;
+            font-family: var(--font-mono);
+            font-weight: 600;
+            color: #00d2ff;
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid rgba(0, 212, 255, 0.35);
+            padding: 2px 6px;
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
+
+        /* Commodity & Profit Delta Row */
+        .trade-header-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 2px;
+        }
+
+        .trade-comm-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #ffd700;
+            text-shadow: 0 0 8px rgba(255, 215, 0, 0.35);
+            letter-spacing: 0.3px;
+        }
+
+        .trade-profit-badge {
+            font-size: 11px;
+            font-family: var(--font-mono);
+            font-weight: 700;
+            color: #2bfca8;
+            background: rgba(43, 252, 168, 0.12);
+            border: 1px solid rgba(43, 252, 168, 0.45);
+            padding: 2px 7px;
+            border-radius: 4px;
+            white-space: nowrap;
+        }
+
+        /* Step Rows (BUY / SELL) */
+        .trade-step-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 11px;
+            gap: 6px;
+            padding: 2px 0;
+        }
+
+        .step-tag {
+            font-size: 9px;
+            font-weight: 700;
+            font-family: var(--font-mono);
+            padding: 2px 5px;
+            border-radius: 3px;
+            min-width: 32px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .tag-buy {
+            background: rgba(0, 212, 255, 0.2);
+            color: #00d4ff;
+            border: 1px solid rgba(0, 212, 255, 0.4);
+        }
+
+        .tag-sell {
+            background: rgba(255, 180, 0, 0.2);
+            color: #ffb400;
+            border: 1px solid rgba(255, 180, 0, 0.4);
+        }
+
+        .step-loc {
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: #d1e2f6;
+            cursor: pointer;
+            transition: color 0.15s;
+        }
+
+        .step-loc:hover {
+            color: #00d2ff;
+            text-decoration: underline;
+        }
+
+        .step-loc small {
+            color: #7c92a6;
+            font-size: 10px;
+        }
+
+        .step-price {
+            font-family: var(--font-mono);
+            color: #cbd5e1;
+            font-size: 11px;
+            white-space: nowrap;
+            flex-shrink: 0;
+            text-align: right;
+        }
+
+        .step-price small {
+            color: #64748b;
+            font-size: 10px;
+        }
+
+        /* Card Footer Row */
+        .trade-footer-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 10px;
+            color: #7c92a6;
+            margin-top: 4px;
+            padding-top: 5px;
+            border-top: 1px dashed rgba(255, 255, 255, 0.08);
+        }
+
+        .trade-meta b {
+            color: #ffffff;
+            font-weight: 600;
+        }
+
+        .profit-indicators {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 1px;
+        }
+
+        .trade-player-badge {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            font-weight: 700;
+            color: #2bfca8;
+            letter-spacing: 0.2px;
+        }
+
+        .trade-t9-badge {
+            font-family: var(--font-mono);
+            font-size: 9px;
+            color: #94a3b8;
+        }
+
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid #00d2ff;
+            color: #00d2ff;
+            padding: 10px 18px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-family: var(--font-mono);
+            box-shadow: 0 4px 16px rgba(0, 212, 255, 0.3);
+            pointer-events: none;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.2s ease;
+            z-index: 9999;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <div class="hud-container">
+        <!-- Header -->
+        <header class="hud-header">
+            <div class="hud-title-wrap">
+                <div class="hud-logo">ED</div>
+                <div>
+                    <h1 class="hud-title">Elite Dangerous <span style="color: #ffd700;">Market Intelligence</span></h1>
+                    <p class="hud-subtitle" data-i18n="market.subtitle">Top 20 oportunidades de mercado single-hop da galáxia (≤ 25 Ly) com cálculo de lucro em tempo real para sua nave</p>
+                </div>
+            </div>
+        </header>
+
+        <!-- Live Status & Telemetry Bar -->
+        <div class="market-toolbar">
+            <div class="market-meta-group">
+                <div class="meta-pill cyan">
+                    <span>👨‍🚀</span>
+                    <span data-i18n="market.commander">Comandante:</span>
+                    <strong id="barCmdr">--</strong>
+                </div>
+                <div class="meta-pill gold">
+                    <span>🚀</span>
+                    <span data-i18n="market.current_ship">Nave:</span>
+                    <strong id="barShip">--</strong>
+                </div>
+                <div class="meta-pill">
+                    <span>📍</span>
+                    <span data-i18n="market.current_system">Sistema:</span>
+                    <strong id="barSystem">--</strong>
+                </div>
+                <div class="cargo-input-wrap">
+                    <label for="inputLiveCargo" title="Capacidade de Carga para o cálculo do lucro total da rota">📦 <span data-i18n="market.calc_cargo">Carga (T):</span></label>
+                    <input type="number" id="inputLiveCargo" class="cargo-input-field" min="1" max="1500" value="36" title="Altere para simular o lucro com outras naves">
+                </div>
+                <div class="meta-pill green">
+                    <span>📡</span>
+                    <span data-i18n="market.source_label">Origem:</span>
+                    <strong id="barSource">EDDN LIVE</strong>
+                </div>
+            </div>
+            <div>
+                <button id="btnRefreshMarket" class="btn-refresh" title="Atualizar oportunidades de mercado">
+                    <span>🔄</span>
+                    <span data-i18n="market.refresh_btn">Atualizar</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 4 Columns x 5 Rows Grid (20 Cards Total) -->
+        <div id="marketGrid" class="market-grid">
+            <!-- Cards rendered dynamically -->
+            <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #8b949e; font-family: var(--font-mono);">
+                🛰️ Carregando oportunidades de mercado da galáxia...
+            </div>
+        </div>
+    </div>
+
+    <!-- Click-to-copy Toast Notification -->
+    <div id="toastNotification" class="toast">Sistema copiado para a área de transferência!</div>
+
+    <script src="/js/i18n.js"></script>
+    <script src="/js/nav-sidebar.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const barCmdr = document.getElementById('barCmdr');
+            const barShip = document.getElementById('barShip');
+            const barSystem = document.getElementById('barSystem');
+            const barSource = document.getElementById('barSource');
+            const inputLiveCargo = document.getElementById('inputLiveCargo');
+            const btnRefreshMarket = document.getElementById('btnRefreshMarket');
+            const marketGrid = document.getElementById('marketGrid');
+            const toast = document.getElementById('toastNotification');
+
+            let currentRoutesData = null;
+            let currentCargo = 36;
+            let isUserCargoEdited = false;
+
+            function showToast(text) {
+                toast.textContent = text;
+                toast.classList.add('show');
+                setTimeout(() => toast.classList.remove('show'), 2200);
+            }
+
+            function copyToClipboard(text, entityType) {
+                if (!navigator.clipboard) return;
+                navigator.clipboard.writeText(text).then(() => {
+                    showToast(`✔ ${text} copiado para a área de transferência!`);
+                }).catch(() => {});
+            }
+
+            window._copyLoc = copyToClipboard;
+
+            function formatCr(num) {
+                return Number(num || 0).toLocaleString();
+            }
+
+            function formatProfitAbbrev(credits) {
+                if (credits >= 1_000_000_000) {
+                    return (credits / 1_000_000_000).toFixed(2) + 'B';
+                } else if (credits >= 1_000_000) {
+                    return (credits / 1_000_000).toFixed(1) + 'M';
+                } else if (credits >= 1_000) {
+                    return (credits / 1_000).toFixed(0) + 'K';
+                }
+                return credits.toLocaleString();
+            }
+
+            function renderCards(routes, shipType, cargo) {
+                if (!routes || routes.length === 0) {
+                    marketGrid.innerHTML = `
+                        <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #8b949e; font-family: var(--font-mono);">
+                            Nenhuma oportunidade comercial detectada no momento.
+                        </div>`;
+                    return;
+                }
+
+                let html = '';
+                routes.slice(0, 20).forEach((r, idx) => {
+                    const profitDelta = Number(r.profitDelta || 0);
+                    const totalShipProfit = profitDelta * cargo;
+                    const shipProfitStr = '~' + formatProfitAbbrev(totalShipProfit);
+                    const t9ProfitStr = r.t9Profit ? (r.t9Profit.startsWith('~') ? r.t9Profit : '~' + r.t9Profit) : ('~' + formatProfitAbbrev(profitDelta * 720));
+                    const rankNum = idx + 1;
+                    const tagLabel = `#${rankNum}`;
+
+                    html += `
+                        <div class="market-card">
+                            <div class="card-top-bar">
+                                <span class="card-category-title">
+                                    <span>🚀</span> SINGLE-HOP TRADE (≤ 25 LY)
+                                </span>
+                                <span class="card-pill-tag">${tagLabel}</span>
+                            </div>
+
+                            <div class="trade-header-row">
+                                <span class="trade-comm-title">${r.commodity}</span>
+                                <span class="trade-profit-badge">+${formatCr(profitDelta)} Cr/t</span>
+                            </div>
+
+                            <div class="trade-step-row">
+                                <span class="step-tag tag-buy">BUY</span>
+                                <span class="step-loc" onclick="window._copyLoc('${r.buySystem}', 'system')" title="Clique para copiar o sistema ${r.buySystem}">
+                                    ${r.buyStation} <small>• ${r.buySystem}</small>
+                                </span>
+                                <span class="step-price">${formatCr(r.buyPrice)} Cr <small>(${formatCr(r.buyStock)}t)</small></span>
+                            </div>
+
+                            <div class="trade-step-row">
+                                <span class="step-tag tag-sell">SELL</span>
+                                <span class="step-loc" onclick="window._copyLoc('${r.sellSystem}', 'system')" title="Clique para copiar o sistema ${r.sellSystem}">
+                                    ${r.sellStation} <small>• ${r.sellSystem}</small>
+                                </span>
+                                <span class="step-price">${formatCr(r.sellPrice)} Cr <small>(${formatCr(r.sellDemand)}t)</small></span>
+                            </div>
+
+                            <div class="trade-footer-row">
+                                <span class="trade-meta">Dist: <b>${r.distanceLy} Ly</b> • Pad: <b>${r.pad || 'L'}</b></span>
+                                <div class="profit-indicators">
+                                    <span class="trade-player-badge" title="Lucro estimado para sua nave atual">${shipProfitStr} / ${shipType} (${cargo}t)</span>
+                                    <span class="trade-t9-badge" title="Benchmark com Type-9">${t9ProfitStr} / Type-9</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                marketGrid.innerHTML = html;
+            }
+
+            async function fetchMarketData(explicitCargo) {
+                try {
+                    const cargoParam = explicitCargo ? `?cargo=${explicitCargo}` : (isUserCargoEdited ? `?cargo=${currentCargo}` : '');
+                    const res = await fetch(`/api/market/top${cargoParam}`);
+                    if (!res.ok) return;
+                    const data = await res.json();
+                    currentRoutesData = data;
+
+                    if (data.commander) barCmdr.textContent = data.commander;
+                    if (data.shipType) barShip.textContent = data.shipType;
+                    if (data.currentSystem) barSystem.textContent = data.currentSystem;
+
+                    if (data.source) {
+                        if (data.source === 'LOCAL_CMDRSCAN') barSource.textContent = 'LOCAL EDDN';
+                        else if (data.source === 'REMOTE_CMDRSCAN') barSource.textContent = 'REMOTE EDDN';
+                        else barSource.textContent = 'GALACTIC INTEL';
+                    }
+
+                    if (!isUserCargoEdited && data.cargoCapacity) {
+                        currentCargo = data.cargoCapacity;
+                        inputLiveCargo.value = currentCargo;
+                    }
+
+                    renderCards(data.routes || [], data.shipType || 'Nave', currentCargo);
+                } catch (e) {
+                    console.error('Failed to fetch market opportunities:', e);
+                }
+            }
+
+            inputLiveCargo.addEventListener('input', (e) => {
+                const val = parseInt(e.target.value, 10);
+                if (val && val > 0) {
+                    isUserCargoEdited = true;
+                    currentCargo = val;
+                    if (currentRoutesData && currentRoutesData.routes) {
+                        renderCards(currentRoutesData.routes, currentRoutesData.shipType || 'Nave', currentCargo);
+                    }
+                }
+            });
+
+            btnRefreshMarket.addEventListener('click', () => {
+                fetchMarketData(currentCargo);
+            });
+
+            // Initial fetch
+            fetchMarketData();
+
+            // Refresh every 30 seconds
+            setInterval(() => {
+                fetchMarketData();
+            }, 30000);
+        });
+    </script>
+</body>
+</html>

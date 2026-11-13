@@ -2064,7 +2064,8 @@
                     return;
                 }
                 let html = '';
-                for (let i = 0; i < trades.length; i++) {
+                const maxTrades = Math.min(3, trades.length);
+                for (let i = 0; i < maxTrades; i++) {
                     const r = trades[i];
                     html += `
                         <div class="trade-route-item">

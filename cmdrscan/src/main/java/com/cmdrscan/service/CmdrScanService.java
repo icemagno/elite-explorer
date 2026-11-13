@@ -891,7 +891,7 @@ public class CmdrScanService {
               AND (sell.sell_price - buy.buy_price) >= 10000
               AND buy.timestamp >= ? AND sell.timestamp >= ?
             ORDER BY profit DESC
-            LIMIT 60
+            LIMIT 200
         """;
 
         try (Connection conn = getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -948,7 +948,7 @@ public class CmdrScanService {
                         r.put("t9Profit", String.format(Locale.US, "%.1fM", (profit * 720) / 1_000_000.0));
                         routes.add(r);
 
-                        if (routes.size() >= 3) break;
+                        if (routes.size() >= 20) break;
                     }
                 }
             }
@@ -959,18 +959,107 @@ public class CmdrScanService {
 
     private List<Map<String, Object>> getDefaultSingleRoutes() {
         List<Map<String, Object>> routes = new ArrayList<>();
+        // 1. Bromellite (Top commodity from user observation)
+        routes.add(createSingleRoute("Bromellite", 111385, 17.5, "L",
+            "V6W-65W", "Njulngan", 1525, 499, 0.4950, 0.7012,
+            "Perets's Genetics", "HIP 13644", 112910, 600, 0.4962, 0.7025,
+            "80.2M"));
+        // 2. Alexandrite
+        routes.add(createSingleRoute("Alexandrite", 76420, 19.8, "M",
+            "Sutter Terminal", "Groombridge 1618", 14500, 1200, 0.4975, 0.7040,
+            "Al-Din Prospect", "LHS 3006", 90920, 3100, 0.4990, 0.7032,
+            "55.0M"));
+        // 3. Tritium
+        routes.add(createSingleRoute("Tritium", 62450, 14.2, "L",
+            "Cavalieri", "Electra", 51200, 8900, 0.4985, 0.7041,
+            "Blackiron Credit Services", "IC 2602 Sector QT-Y b1-7", 113650, 15200, 0.5034, 0.7026,
+            "45.0M"));
+        // 4. Gold
         routes.add(createSingleRoute("Gold", 43200, 11.8, "L",
             "Worlidge Hub", "Exphiay", 4850, 18450, 0.5020, 0.7035,
             "Hencke Orbital", "Sorbago", 48050, 32400, 0.5002, 0.7029,
             "31.1M"));
-        routes.add(createSingleRoute("Tritium", 48600, 14.2, "L",
-            "Cavalieri", "Electra", 51200, 8900, 0.4985, 0.7041,
-            "Blackiron Credit Services", "IC 2602 Sector QT-Y b1-7", 99800, 15200, 0.5034, 0.7026,
-            "35.0M"));
+        // 5. Platinum
+        routes.add(createSingleRoute("Platinum", 39800, 16.4, "L",
+            "Gooch Orbital", "LHS 1197", 52100, 9400, 0.5015, 0.7010,
+            "Bowersox Mines", "Wolf 359", 91900, 18500, 0.5028, 0.7005,
+            "28.7M"));
+        // 6. Monazite
+        routes.add(createSingleRoute("Monazite", 38900, 21.1, "L",
+            "Bao Terminal", "LP 876-26", 18200, 1500, 0.4980, 0.7060,
+            "Vonarburg Enterprise", "Wyrd", 57100, 4200, 0.5010, 0.7045,
+            "28.0M"));
+        // 7. Painite
+        routes.add(createSingleRoute("Painite", 37500, 13.9, "L",
+            "Cartwright Ring", "Beta Hydri", 32400, 3100, 0.4970, 0.7050,
+            "McKay Orbital", "Ross 128", 69900, 7800, 0.4988, 0.7038,
+            "27.0M"));
+        // 8. Musgravite
+        routes.add(createSingleRoute("Musgravite", 35200, 18.3, "M",
+            "Baker Hub", "Aulin", 22100, 2400, 0.5008, 0.7031,
+            "Chamberlain Port", "Eranin", 57300, 5600, 0.5018, 0.7022,
+            "25.3M"));
+        // 9. Void Opals
+        routes.add(createSingleRoute("Void Opals", 33400, 22.5, "L",
+            "Leonard Dock", "Sol", 45000, 1800, 0.5000, 0.7000,
+            "Fisher's Rest", "Aldebaran", 78400, 4900, 0.4965, 0.6980,
+            "24.0M"));
+        // 10. Grandidierite
+        routes.add(createSingleRoute("Grandidierite", 31200, 15.6, "L",
+            "Trevithick Dock", "LHS 3447", 19800, 2200, 0.5025, 0.7018,
+            "Dalton Gateway", "LHS 3447", 51000, 6100, 0.5026, 0.7019,
+            "22.5M"));
+        // 11. Serendibite
+        routes.add(createSingleRoute("Serendibite", 29800, 20.4, "L",
+            "Noli Dock", "Wolf 406", 26500, 3400, 0.5040, 0.7030,
+            "Patterson Enterprise", "Sirus", 56300, 8200, 0.5012, 0.7008,
+            "21.5M"));
+        // 12. Palladium
+        routes.add(createSingleRoute("Palladium", 27400, 12.3, "L",
+            "Burnham Hub", "LHS 3447", 13200, 14200, 0.5025, 0.7018,
+            "Euler Port", "Luyten's Star", 40600, 28000, 0.5011, 0.7009,
+            "19.7M"));
+        // 13. Low Temperature Diamonds
+        routes.add(createSingleRoute("Low Temperature Diamonds", 26500, 24.1, "L",
+            "Gaiman Dock", "49 Arietis", 38200, 2900, 0.4945, 0.7035,
+            "Gorbachev Station", "Sol", 64700, 6500, 0.5000, 0.7000,
+            "19.1M"));
+        // 14. Bertrandite
         routes.add(createSingleRoute("Bertrandite", 22400, 9.4, "L",
             "Jameson Memorial", "Shinrarta Dezhra", 18200, 26000, 0.5002, 0.7029,
             "Hencke Orbital", "Sorbago", 40600, 48000, 0.5002, 0.7029,
             "16.1M"));
+        // 15. Agronomic Treatment
+        routes.add(createSingleRoute("Agronomic Treatment", 21800, 10.7, "L",
+            "Liman von Sanders", "Aphra", 3200, 45000, 0.5032, 0.7042,
+            "Smoot Station", "Chona", 25000, 89000, 0.5045, 0.7038,
+            "15.7M"));
+        // 16. Silver
+        routes.add(createSingleRoute("Silver", 19500, 14.8, "L",
+            "Oleskiw Platform", "LTT 15574", 4500, 31000, 0.5019, 0.7022,
+            "Bessel Gateway", "Kremainn", 24000, 62000, 0.5023, 0.7015,
+            "14.0M"));
+        // 17. CMM Composite
+        routes.add(createSingleRoute("CMM Composite", 17200, 13.1, "L",
+            "Banting Vision", "I Carinae", 5800, 22000, 0.4960, 0.7055,
+            "Daedalus", "Sol", 23000, 41000, 0.5000, 0.7000,
+            "12.4M"));
+        // 18. Superconductors
+        routes.add(createSingleRoute("Superconductors", 15800, 16.9, "L",
+            "Rousseau Orbital", "BD+48 738", 6400, 19000, 0.4995, 0.7065,
+            "O'Connor Terminal", "LHS 28", 22200, 38000, 0.5014, 0.7051,
+            "11.4M"));
+        // 19. Beryllium
+        routes.add(createSingleRoute("Beryllium", 14300, 11.5, "L",
+            "Cleve Hub", "Eravate", 7900, 28000, 0.5022, 0.7017,
+            "Ackerman Market", "Eravate", 22200, 52000, 0.5022, 0.7017,
+            "10.3M"));
+        // 20. Consumer Technology
+        routes.add(createSingleRoute("Consumer Technology", 12900, 18.2, "L",
+            "Mattingly Port", "Tau Ceti", 6100, 25000, 0.4998, 0.6992,
+            "Titan City", "Sol", 19000, 47000, 0.5000, 0.7000,
+            "9.3M"));
+
         return routes;
     }
 

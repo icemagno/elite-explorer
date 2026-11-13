@@ -50,14 +50,26 @@
 
     const TRANSLATIONS = {
         pt: {
-            // Navegação comum
+            // Navegação comum & Sidebar
+            'nav.menu_btn': 'MENU',
+            'nav.menu_title': 'Menu do Copilot',
+            'nav.close_menu': 'Fechar Menu',
+            'nav.cmdr': 'COMANDANTE',
+            'nav.system_label': 'SISTEMA ATUAL',
+            'nav.navigation_title': 'NAVEGAÇÃO',
+            'nav.language_title': 'IDIOMA / LANGUAGE',
+            'nav.desc_galaxy': 'Exploração 3D e rota estelar',
+            'nav.desc_orrery': 'Órbitas e corpos celestes',
+            'nav.desc_surface': 'HUD tático de superfície e biologia',
+            'nav.desc_market': 'Top 20 rotas comerciais da galáxia',
+            'nav.status_online': 'ONLINE',
+            'nav.status_offline': 'OFF-LINE',
             'nav.galaxy_cube': 'Cubo Galáctico',
             'nav.galaxy_cube_3d': 'Cubo Galáctico 3D',
             'nav.system': 'Sistema',
             'nav.system_orrery': 'Sistema 3D (Orrery)',
             'nav.surface': 'Superfície',
-            'nav.copilot': 'Copilot em Tempo Real (Journal)',
-            'nav.trade_loops': 'Rotas de Loop',
+            'nav.market': 'Mercado Single-Hop',
             'nav.system_title': 'Abrir o Mapa 3D do Sistema Estelar',
             'nav.surface_disabled_title': 'Disponível apenas quando a nave estiver em órbita ou na superfície de um planeta',
             'nav.surface_active_title': 'Nave em órbita/solo de {0} - Clique para alternar o HUD de Superfície',
@@ -391,17 +403,43 @@
             'trade.updated': 'Atualizado',
             'trade.profit_unit': 'Lucro por Unidade',
             'trade.profit_hour': 'Lucro por Hora',
-            'trade.fetch_error': 'Falha na consulta: {0}'
+            'trade.fetch_error': 'Falha na consulta: {0}',
+
+            // Mercado Single-Hop
+            'market.page_title': 'Elite Explorer Copilot - Mercado Single-Hop',
+            'market.subtitle': 'Top 20 oportunidades de mercado single-hop da galáxia (≤ 25 Ly) com cálculo de lucro em tempo real para sua nave',
+            'market.commander': 'Comandante:',
+            'market.current_ship': 'Nave:',
+            'market.current_system': 'Sistema:',
+            'market.calc_cargo': 'Carga (T):',
+            'market.source_label': 'Origem:',
+            'market.refresh_btn': 'Atualizar',
+            'market.loading': 'Aguarde... Carregando oportunidades de mercado da galáxia...',
+            'market.no_data': 'Nenhuma oportunidade comercial detectada no momento.',
+            'market.copied_sys': 'copiado para a área de transferência!'
         },
 
         en: {
+            // Common Navigation & Sidebar
+            'nav.menu_btn': 'MENU',
+            'nav.menu_title': 'Copilot Menu',
+            'nav.close_menu': 'Close Menu',
+            'nav.cmdr': 'COMMANDER',
+            'nav.system_label': 'CURRENT SYSTEM',
+            'nav.navigation_title': 'NAVIGATION',
+            'nav.language_title': 'LANGUAGE',
+            'nav.desc_galaxy': '3D star exploration & route',
+            'nav.desc_orrery': 'Orbits & celestial bodies',
+            'nav.desc_surface': 'Tactical surface HUD & biology',
+            'nav.desc_market': 'Top 20 galaxy trade routes',
+            'nav.status_online': 'ONLINE',
+            'nav.status_offline': 'OFFLINE',
             'nav.galaxy_cube': 'Galactic Cube',
             'nav.galaxy_cube_3d': '3D Galactic Cube',
             'nav.system': 'System',
             'nav.system_orrery': '3D System (Orrery)',
             'nav.surface': 'Surface',
-            'nav.copilot': 'Live Copilot (Journal)',
-            'nav.trade_loops': 'Loop Routes',
+            'nav.market': 'Single-Hop Market',
             'nav.system_title': 'Open the 3D Star System Map',
             'nav.surface_disabled_title': 'Available only when the ship is in orbit or on a planet surface',
             'nav.surface_active_title': 'Ship orbiting/landed on {0} - Click to open Surface HUD',
@@ -730,17 +768,43 @@
             'trade.updated': 'Updated',
             'trade.profit_unit': 'Profit per Unit',
             'trade.profit_hour': 'Profit per Hour',
-            'trade.fetch_error': 'Query failed: {0}'
+            'trade.fetch_error': 'Query failed: {0}',
+
+            // Single-Hop Market
+            'market.page_title': 'Elite Explorer Copilot - Single-Hop Market',
+            'market.subtitle': 'Top 20 galactic single-hop trade opportunities (≤ 25 Ly) with real-time ship profit calculation',
+            'market.commander': 'Commander:',
+            'market.current_ship': 'Ship:',
+            'market.current_system': 'System:',
+            'market.calc_cargo': 'Cargo (T):',
+            'market.source_label': 'Source:',
+            'market.refresh_btn': 'Refresh',
+            'market.loading': 'Please wait... Loading galactic market opportunities...',
+            'market.no_data': 'No trade opportunities currently detected.',
+            'market.copied_sys': 'copied to clipboard!'
         },
 
         es: {
+            // Navegación común & Sidebar
+            'nav.menu_btn': 'MENÚ',
+            'nav.menu_title': 'Menú del Copilot',
+            'nav.close_menu': 'Cerrar Menú',
+            'nav.cmdr': 'COMANDANTE',
+            'nav.system_label': 'SISTEMA ACTUAL',
+            'nav.navigation_title': 'NAVEGACIÓN',
+            'nav.language_title': 'IDIOMA / LANGUAGE',
+            'nav.desc_galaxy': 'Exploración 3D y ruta estelar',
+            'nav.desc_orrery': 'Órbitas y cuerpos celestes',
+            'nav.desc_surface': 'HUD táctico de superficie y biología',
+            'nav.desc_market': 'Top 20 rutas comerciales de la galaxia',
+            'nav.status_online': 'EN LÍNEA',
+            'nav.status_offline': 'DESCONECTADO',
             'nav.galaxy_cube': 'Cubo Galáctico',
             'nav.galaxy_cube_3d': 'Cubo Galáctico 3D',
             'nav.system': 'Sistema',
             'nav.system_orrery': 'Sistema 3D (Orrery)',
             'nav.surface': 'Superficie',
-            'nav.copilot': 'Copilot en Tiempo Real (Journal)',
-            'nav.trade_loops': 'Rutas en Bucle',
+            'nav.market': 'Mercado Single-Hop',
             'nav.system_title': 'Abrir el Mapa 3D del Sistema Estelar',
             'nav.surface_disabled_title': 'Disponible solo cuando la nave está en órbita o en la superficie de un planeta',
             'nav.surface_active_title': 'Nave en órbita/superficie de {0} - Clic para abrir el HUD de Superficie',
@@ -1069,7 +1133,20 @@
             'trade.updated': 'Actualizado',
             'trade.profit_unit': 'Ganancia por Unidad',
             'trade.profit_hour': 'Ganancia por Hora',
-            'trade.fetch_error': 'Error en la consulta: {0}'
+            'trade.fetch_error': 'Error en la consulta: {0}',
+
+            // Mercado Single-Hop
+            'market.page_title': 'Elite Explorer Copilot - Mercado Single-Hop',
+            'market.subtitle': 'Top 20 oportunidades de mercado de un salto de la galaxia (≤ 25 Ly) con cálculo de beneficios en tiempo real para tu nave',
+            'market.commander': 'Comandante:',
+            'market.current_ship': 'Nave:',
+            'market.current_system': 'Sistema:',
+            'market.calc_cargo': 'Carga (T):',
+            'market.source_label': 'Origen:',
+            'market.refresh_btn': 'Actualizar',
+            'market.loading': 'Por favor espere... Cargando oportunidades de mercado de la galaxia...',
+            'market.no_data': 'No se detectaron oportunidades comerciales en este momento.',
+            'market.copied_sys': '¡copiado al portapapeles!'
         }
     };
 
@@ -1243,6 +1320,7 @@
 
     const i18n = new EliteI18n();
     window.i18n = i18n;
+    window.EliteI18n = i18n;
     window.t = (...args) => i18n.t(...args);
     window.switchLanguage = (lang) => i18n.setLanguage(lang);
 

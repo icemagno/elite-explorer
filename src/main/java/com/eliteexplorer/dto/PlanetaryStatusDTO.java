@@ -12,6 +12,7 @@ public class PlanetaryStatusDTO {
     private boolean onFoot = false;
     private boolean glideMode = false;
 
+    private String commander = "";
     private String currentSystem = "";
     private String bodyName = "";
     private Integer bodyId = null;
@@ -89,6 +90,14 @@ public class PlanetaryStatusDTO {
 
     public void setGlideMode(boolean glideMode) {
         this.glideMode = glideMode;
+    }
+
+    public String getCommander() {
+        return commander;
+    }
+
+    public void setCommander(String commander) {
+        this.commander = commander;
     }
 
     public String getCurrentSystem() {

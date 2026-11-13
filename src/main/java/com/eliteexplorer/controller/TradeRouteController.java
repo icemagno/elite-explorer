@@ -1,17 +1,12 @@
 package com.eliteexplorer.controller;
 
-import com.eliteexplorer.dto.CopilotSearchResult;
 import com.eliteexplorer.dto.GalaxyCubeResponse;
 import com.eliteexplorer.dto.PlanetaryStatusDTO;
 import com.eliteexplorer.dto.RoutePointDTO;
 import com.eliteexplorer.dto.StationDTO;
 import com.eliteexplorer.dto.StratumCandidateDTO;
-import com.eliteexplorer.dto.TradeSearchRequest;
-import com.eliteexplorer.dto.TradeSearchResult;
 import com.eliteexplorer.model.PlayerStatus;
-import com.eliteexplorer.service.CopilotTradeService;
 import com.eliteexplorer.service.GalaxyExplorationService;
-import com.eliteexplorer.service.InaraClientService;
 import com.eliteexplorer.service.JournalWatcherService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -24,9 +19,7 @@ import java.util.Map;
 @RequestMapping("/api")
 public class TradeRouteController {
 
-    private final InaraClientService inaraClientService;
     private final JournalWatcherService journalWatcherService;
-    private final CopilotTradeService copilotTradeService;
     private final GalaxyExplorationService galaxyExplorationService;
     private final com.eliteexplorer.service.EdsmSyncService edsmSyncService;
     private final com.eliteexplorer.service.EddnTrafficListenerService eddnTrafficService;
@@ -41,9 +34,7 @@ public class TradeRouteController {
     @Value("${spring.application.name:elite-explorer}")
     private String applicationName;
 
-    public TradeRouteController(InaraClientService inaraClientService,
-                                JournalWatcherService journalWatcherService,
-                                CopilotTradeService copilotTradeService,
+    public TradeRouteController(JournalWatcherService journalWatcherService,
                                 GalaxyExplorationService galaxyExplorationService,
                                 com.eliteexplorer.service.EdsmSyncService edsmSyncService,
                                 com.eliteexplorer.service.EddnTrafficListenerService eddnTrafficService,
@@ -51,9 +42,7 @@ public class TradeRouteController {
                                 com.eliteexplorer.service.SystemBodiesService systemBodiesService,
                                 com.eliteexplorer.service.EddnPublisherService eddnPublisherService,
                                 com.eliteexplorer.service.SseNotificationService sseNotificationService) {
-        this.inaraClientService = inaraClientService;
         this.journalWatcherService = journalWatcherService;
-        this.copilotTradeService = copilotTradeService;
         this.galaxyExplorationService = galaxyExplorationService;
         this.edsmSyncService = edsmSyncService;
         this.eddnTrafficService = eddnTrafficService;
@@ -61,26 +50,6 @@ public class TradeRouteController {
         this.systemBodiesService = systemBodiesService;
         this.eddnPublisherService = eddnPublisherService;
         this.sseNotificationService = sseNotificationService;
-    }
-
-    // Original trade routes endpoint (Loops)
-    @GetMapping("/routes")
-    public ResponseEntity<TradeSearchResult> getTradeRoutes(
-            @RequestParam(defaultValue = "Col 285 Sector EG-D a42-1") String system,
-            @RequestParam(defaultValue = "36") Integer cargoCapacity,
-            @RequestParam(defaultValue = "80") Integer maxDistance,
-            @RequestParam(defaultValue = "72") Integer maxAgeHours,
-            @RequestParam(defaultValue = "1") Integer padSize
-    ) {
-        TradeSearchRequest request = new TradeSearchRequest();
-        request.setSystem(system);
-        request.setCargoCapacity(cargoCapacity);
-        request.setMaxDistance(maxDistance);
-        request.setMaxAgeHours(maxAgeHours);
-        request.setPadSize(padSize);
-
-        TradeSearchResult result = inaraClientService.fetchTradeRoutes(request);
-        return ResponseEntity.ok(result);
     }
 
     // Identidade do aplicativo e nome do comandante configurado
@@ -158,22 +127,6 @@ public class TradeRouteController {
             system = journalWatcherService.getPlayerStatus().getCurrentSystem();
         }
         return ResponseEntity.ok(galaxyExplorationService.getSystemStations(system));
-    }
-
-    // Outbound trade opportunities for current player system
-    @GetMapping("/copilot/trades")
-    public ResponseEntity<CopilotSearchResult> getCopilotTrades(
-            @RequestParam(required = false) String system,
-            @RequestParam(required = false) Integer cargoCapacity,
-            @RequestParam(defaultValue = "80") Integer maxDistance,
-            @RequestParam(defaultValue = "72") Integer maxAgeHours,
-            @RequestParam(defaultValue = "1") Integer padSize,
-            @RequestParam(defaultValue = "profit") String sortBy
-    ) {
-        CopilotSearchResult result = copilotTradeService.getOutboundTrades(
-                system, cargoCapacity, maxDistance, maxAgeHours, padSize, sortBy
-        );
-        return ResponseEntity.ok(result);
     }
 
     // Telemetria e status do EDSM
