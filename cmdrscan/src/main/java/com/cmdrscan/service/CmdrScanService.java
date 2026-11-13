@@ -43,7 +43,15 @@ public class CmdrScanService {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final AtomicBoolean running = new AtomicBoolean(false);
-    private final String dbUrl = "jdbc:sqlite:cmdrscan.db";
+    private final String dbUrl = resolveDbUrl();
+
+    private static String resolveDbUrl() {
+        File dir = new File("/cmdrscan");
+        if (dir.exists() && dir.isDirectory()) {
+            return "jdbc:sqlite:/cmdrscan/cmdrscan.db";
+        }
+        return "jdbc:sqlite:cmdrscan.db";
+    }
 
     private final AtomicLong totalSignalsReceived = new AtomicLong(0);
     private final AtomicLong signalsInWindow = new AtomicLong(0);
@@ -57,6 +65,9 @@ public class CmdrScanService {
     private final ConcurrentHashMap<String, SystemCoord> systemCoordsCache = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, String> stationPads = new ConcurrentHashMap<>();
 
+    private volatile List<Map<String, Object>> cachedSingleHopTrades = new ArrayList<>();
+    private volatile List<Map<String, Object>> cachedLoopTrades = new ArrayList<>();
+
     private Thread listenerThread;
     private ZContext zContext;
 
@@ -64,11 +75,13 @@ public class CmdrScanService {
     public void init() {
         initDatabase();
         loadInitialCoords();
+        this.cachedSingleHopTrades = getDefaultSingleRoutes();
+        this.cachedLoopTrades = getDefaultLoopRoutes();
         running.set(true);
         listenerThread = new Thread(this::listenEddnStream, "cmdrscan-eddn-thread");
         listenerThread.setDaemon(true);
         listenerThread.start();
-        log.info("🛰️ [CMDRSCAN] Monitor de tráfego global 24/7 iniciado (SQLite: cmdrscan.db)");
+        log.info("🛰️ [CMDRSCAN] Monitor de tráfego global 24/7 iniciado (SQLite: {})", dbUrl);
     }
 
     @PreDestroy
@@ -315,7 +328,7 @@ public class CmdrScanService {
         systemCoordsCache.put(system, new SystemCoord(x, y, z, u, v));
         String sql = """
             INSERT INTO cmdr_system_coords (system_name, x, y, z, norm_u, norm_v, timestamp)
-            VALUES (?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(system_name) DO UPDATE SET
                 x = excluded.x, y = excluded.y, z = excluded.z,
                 norm_u = excluded.norm_u, norm_v = excluded.norm_v,
@@ -505,6 +518,10 @@ public class CmdrScanService {
                 ps.executeUpdate();
             }
             try (PreparedStatement ps = conn.prepareStatement("DELETE FROM cmdr_docking_events WHERE timestamp < ?")) {
+                ps.setLong(1, cutoff);
+                ps.executeUpdate();
+            }
+            try (PreparedStatement ps = conn.prepareStatement("DELETE FROM cmdr_market_listings WHERE timestamp < ?")) {
                 ps.setLong(1, cutoff);
                 ps.executeUpdate();
             }
@@ -758,40 +775,49 @@ public class CmdrScanService {
         List<Map<String, Object>> topStations = new ArrayList<>();
 
         // Top 5 Systems by concurrent active commanders
-        String sqlSys = "SELECT system_name, norm_u, norm_v, COUNT(*) as cmdr_count FROM cmdr_live_traffic WHERE timestamp >= ? AND system_name != '' GROUP BY system_name ORDER BY cmdr_count DESC, timestamp DESC LIMIT 5";
+        String sqlSys = "SELECT system_name, norm_u, norm_v, COUNT(*) as cmdr_count FROM cmdr_live_traffic WHERE timestamp >= ? AND system_name IS NOT NULL AND system_name != '' GROUP BY system_name ORDER BY cmdr_count DESC, timestamp DESC LIMIT 5";
         try (Connection conn = getConnection(); PreparedStatement ps = conn.prepareStatement(sqlSys)) {
             ps.setLong(1, cutoff);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    topSystems.add(Map.of(
-                        "system", rs.getString("system_name"),
-                        "count", rs.getInt("cmdr_count"),
-                        "u", rs.getDouble("norm_u"),
-                        "v", rs.getDouble("norm_v")
-                    ));
+                    String sys = rs.getString("system_name");
+                    if (sys == null || sys.isBlank()) continue;
+                    Map<String, Object> map = new LinkedHashMap<>();
+                    map.put("system", sys);
+                    map.put("count", rs.getInt("cmdr_count"));
+                    map.put("u", rs.getDouble("norm_u"));
+                    map.put("v", rs.getDouble("norm_v"));
+                    topSystems.add(map);
                 }
             }
         } catch (SQLException ignored) {}
 
         // Top 5 Stations by dockings
-        String sqlStations = "SELECT last_station, system_name, station_type, dock_count, norm_u, norm_v FROM cmdr_docking_events WHERE timestamp >= ? AND last_station != '' ORDER BY dock_count DESC, timestamp DESC LIMIT 5";
+        String sqlStations = "SELECT last_station, system_name, station_type, dock_count, norm_u, norm_v FROM cmdr_docking_events WHERE timestamp >= ? AND last_station IS NOT NULL AND last_station != '' ORDER BY dock_count DESC, timestamp DESC LIMIT 5";
         try (Connection conn = getConnection(); PreparedStatement ps = conn.prepareStatement(sqlStations)) {
             ps.setLong(1, cutoff);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    topStations.add(Map.of(
-                        "station", rs.getString("last_station"),
-                        "system", rs.getString("system_name"),
-                        "type", rs.getString("station_type") != null ? rs.getString("station_type") : "",
-                        "count", rs.getInt("dock_count"),
-                        "u", rs.getDouble("norm_u"),
-                        "v", rs.getDouble("norm_v")
-                    ));
+                    String st = rs.getString("last_station");
+                    if (st == null || st.isBlank()) continue;
+                    String sys = rs.getString("system_name");
+                    String type = rs.getString("station_type");
+                    Map<String, Object> map = new LinkedHashMap<>();
+                    map.put("station", st);
+                    map.put("system", sys != null ? sys : "");
+                    map.put("type", type != null ? type : "");
+                    map.put("count", rs.getInt("dock_count"));
+                    map.put("u", rs.getDouble("norm_u"));
+                    map.put("v", rs.getDouble("norm_v"));
+                    topStations.add(map);
                 }
             }
         } catch (SQLException ignored) {}
 
-        return Map.of("systems", topSystems, "stations", topStations);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("systems", topSystems);
+        result.put("stations", topStations);
+        return result;
     }
 
     private String formatCommodityName(String raw) {
@@ -817,7 +843,32 @@ public class CmdrScanService {
     }
 
     public List<Map<String, Object>> getSingleHopTradeRoutes() {
+        return cachedSingleHopTrades != null && !cachedSingleHopTrades.isEmpty() ? cachedSingleHopTrades : getDefaultSingleRoutes();
+    }
+
+    public List<Map<String, Object>> getLoopTradeRoutes() {
+        return cachedLoopTrades != null && !cachedLoopTrades.isEmpty() ? cachedLoopTrades : getDefaultLoopRoutes();
+    }
+
+    @Scheduled(fixedDelay = 30_000, initialDelay = 2_000)
+    public void updateTradeRoutesCache() {
+        try {
+            List<Map<String, Object>> singles = calculateSingleHopTradeRoutes();
+            if (singles != null && !singles.isEmpty()) {
+                this.cachedSingleHopTrades = singles;
+            }
+            List<Map<String, Object>> loops = calculateLoopTradeRoutes();
+            if (loops != null && !loops.isEmpty()) {
+                this.cachedLoopTrades = loops;
+            }
+        } catch (Exception e) {
+            log.warn("Error calculating trade routes: {}", e.getMessage());
+        }
+    }
+
+    private List<Map<String, Object>> calculateSingleHopTradeRoutes() {
         List<Map<String, Object>> routes = new ArrayList<>();
+        long cutoff = System.currentTimeMillis() - (2 * 3600 * 1000L); // 2 horas
         String sql = """
             SELECT 
                 buy.commodity,
@@ -838,85 +889,96 @@ public class CmdrScanService {
               AND sell.sell_price > 0 AND sell.demand >= 200
               AND buy.system_name != sell.system_name
               AND (sell.sell_price - buy.buy_price) >= 10000
+              AND buy.timestamp >= ? AND sell.timestamp >= ?
             ORDER BY profit DESC
-            LIMIT 100
+            LIMIT 60
         """;
 
-        try (Connection conn = getConnection(); PreparedStatement ps = conn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
-            while (rs.next()) {
-                String comm = rs.getString(1);
-                String buySys = rs.getString(2);
-                String buyStation = rs.getString(3);
-                int buyPrice = rs.getInt(4);
-                int stock = rs.getInt(5);
-                String buyPad = rs.getString(6);
+        try (Connection conn = getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, cutoff);
+            ps.setLong(2, cutoff);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String comm = rs.getString(1);
+                    String buySys = rs.getString(2);
+                    String buyStation = rs.getString(3);
+                    int buyPrice = rs.getInt(4);
+                    int stock = rs.getInt(5);
+                    String buyPad = rs.getString(6);
 
-                String sellSys = rs.getString(7);
-                String sellStation = rs.getString(8);
-                int sellPrice = rs.getInt(9);
-                int demand = rs.getInt(10);
-                String sellPad = rs.getString(11);
-                int profit = rs.getInt(12);
+                    String sellSys = rs.getString(7);
+                    String sellStation = rs.getString(8);
+                    int sellPrice = rs.getInt(9);
+                    int demand = rs.getInt(10);
+                    String sellPad = rs.getString(11);
+                    int profit = rs.getInt(12);
 
-                SystemCoord c1 = systemCoordsCache.get(buySys);
-                SystemCoord c2 = systemCoordsCache.get(sellSys);
+                    SystemCoord c1 = systemCoordsCache.get(buySys);
+                    SystemCoord c2 = systemCoordsCache.get(sellSys);
 
-                double dist = 14.5;
-                if (c1 != null && c2 != null) {
-                    double dx = c1.x - c2.x;
-                    double dy = c1.y - c2.y;
-                    double dz = c1.z - c2.z;
-                    dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-                }
+                    double dist = 14.5;
+                    if (c1 != null && c2 != null) {
+                        double dx = c1.x - c2.x;
+                        double dy = c1.y - c2.y;
+                        double dz = c1.z - c2.z;
+                        dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                    }
 
-                if (dist <= 25.0) {
-                    String pad = "L";
-                    if ("M".equals(buyPad) || "M".equals(sellPad)) pad = "M";
+                    if (dist <= 25.0) {
+                        String pad = "L";
+                        if ("M".equals(buyPad) || "M".equals(sellPad)) pad = "M";
 
-                    Map<String, Object> r = new LinkedHashMap<>();
-                    r.put("commodity", formatCommodityName(comm));
-                    r.put("profitDelta", profit);
-                    r.put("distanceLy", Math.round(dist * 10.0) / 10.0);
-                    r.put("pad", pad);
-                    r.put("buyStation", buyStation);
-                    r.put("buySystem", buySys);
-                    r.put("buyPrice", buyPrice);
-                    r.put("buyStock", stock);
-                    r.put("buyU", c1 != null ? c1.u : 0.50);
-                    r.put("buyV", c1 != null ? c1.v : 0.70);
-                    r.put("sellStation", sellStation);
-                    r.put("sellSystem", sellSys);
-                    r.put("sellPrice", sellPrice);
-                    r.put("sellDemand", demand);
-                    r.put("sellU", c2 != null ? c2.u : 0.50);
-                    r.put("sellV", c2 != null ? c2.v : 0.70);
-                    r.put("t9Profit", String.format(Locale.US, "%.1fM", (profit * 720) / 1_000_000.0));
-                    routes.add(r);
+                        Map<String, Object> r = new LinkedHashMap<>();
+                        r.put("commodity", formatCommodityName(comm));
+                        r.put("profitDelta", profit);
+                        r.put("distanceLy", Math.round(dist * 10.0) / 10.0);
+                        r.put("pad", pad);
+                        r.put("buyStation", buyStation);
+                        r.put("buySystem", buySys);
+                        r.put("buyPrice", buyPrice);
+                        r.put("buyStock", stock);
+                        r.put("buyU", c1 != null ? c1.u : 0.50);
+                        r.put("buyV", c1 != null ? c1.v : 0.70);
+                        r.put("sellStation", sellStation);
+                        r.put("sellSystem", sellSys);
+                        r.put("sellPrice", sellPrice);
+                        r.put("sellDemand", demand);
+                        r.put("sellU", c2 != null ? c2.u : 0.50);
+                        r.put("sellV", c2 != null ? c2.v : 0.70);
+                        r.put("t9Profit", String.format(Locale.US, "%.1fM", (profit * 720) / 1_000_000.0));
+                        routes.add(r);
 
-                    if (routes.size() >= 3) break;
+                        if (routes.size() >= 3) break;
+                    }
                 }
             }
         } catch (SQLException ignored) {}
 
-        if (routes.isEmpty()) {
-            routes.add(createSingleRoute("Gold", 43200, 11.8, "L",
-                "Worlidge Hub", "Exphiay", 4850, 18450, 0.5020, 0.7035,
-                "Hencke Orbital", "Sorbago", 48050, 32400, 0.5002, 0.7029,
-                "31.1M"));
-            routes.add(createSingleRoute("Tritium", 48600, 14.2, "L",
-                "Cavalieri", "Electra", 51200, 8900, 0.4985, 0.7041,
-                "Blackiron Credit Services", "IC 2602 Sector QT-Y b1-7", 99800, 15200, 0.5034, 0.7026,
-                "35.0M"));
-            routes.add(createSingleRoute("Bertrandite", 22400, 9.4, "L",
-                "Jameson Memorial", "Shinrarta Dezhra", 18200, 26000, 0.5002, 0.7029,
-                "Hencke Orbital", "Sorbago", 40600, 48000, 0.5002, 0.7029,
-                "16.1M"));
-        }
+        return routes.isEmpty() ? getDefaultSingleRoutes() : routes;
+    }
 
+    private List<Map<String, Object>> getDefaultSingleRoutes() {
+        List<Map<String, Object>> routes = new ArrayList<>();
+        routes.add(createSingleRoute("Gold", 43200, 11.8, "L",
+            "Worlidge Hub", "Exphiay", 4850, 18450, 0.5020, 0.7035,
+            "Hencke Orbital", "Sorbago", 48050, 32400, 0.5002, 0.7029,
+            "31.1M"));
+        routes.add(createSingleRoute("Tritium", 48600, 14.2, "L",
+            "Cavalieri", "Electra", 51200, 8900, 0.4985, 0.7041,
+            "Blackiron Credit Services", "IC 2602 Sector QT-Y b1-7", 99800, 15200, 0.5034, 0.7026,
+            "35.0M"));
+        routes.add(createSingleRoute("Bertrandite", 22400, 9.4, "L",
+            "Jameson Memorial", "Shinrarta Dezhra", 18200, 26000, 0.5002, 0.7029,
+            "Hencke Orbital", "Sorbago", 40600, 48000, 0.5002, 0.7029,
+            "16.1M"));
         return routes;
     }
 
-    public List<Map<String, Object>> getLoopTradeRoutes() {
+    private List<Map<String, Object>> calculateLoopTradeRoutes() {
+        return getDefaultLoopRoutes();
+    }
+
+    private List<Map<String, Object>> getDefaultLoopRoutes() {
         List<Map<String, Object>> loops = new ArrayList<>();
         loops.add(createLoopRoute("Exphiay \u21c4 Sorbago", 11.8, 61250, "44.1M", "L",
             "Gold", 43200, "Worlidge Hub", "Exphiay", "Hencke Orbital", "Sorbago",
