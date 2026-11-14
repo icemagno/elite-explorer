@@ -52,6 +52,21 @@ let stratumRingsGroup = new THREE.Group();
 let activeBeams = [];
 let lastTrafficCheckTime = 0;
 
+// Camada Tridimensional Global de Tráfego (CmdrScan: Global, Fluxo, Scans, Docagens)
+let globalTrafficGroup = new THREE.Group();
+let globalTrafficPointsMesh = null;
+let globalTrafficData = null;
+let currentRenderedGlobalItems = [];
+let currentGlobalLayer = localStorage.getItem('elite_explorer_global_3d_mode') || 'global';
+let currentHoveredGlobalSys = null;
+let sphereParticleTexture = null;
+
+// Planisfério Galáctico (Círculos concêntricos centrados em Sol com radiais de azimute - SEMPRE ACESO)
+let planisphereGroup = new THREE.Group();
+let planisphereEnabled = true;
+let galaxyDiscPlaneMesh = null;
+let galaxyDiscTexture = null;
+
 // Objeto atualmente sob o cursor do mouse (garante sincronia perfeita com o hint!)
 let currentHoveredStar = null;
 let currentHoveredVoid = null;
@@ -152,13 +167,12 @@ function init3D() {
     const width = container.clientWidth;
     const height = container.clientHeight;
 
-    // Cena e Fundo Espacial
+    // Cena e Fundo Espacial (Vácuo limpo sem neblina para visualização estelar límpida em qualquer distância)
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x020509);
-    scene.fog = new THREE.FogExp2(0x020509, 0.003);
 
-    // Câmera Perspectiva
-    camera = new THREE.PerspectiveCamera(55, width / height, 0.1, 3000);
+    // Câmera Perspectiva (Alcance estendido para permitir zoom galáctico global além do cubo local)
+    camera = new THREE.PerspectiveCamera(55, width / height, 0.1, 80000);
     // Posição inicial afastada em ângulo isométrico agradável para ver o cubo inteiro de 100 ly
     camera.position.set(0, 110, 190);
 
@@ -168,20 +182,22 @@ function init3D() {
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-    // Controles Orbitais (como no jogo)
+    // Controles Orbitais (como no jogo, permitindo zoom out até 60.000 ly)
     controls = new THREE.OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.06;
-    controls.maxDistance = 1200;
+    controls.maxDistance = 60000;
     controls.minDistance = 5;
 
     // Luz Ambiente e Pontual
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
     scene.add(ambientLight);
 
-    // Grupo de Caixas de Vazios e Anéis de Stratum
+    // Grupo de Caixas de Vazios, Anéis de Stratum, Camada de Tráfego Global 3D e Planisfério Galáctico
     scene.add(voidBoxesGroup);
     scene.add(stratumRingsGroup);
+    scene.add(globalTrafficGroup);
+    scene.add(planisphereGroup);
 
     // Marcador da Nave do Jogador no Centro (0, 0, 0 local)
     const playerGeo = new THREE.OctahedronGeometry(1.2, 0);
@@ -268,10 +284,10 @@ function findStarAtScreenPos(clientX, clientY, maxPixelDist = 14) {
     for (let i = 0; i < starDataList.length; i++) {
         const star = starDataList[i];
 
-        // Posição local 3D da estrela na cena
+        // Posição local 3D da estrela na cena (Z invertido: North galáctico em -Z para padrão Three.js/OpenGL)
         const sx = star.x - cx;
         const sy = star.y - cy;
-        const sz = star.z - cz;
+        const sz = -(star.z - cz);
         tempStarVec.set(sx, sy, sz);
 
         // Vetor da câmera até a estrela
@@ -323,6 +339,75 @@ function findStarAtScreenPos(clientX, clientY, maxPixelDist = 14) {
     return bestStar;
 }
 
+// Projeção em tela de sistemas de tráfego global fora e dentro do cubo (tolerância em pixels)
+function findGlobalTrafficAtScreenPos(clientX, clientY, maxPixelDist = 16) {
+    if (currentGlobalLayer === 'off' || !currentRenderedGlobalItems || currentRenderedGlobalItems.length === 0 || !camera) return null;
+
+    const container = document.getElementById('viewport-container');
+    const rect = container.getBoundingClientRect();
+    const mouseX = clientX - rect.left;
+    const mouseY = clientY - rect.top;
+
+    if (mouseX < 0 || mouseX > rect.width || mouseY < 0 || mouseY > rect.height) {
+        return null;
+    }
+
+    const cx = currentCubeCenter.x;
+    const cy = currentCubeCenter.y;
+    const cz = currentCubeCenter.z;
+
+    camera.getWorldDirection(tempCameraDir);
+
+    let bestSys = null;
+    let minPixelDist = maxPixelDist;
+    let bestDistFromCamera = Infinity;
+
+    for (let i = 0; i < currentRenderedGlobalItems.length; i++) {
+        const sys = currentRenderedGlobalItems[i];
+
+        const sx = sys.x - cx;
+        const sy = sys.y - cy;
+        const sz = -(sys.z - cz);
+
+        const dx = sx - camera.position.x;
+        const dy = sy - camera.position.y;
+        const dz = sz - camera.position.z;
+
+        const forwardDist = dx * tempCameraDir.x + dy * tempCameraDir.y + dz * tempCameraDir.z;
+        if (forwardDist <= (camera.near || 0.1)) {
+            continue;
+        }
+
+        const distFromCamera = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+        tempStarVec.set(sx, sy, sz).project(camera);
+        if (tempStarVec.z < -1 || tempStarVec.z > 1) {
+            continue;
+        }
+
+        const screenX = (tempStarVec.x * 0.5 + 0.5) * rect.width;
+        const screenY = (-(tempStarVec.y * 0.5) + 0.5) * rect.height;
+
+        const pDist = Math.hypot(screenX - mouseX, screenY - mouseY);
+
+        if (pDist <= minPixelDist) {
+            if (pDist < minPixelDist - 2.5) {
+                minPixelDist = pDist;
+                bestSys = sys;
+                bestDistFromCamera = distFromCamera;
+            } else if (Math.abs(pDist - minPixelDist) <= 2.5) {
+                if (distFromCamera < bestDistFromCamera) {
+                    minPixelDist = pDist;
+                    bestSys = sys;
+                    bestDistFromCamera = distFromCamera;
+                }
+            }
+        }
+    }
+
+    return bestSys;
+}
+
 function onMouseMove(event) {
     const container = document.getElementById('viewport-container');
     mouse.x = (event.clientX / container.clientWidth) * 2 - 1;
@@ -337,7 +422,7 @@ function onMouseMove(event) {
         tooltipEl.style.left = `${event.clientX}px`;
         tooltipEl.style.top = `${event.clientY}px`;
         
-        const typeText = foundStar.starType ? `<div style="color: #ffaa33; font-size: 11px;">${tr('orrery.star_class', `<b>${foundStar.starType}</b>`)} ${foundStar.isScoopable ? '⛽ (Scoopable)' : ''}</div>` : '';
+        const typeText = foundStar.starType ? `<div style="color: #ffaa33; font-size: 11px;">${tr('orrery.star_class', `<b>${foundStar.starType}</b>`)} ${foundStar.isScoopable ? '⛽ (' + tr('galaxy.scoopable') + ')' : ''}</div>` : '';
         const popNote = (foundStar.population && foundStar.population > 0) ? `<div style="color: #00d4ff; font-size: 11px; margin-top: 1px;">${tr('galaxy.population_label')}: <b>${foundStar.population.toLocaleString(getLocale())}</b></div>` : '';
         let stratumNote = '';
         if (foundStar.hasStratumConfirmed) {
@@ -406,6 +491,81 @@ function onMouseMove(event) {
         }
     }
     currentHoveredVoid = null;
+
+    // Prioridade 3: Foco de Tráfego Global 3D (Esferas)
+    if (currentGlobalLayer !== 'off' && currentRenderedGlobalItems && currentRenderedGlobalItems.length > 0) {
+        const foundGlobal = findGlobalTrafficAtScreenPos(event.clientX, event.clientY, 16);
+        if (foundGlobal) {
+            currentHoveredGlobalSys = foundGlobal;
+            tooltipEl.style.display = 'block';
+            tooltipEl.style.left = `${event.clientX}px`;
+            tooltipEl.style.top = `${event.clientY}px`;
+
+            const distPlayer = currentCenter ? Math.hypot(foundGlobal.x - currentCenter.x, foundGlobal.y - currentCenter.y, foundGlobal.z - currentCenter.z) : 0;
+            let icon = '🛰️';
+            let catTitle = tr('galaxy.cmdr_active_title');
+            let badgeColor = '#00d4ff';
+            let detailLine = '';
+
+            if (currentGlobalLayer === 'global') {
+                icon = '🔥';
+                badgeColor = foundGlobal.count >= 30 ? '#ff0077' : (foundGlobal.count >= 10 ? '#ffaa00' : '#00d4ff');
+                catTitle = foundGlobal.count === 1
+                    ? tr('galaxy.cmdr_active_one', foundGlobal.count)
+                    : tr('galaxy.cmdr_active_many', foundGlobal.count);
+            } else if (currentGlobalLayer === 'flow') {
+                if (foundGlobal.flowType === 'departure') {
+                    icon = '🛫';
+                    badgeColor = '#00b4ff';
+                    catTitle = foundGlobal.count === 1
+                        ? tr('galaxy.flow_dep_one', foundGlobal.count)
+                        : tr('galaxy.flow_dep_many', foundGlobal.count);
+                } else {
+                    icon = '🛬';
+                    badgeColor = '#ff5555';
+                    catTitle = foundGlobal.count === 1
+                        ? tr('galaxy.flow_arr_one', foundGlobal.count)
+                        : tr('galaxy.flow_arr_many', foundGlobal.count);
+                }
+            } else if (currentGlobalLayer === 'scans') {
+                icon = '🪐';
+                badgeColor = '#ffcc00';
+                catTitle = foundGlobal.count === 1
+                    ? tr('galaxy.scans_one', foundGlobal.count)
+                    : tr('galaxy.scans_many', foundGlobal.count);
+                const b = foundGlobal.body || foundGlobal.lastBody;
+                if (b) detailLine = `<div style="color: #2bfca8; font-size: 10px; margin-top: 1px;">${tr('galaxy.last_body')}: <b>${b}</b></div>`;
+            } else if (currentGlobalLayer === 'docking') {
+                icon = '⚓';
+                badgeColor = '#2bfca8';
+                catTitle = foundGlobal.count === 1
+                    ? tr('galaxy.dock_one', foundGlobal.count)
+                    : tr('galaxy.dock_many', foundGlobal.count);
+                const s = foundGlobal.station || foundGlobal.lastStation;
+                if (s) detailLine = `<div style="color: #fff; font-size: 10px; margin-top: 1px;">${tr('galaxy.station_dock_label')}: <b>${s}</b></div>`;
+            }
+
+            tooltipEl.innerHTML = `
+                <div style="display:flex;align-items:center;gap:6px;">
+                    <span style="font-size:12px;">${icon}</span>
+                    <span style="color: #fff; font-weight: bold; font-size: 13px;">${foundGlobal.name}</span>
+                </div>
+                <div style="color: ${badgeColor}; font-weight: bold; font-size: 11px; margin-top: 2px;">
+                    ${catTitle}
+                </div>
+                ${detailLine}
+                <div style="color: #a4bedc; font-size: 11px; margin-top: 2px;">
+                    ${tr('galaxy.distance_your_ship')}: <b>${distPlayer.toFixed(1)} ly</b>
+                </div>
+                <div style="color: #6a88a8; font-size: 10px;">[X: ${foundGlobal.x.toFixed(1)}, Y: ${foundGlobal.y.toFixed(1)}, Z: ${foundGlobal.z.toFixed(1)}]</div>
+                <div style="color: #00d4ff; font-size: 10px; margin-top: 3px; font-style: italic;">
+                    ${tr('galaxy.click_focus_map')}
+                </div>
+            `;
+            return;
+        }
+    }
+    currentHoveredGlobalSys = null;
     tooltipEl.style.display = 'none';
 }
 
@@ -462,6 +622,19 @@ function onPointerUp(event) {
         }
     }
 
+    // Prioridade 4: Foco de Tráfego Global 3D clicado
+    if (currentHoveredGlobalSys) {
+        pinGlobalTrafficCard(currentHoveredGlobalSys);
+        return;
+    }
+    if (currentGlobalLayer !== 'off' && currentRenderedGlobalItems && currentRenderedGlobalItems.length > 0) {
+        const foundGlobal = findGlobalTrafficAtScreenPos(event.clientX, event.clientY, 18);
+        if (foundGlobal) {
+            pinGlobalTrafficCard(foundGlobal);
+            return;
+        }
+    }
+
     // Se clicou no espaço vazio (sem arrastar) e havia um alvo selecionado, desmarca e volta o eixo para a nave
     if (currentPinnedStarName || currentPinnedVoidId || (targetCardEl && targetCardEl.style.display !== 'none')) {
         deselectTarget();
@@ -479,7 +652,7 @@ function pinStarCard(star) {
     if (selectedTargetMarker && currentCubeCenter) {
         const rx = star.x - currentCubeCenter.x;
         const ry = star.y - currentCubeCenter.y;
-        const rz = star.z - currentCubeCenter.z;
+        const rz = -(star.z - currentCubeCenter.z);
         selectedTargetMarker.position.set(rx, ry, rz);
         selectedTargetMarker.visible = true;
         if (controls) {
@@ -493,7 +666,7 @@ function pinStarCard(star) {
 
     const typeText = star.starType ? `
         <div style="color: #ffaa33; font-size: 13px; margin-top: 4px;">
-            ${tr('orrery.star_class', `<b>${star.starType}</b>`)} ${star.isScoopable ? '⛽ <span style="color: #2bfca8;">(Scoopable)</span>' : ''}
+            ${tr('orrery.star_class', `<b>${star.starType}</b>`)} ${star.isScoopable ? '⛽ <span style="color: #2bfca8;">(' + tr('galaxy.scoopable') + ')</span>' : ''}
         </div>` : '';
 
     let stratumHtml = '';
@@ -621,7 +794,7 @@ function pinVoidCard(v) {
         selectedTargetMarker.visible = false;
     }
     if (controls && currentCubeCenter) {
-        controls.target.set(v.centerX - currentCubeCenter.x, v.centerY - currentCubeCenter.y, v.centerZ - currentCubeCenter.z);
+        controls.target.set(v.centerX - currentCubeCenter.x, v.centerY - currentCubeCenter.y, -(v.centerZ - currentCubeCenter.z));
     }
     const titleName = v.systemName || v.id;
 
@@ -659,12 +832,88 @@ function pinVoidCard(v) {
     targetCardEl.style.display = 'block';
 }
 
+let lastPinnedGlobalSys = null;
+
+function pinGlobalTrafficCard(sys) {
+    if (!sys || !currentCubeCenter) return;
+    lastPinnedGlobalSys = sys;
+    currentPinnedStarName = sys.name;
+    currentPinnedVoidId = null;
+
+    const rx = sys.x - currentCubeCenter.x;
+    const ry = sys.y - currentCubeCenter.y;
+    const rz = -(sys.z - currentCubeCenter.z);
+
+    if (selectedTargetMarker) {
+        selectedTargetMarker.position.set(rx, ry, rz);
+        selectedTargetMarker.visible = true;
+    }
+    if (controls) {
+        controls.target.set(rx, ry, rz);
+    }
+
+    const distPlayer = currentCenter ? Math.hypot(sys.x - currentCenter.x, sys.y - currentCenter.y, sys.z - currentCenter.z) : 0;
+    targetCardBadge.textContent = '🔥 ' + tr('galaxy.legend_global_traffic');
+    targetCardContent.innerHTML = `
+        <div style="font-size: 18px; font-weight: bold; color: #ffcc00; margin-top: 4px;">
+            ${sys.name}
+        </div>
+        <div style="display: flex; gap: 6px; margin-top: 6px;">
+            <button class="copy-btn" style="flex: 1; margin-top: 0;" onclick="navigator.clipboard.writeText('${sys.name}')">
+                ${tr('galaxy.copy')}
+            </button>
+            <a href="/system-orrery.html?system=${encodeURIComponent(sys.name)}" style="flex: 1; text-decoration: none; background: rgba(255,170,0,0.15); border: 1px solid rgba(255,170,0,0.45); color: #ffaa00; font-size: 11px; font-weight: bold; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; gap: 4px; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,170,0,0.28)'" onmouseout="this.style.background='rgba(255,170,0,0.15)'">
+                ${tr('galaxy.system_3d')}
+            </a>
+        </div>
+        <div style="color: #ffaa00; font-size: 13px; font-weight: bold; margin-top: 8px;">
+            🛰️ ${sys.count === 1 ? tr('galaxy.cmdr_active_sys_one', sys.count) : tr('galaxy.cmdr_active_sys_many', sys.count)}
+        </div>
+        <div style="color: #a4bedc; font-size: 12px; margin-top: 4px;">
+            ${tr('galaxy.distance_ship')}: <b style="color: #fff;">${distPlayer.toFixed(1)} ly</b>
+        </div>
+        <div style="color: #6a88a8; font-size: 11px; font-family: monospace; margin-top: 4px;">
+            [X: ${sys.x.toFixed(1)}, Y: ${sys.y.toFixed(1)}, Z: ${sys.z.toFixed(1)}]
+        </div>
+    `;
+    targetCardEl.style.display = 'block';
+}
+
 function animate() {
     requestAnimationFrame(animate);
 
     // Animação sutil do marcador do jogador
     if (playerMarker) {
         playerMarker.rotation.y += 0.01;
+    }
+
+    // Escala dinâmica adaptativa para estrelas e esferas de dados com o afastamento da câmera (zoom out)
+    if (camera) {
+        const camDist = (controls && controls.target) 
+            ? camera.position.distanceTo(controls.target)
+            : camera.position.length();
+
+        // 1. Estrelas do Cubo Local:
+        // Mantém a escala original 1.8 quando perto (dentro ou ao redor do cubo).
+        // Quando a câmera se afasta muito (> 300 al), compensa suavemente a perspectiva para não sumir no espaço profundo.
+        if (starPointsMesh && starPointsMesh.material) {
+            if (camDist > 300) {
+                starPointsMesh.material.size = Math.min(12.0, 1.8 + (camDist - 300) * 0.003);
+            } else {
+                starPointsMesh.material.size = 1.8;
+            }
+        }
+
+        // 2. Esferas de Dados Globais (Tráfego de Comandantes, Partidas, Chegadas, Scans e Docas):
+        // Perto (camDist < 250): 4.5 px na tela.
+        // Ao afastar: cresce dinamicamente até 16.0 px para que aglomerados de tráfego fiquem nítidos e visíveis no panorama macro!
+        if (globalTrafficPointsMesh && globalTrafficPointsMesh.material) {
+            if (camDist > 250) {
+                globalTrafficPointsMesh.material.size = Math.min(16.0, 4.5 + (camDist - 250) * 0.004);
+            } else {
+                globalTrafficPointsMesh.material.size = 4.5;
+            }
+        }
     }
 
     // Animação viva dos anéis estilo Saturno (girando rápido transversalmente como moeda, criando efeito pulsante de estrela cintilante)
@@ -778,6 +1027,535 @@ function createStratumRing(star, rx, ry, rz) {
     return ringMesh;
 }
 
+function getSphereParticleTexture() {
+    if (sphereParticleTexture) return sphereParticleTexture;
+    const canvas = document.createElement('canvas');
+    canvas.width = 32;
+    canvas.height = 32;
+    const ctx = canvas.getContext('2d');
+    const grad = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+    grad.addColorStop(0, 'rgba(255,255,255,1.0)');     // Núcleo branco puro
+    grad.addColorStop(0.35, 'rgba(255,255,255,0.85)'); // Disco sólido
+    grad.addColorStop(0.70, 'rgba(255,255,255,0.25)'); // Glow suave e nítido
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 32, 32);
+    sphereParticleTexture = new THREE.CanvasTexture(canvas);
+    return sphereParticleTexture;
+}
+
+function renderGlobalTraffic3D(data) {
+    if (!data || !currentCubeCenter) return;
+    globalTrafficData = data;
+
+    const cx = currentCubeCenter.x;
+    const cy = currentCubeCenter.y;
+    const cz = currentCubeCenter.z;
+
+    // 1. Limpa meshes anteriores
+    while (globalTrafficGroup.children.length > 0) {
+        const child = globalTrafficGroup.children[0];
+        globalTrafficGroup.remove(child);
+        if (child.geometry) child.geometry.dispose();
+    }
+
+    if (currentGlobalLayer === 'off') {
+        globalTrafficGroup.visible = false;
+        currentRenderedGlobalItems = [];
+        return;
+    }
+
+    globalTrafficGroup.visible = true;
+
+    const positions = [];
+    const colors = [];
+    const items = [];
+
+    if (currentGlobalLayer === 'global' && data.global) {
+        // Modo Global: Ciano suave para tráfego regular, âmbar/magenta para os maiores epicentros
+        const defaultCol = new THREE.Color(0x00d4ff);
+        const busyCol = new THREE.Color(0xffaa00);
+        const epicCol = new THREE.Color(0xff0077);
+
+        data.global.forEach(sys => {
+            positions.push(sys.x - cx, sys.y - cy, -(sys.z - cz));
+            const col = sys.count >= 30 ? epicCol : (sys.count >= 10 ? busyCol : defaultCol);
+            colors.push(col.r, col.g, col.b);
+            items.push(sys);
+        });
+    } else if (currentGlobalLayer === 'flow') {
+        // Modo Partidas e Chegadas (Mesmas cores do CmdrScan 2D):
+        // Partidas = Azul / Ciano (#00b4ff)
+        // Chegadas = Vermelho / Coral (#ff5555)
+        const depCol = new THREE.Color(0x00b4ff);
+        const arrCol = new THREE.Color(0xff5555);
+
+        if (data.departures) {
+            data.departures.forEach(sys => {
+                positions.push(sys.x - cx, sys.y - cy, -(sys.z - cz));
+                colors.push(depCol.r, depCol.g, depCol.b);
+                items.push({ ...sys, flowType: 'departure' });
+            });
+        }
+        if (data.arrivals) {
+            data.arrivals.forEach(sys => {
+                positions.push(sys.x - cx, sys.y - cy, -(sys.z - cz));
+                colors.push(arrCol.r, arrCol.g, arrCol.b);
+                items.push({ ...sys, flowType: 'arrival' });
+            });
+        }
+    } else if (currentGlobalLayer === 'scans' && data.scans) {
+        // Modo Scans: Amarelo Ouro (#ffcc00)
+        const scanCol = new THREE.Color(0xffcc00);
+        data.scans.forEach(sys => {
+            positions.push(sys.x - cx, sys.y - cy, -(sys.z - cz));
+            colors.push(scanCol.r, scanCol.g, scanCol.b);
+            items.push({ ...sys, scanType: true });
+        });
+    } else if (currentGlobalLayer === 'docking' && data.docking) {
+        // Modo Docagens: Verde Esmeralda (#2bfca8)
+        const dockCol = new THREE.Color(0x2bfca8);
+        data.docking.forEach(sys => {
+            positions.push(sys.x - cx, sys.y - cy, -(sys.z - cz));
+            colors.push(dockCol.r, dockCol.g, dockCol.b);
+            items.push({ ...sys, dockType: true });
+        });
+    }
+
+    if (positions.length === 0) {
+        currentRenderedGlobalItems = [];
+        return;
+    }
+
+    currentRenderedGlobalItems = items;
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+
+    const mat = new THREE.PointsMaterial({
+        size: 5.0, // Tamanho em pixels diretos na tela (independente de estar a 100 al ou 50.000 al)
+        sizeAttenuation: false, // ZERO atenuação de perspectiva: NUNCA encolhe ou some com a distância!
+        vertexColors: true,
+        map: getSphereParticleTexture(),
+        transparent: true,
+        opacity: 0.98,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        fog: false // Brilha perfeitamente no vácuo sem atenuação de neblina
+    });
+
+    globalTrafficPointsMesh = new THREE.Points(geo, mat);
+    globalTrafficGroup.add(globalTrafficPointsMesh);
+}
+
+async function fetchGlobalTraffic3D() {
+    try {
+        const res = await fetch('/api/galaxy/traffic/global-3d');
+        if (!res.ok) return;
+        const data = await res.json();
+        renderGlobalTraffic3D(data);
+        renderTrafficOnlineCount(lastTrafficOnlineCount);
+    } catch (_) {}
+}
+
+function switchGlobalLayer(layer) {
+    currentGlobalLayer = layer;
+    localStorage.setItem('elite_explorer_global_3d_mode', layer);
+    updateGlobalLayerButtons();
+    if (globalTrafficData) {
+        renderGlobalTraffic3D(globalTrafficData);
+    }
+}
+
+function updateGlobalLayerButtons() {
+    const badge = document.getElementById('globalLayerBadge');
+    if (badge) {
+        const labels = {
+            'global': tr('galaxy.mode_global'),
+            'flow': tr('galaxy.mode_flow'),
+            'scans': tr('galaxy.mode_scans'),
+            'docking': tr('galaxy.mode_docking'),
+            'off': tr('galaxy.mode_off')
+        };
+        badge.textContent = labels[currentGlobalLayer] || currentGlobalLayer;
+        const colors = {
+            'global': '#00d4ff',
+            'flow': '#ffaa00',
+            'scans': '#ffcc00',
+            'docking': '#2bfca8',
+            'off': '#6a88a8'
+        };
+        badge.style.color = colors[currentGlobalLayer] || '#00d4ff';
+    }
+
+    const btnLabels = {
+        'global': tr('galaxy.layer_btn_global'),
+        'flow': tr('galaxy.layer_btn_flow'),
+        'scans': tr('galaxy.layer_btn_scans'),
+        'docking': tr('galaxy.layer_btn_docking'),
+        'off': tr('galaxy.layer_btn_off')
+    };
+    const btnTitles = {
+        'global': tr('galaxy.layer_btn_global_title'),
+        'flow': tr('galaxy.layer_btn_flow_title'),
+        'scans': tr('galaxy.layer_btn_scans_title'),
+        'docking': tr('galaxy.layer_btn_docking_title'),
+        'off': tr('galaxy.layer_btn_off_title')
+    };
+
+    document.querySelectorAll('.btn-3d-layer').forEach(btn => {
+        const layer = btn.getAttribute('data-layer');
+        if (btnLabels[layer]) btn.textContent = btnLabels[layer];
+        if (btnTitles[layer]) btn.title = btnTitles[layer];
+        if (layer === currentGlobalLayer) {
+            btn.classList.add('active');
+            if (layer === 'global') {
+                btn.style.background = 'rgba(0,212,255,0.25)';
+                btn.style.borderColor = '#00d4ff';
+                btn.style.color = '#00d4ff';
+            } else if (layer === 'flow') {
+                btn.style.background = 'rgba(255,170,0,0.25)';
+                btn.style.borderColor = '#ffaa00';
+                btn.style.color = '#ffaa00';
+            } else if (layer === 'scans') {
+                btn.style.background = 'rgba(255,204,0,0.25)';
+                btn.style.borderColor = '#ffcc00';
+                btn.style.color = '#ffcc00';
+            } else if (layer === 'docking') {
+                btn.style.background = 'rgba(43,252,168,0.25)';
+                btn.style.borderColor = '#2bfca8';
+                btn.style.color = '#2bfca8';
+            } else {
+                btn.style.background = 'rgba(255,255,255,0.15)';
+                btn.style.borderColor = 'rgba(255,255,255,0.3)';
+                btn.style.color = '#fff';
+            }
+        } else {
+            btn.classList.remove('active');
+            btn.style.background = 'rgba(12,25,45,0.7)';
+            btn.style.borderColor = 'rgba(255,255,255,0.15)';
+            btn.style.color = '#8da4be';
+        }
+    });
+}
+
+function initGlobal3DControls() {
+    updateGlobalLayerButtons();
+    document.querySelectorAll('.btn-3d-layer').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const layer = btn.getAttribute('data-layer');
+            if (layer) switchGlobalLayer(layer);
+        });
+    });
+}
+
+function recenterOnCube() {
+    if (!controls || !camera) return;
+    deselectTarget();
+    controls.target.set(0, 0, 0);
+    const cubeSize = (lastGalaxyCubeData && lastGalaxyCubeData.cubeSize) || DEFAULT_CUBE_SIZE;
+    const dist = cubeSize * 1.85;
+    camera.position.set(0, dist * 0.5, dist * 0.95);
+    camera.updateProjectionMatrix();
+    controls.update();
+}
+
+function initRecenterCubeButton() {
+    const btn = document.getElementById('btnRecenterCube');
+    if (btn) {
+        btn.addEventListener('click', recenterOnCube);
+    }
+}
+
+// -------------------------------------------------------------
+// Planisfério Galáctico Centrado em Sol (0, 0, 0 galáctico)
+// Círculos concêntricos progressivos e radiais de orientação
+// -------------------------------------------------------------
+const PLANISPHERE_RADII = [
+    500, 1000, 1500, 2000, 3000, 5000, 7500, 10000, 15000, 20000, 25899.97, 30000, 40000, 50000, 65000
+];
+
+function buildPlanisphere() {
+    while (planisphereGroup.children.length > 0) {
+        const obj = planisphereGroup.children[0];
+        planisphereGroup.remove(obj);
+        if (obj.geometry) obj.geometry.dispose();
+        if (obj.material) {
+            if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
+            else obj.material.dispose();
+        }
+    }
+
+    const cx = currentCubeCenter.x;
+    const cy = currentCubeCenter.y;
+    const cz = currentCubeCenter.z;
+
+    // Posição de Sol no espaço relativo local do cubo
+    // Coordenadas absolutas de Sol = (0, 0, 0)
+    // Coordenada do centro do cubo = (cx, cy, cz)
+    // No Three.js com Z invertido (Norte Galáctico = -Z para projeção correta de mão direita): Sol fica em (-cx, -cy, cz)
+    const solX = -cx;
+    const solY = -cy;
+    const solZ = cz;
+
+    // Coordenadas de Sagittarius A* (Centro Galáctico): (X: 25.2, Z: 25899.97 em ED -> solZ - 25899.97 no Three.js)
+    const sgrX = solX + 25.2;
+    const sgrY = solY;
+    const sgrZ = solZ - 25899.97;
+
+    // 1. Marcador luminoso e icônico de Sol (Centro da Rede de Referência)
+    const solCoreGeo = new THREE.SphereGeometry(2.0, 16, 16);
+    const solCoreMat = new THREE.MeshBasicMaterial({ color: 0xffe066, fog: false });
+    const solCoreMesh = new THREE.Mesh(solCoreGeo, solCoreMat);
+    solCoreMesh.position.set(solX, solY, solZ);
+    planisphereGroup.add(solCoreMesh);
+
+    const solRingGeo = new THREE.RingGeometry(3.5, 4.2, 32);
+    const solRingMat = new THREE.MeshBasicMaterial({ color: 0xffe066, side: THREE.DoubleSide, transparent: true, opacity: 0.65, fog: false });
+    const solRingMesh = new THREE.Mesh(solRingGeo, solRingMat);
+    solRingMesh.rotation.x = Math.PI / 2;
+    solRingMesh.position.set(solX, solY, solZ);
+    planisphereGroup.add(solRingMesh);
+
+    // 2. Círculos Concêntricos no plano horizontal (plano galáctico XZ)
+    PLANISPHERE_RADII.forEach(r => {
+        const isBubble = r <= 2000;
+        const isCore = Math.abs(r - 25899.97) < 50; // Sagittarius A*
+        const segments = r > 10000 ? 128 : 96;
+
+        const points = [];
+        for (let i = 0; i <= segments; i++) {
+            const theta = (i / segments) * Math.PI * 2;
+            points.push(new THREE.Vector3(
+                solX + r * Math.sin(theta),
+                solY,
+                solZ - r * Math.cos(theta)
+            ));
+        }
+
+        const ringGeo = new THREE.BufferGeometry().setFromPoints(points);
+        let ringColor = 0x00d4ff;
+        let opacity = 0.55;
+
+        if (isBubble) {
+            ringColor = 0x2bfca8; // Verde-água/esmeralda nítido para bolha humana (500 a 2.000 al)
+            opacity = 0.75;
+        } else if (isCore) {
+            ringColor = 0xffa500; // Laranja dourado brilhante no raio de Sagittarius A* (~25.900 al)
+            opacity = 0.85;
+        } else if (r >= 50000) {
+            ringColor = 0x3d7099; // Azul estelar nas bordas externas da galáxia
+            opacity = 0.45;
+        }
+
+        const ringMat = new THREE.LineBasicMaterial({
+            color: ringColor,
+            transparent: true,
+            opacity: opacity,
+            fog: false
+        });
+        const ringLine = new THREE.Line(ringGeo, ringMat);
+        planisphereGroup.add(ringLine);
+
+        // Marcador/Sprite de texto com a distância em anos-luz (plotado no quadrante Norte)
+        const labelText = isCore ? `25.9k al • Sgr A*` : (r >= 1000 ? `${(r / 1000).toFixed(r % 1000 === 0 ? 0 : 1)}k al` : `${r} al`);
+        const labelSprite = createPlanisphereLabel(labelText, ringColor);
+        labelSprite.position.set(solX, solY, solZ - (isCore ? (r + 400) : r));
+        labelSprite.scale.set(380, 95, 1);
+        planisphereGroup.add(labelSprite);
+    });
+
+    // 3. Eixos Radiais de Orientação Azimutal (de Sol para fora a cada 45°: N, NE, L/E, SE, S, SO/SW, O/W, NO/NW)
+    const maxRadius = 65000;
+    const radialAngles = [
+        { deg: 0, label: 'Norte (Galactic North)' },
+        { deg: 45, label: 'Nordeste (NE)' },
+        { deg: 90, label: 'Leste (East)' },
+        { deg: 135, label: 'Sudeste (SE)' },
+        { deg: 180, label: 'Sul (Galactic South)' },
+        { deg: 225, label: 'Sudoeste (SO / SW)' },
+        { deg: 270, label: 'Oeste (West)' },
+        { deg: 315, label: 'Noroeste (NO / NW)' }
+    ];
+
+    radialAngles.forEach(item => {
+        const rad = (item.deg * Math.PI) / 180;
+        const isCardinal = (item.deg % 90 === 0);
+        const pts = [
+            new THREE.Vector3(solX, solY, solZ),
+            new THREE.Vector3(
+                solX + maxRadius * Math.sin(rad),
+                solY,
+                solZ - maxRadius * Math.cos(rad)
+            )
+        ];
+        const radGeo = new THREE.BufferGeometry().setFromPoints(pts);
+        const radMat = new THREE.LineBasicMaterial({
+            color: isCardinal ? 0x00d4ff : 0x00a8cc, // Ciano vivo brilhante
+            transparent: false,
+            fog: false
+        });
+        const radLine = new THREE.Line(radGeo, radMat);
+        planisphereGroup.add(radLine);
+    });
+
+    // Radial especial apontando direto para o Buraco Negro Central Sagittarius A* (X: 25.2, Z: 25899.97)
+    // No Elite Dangerous, Sol = (0,0,0) e Sgr A* fica no centro da galáxia em Z positivo (+25899.97)
+    const ptsSgrA = [
+        new THREE.Vector3(solX, solY, solZ),
+        new THREE.Vector3(sgrX, sgrY, sgrZ)
+    ];
+    const sgrGeo = new THREE.BufferGeometry().setFromPoints(ptsSgrA);
+    const sgrMat = new THREE.LineBasicMaterial({
+        color: 0xffcc00, // Linha de conexão direta em amarelo/dourado brilhante
+        transparent: false,
+        fog: false
+    });
+    const sgrLine = new THREE.Line(sgrGeo, sgrMat);
+    planisphereGroup.add(sgrLine);
+
+    // 4. Marcador Físico do Centro da Galáxia (Sagittarius A* - Buraco Negro Supermassivo)
+    // Esfera BRANCA com alto brilho e destaque sobre o plano
+    const sgrCoreGeo = new THREE.SphereGeometry(180.0, 32, 24);
+    const sgrCoreMat = new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false }); // Branco puro vibrante
+    const sgrCoreMesh = new THREE.Mesh(sgrCoreGeo, sgrCoreMat);
+    sgrCoreMesh.position.set(sgrX, sgrY, sgrZ);
+    planisphereGroup.add(sgrCoreMesh);
+
+    // Halo esférico brilhante ao redor da esfera branca
+    const sgrGlowGeo = new THREE.SphereGeometry(260.0, 24, 20);
+    const sgrGlowMat = new THREE.MeshBasicMaterial({
+        color: 0xddf0ff,
+        transparent: true,
+        opacity: 0.45,
+        wireframe: true,
+        fog: false
+    });
+    const sgrGlowMesh = new THREE.Mesh(sgrGlowGeo, sgrGlowMat);
+    sgrGlowMesh.position.set(sgrX, sgrY, sgrZ);
+    planisphereGroup.add(sgrGlowMesh);
+
+    // Disco de acreção luminoso e anel exterior em ouro/amarelo (preservando o anel amarelo pedido)
+    const sgrAccretionGeo = new THREE.RingGeometry(300.0, 520.0, 64);
+    const sgrAccretionMat = new THREE.MeshBasicMaterial({
+        color: 0xffcc00,
+        side: THREE.DoubleSide,
+        transparent: false,
+        fog: false
+    });
+    const sgrAccretionMesh = new THREE.Mesh(sgrAccretionGeo, sgrAccretionMat);
+    sgrAccretionMesh.rotation.x = Math.PI / 2;
+    sgrAccretionMesh.position.set(sgrX, sgrY, sgrZ);
+    planisphereGroup.add(sgrAccretionMesh);
+
+    // Halo externo em amarelo âmbar
+    const sgrHaloGeo = new THREE.RingGeometry(600.0, 800.0, 64);
+    const sgrHaloMat = new THREE.MeshBasicMaterial({
+        color: 0xff9900,
+        side: THREE.DoubleSide,
+        transparent: false,
+        fog: false
+    });
+    const sgrHaloMesh = new THREE.Mesh(sgrHaloGeo, sgrHaloMat);
+    sgrHaloMesh.rotation.x = Math.PI / 2;
+    sgrHaloMesh.position.set(sgrX, sgrY, sgrZ);
+    planisphereGroup.add(sgrHaloMesh);
+
+    // Rótulo estelar de Sagittarius A*
+    const sgrLabel = createPlanisphereLabel("★ Sagittarius A* (Centro Galáctico)", 0xffffff);
+    sgrLabel.position.set(sgrX, sgrY + 280, sgrZ);
+    sgrLabel.scale.set(1200, 300, 1);
+    planisphereGroup.add(sgrLabel);
+
+    planisphereGroup.visible = true; // Sempre aceso
+}
+
+function createPlanisphereLabel(text, colorHex) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+
+    ctx.clearRect(0, 0, 256, 64);
+    ctx.font = 'bold 22px "Segoe UI", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = `#${new THREE.Color(colorHex).getHexString()}`;
+    ctx.shadowColor = 'rgba(0,0,0,0.85)';
+    ctx.shadowBlur = 4;
+    ctx.fillText(text, 128, 32);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.minFilter = THREE.LinearFilter;
+    const mat = new THREE.SpriteMaterial({
+        map: texture,
+        transparent: true,
+        opacity: 0.65,
+        depthWrite: false,
+        fog: false
+    });
+    const sprite = new THREE.Sprite(mat);
+    sprite.scale.set(160, 40, 1);
+    return sprite;
+}
+
+// -------------------------------------------------------------
+// Live Discovery & Telemetria em Tempo Real (Janela de 5 Minutos)
+// -------------------------------------------------------------
+function renderDiscoveredChart(buckets, minuteFloor) {
+    const discoveredChart = document.getElementById('discoveredChart');
+    if (!buckets || buckets.length < 5 || !discoveredChart) return;
+    const maxVal = Math.max(1, Math.max(...buckets));
+    let html = '';
+    const baseTime = minuteFloor || (Math.floor(Date.now() / 60000) * 60000);
+    for (let i = 0; i < 5; i++) {
+        const val = buckets[i];
+        const pct = Math.max(8, Math.round((val / maxVal) * 100));
+        const isNow = (i === 4);
+        const bTime = new Date(baseTime - (4 - i) * 60000);
+        const timeStr = String(bTime.getHours()).padStart(2, '0') + ':' + String(bTime.getMinutes()).padStart(2, '0');
+        const tooltip = isNow
+            ? tr('galaxy.chart_now_tooltip', timeStr, val)
+            : tr('galaxy.chart_past_tooltip', timeStr, val);
+        html += `
+            <div class="chart-col ${isNow ? 'current' : ''}" title="${tooltip}">
+                <span class="chart-val">${val}</span>
+                <div class="chart-bar" style="height: ${pct}%;"></div>
+            </div>
+        `;
+    }
+    discoveredChart.innerHTML = html;
+}
+
+let lastLiveDiscoveryData = null;
+
+async function pollLiveDiscovery() {
+    try {
+        const res = await fetch('/api/status');
+        if (!res.ok) return;
+        const data = await res.json();
+        
+        const statCount = document.getElementById('statCount');
+        const cardDiscoveredTotal = document.getElementById('cardDiscoveredTotal');
+
+        if (data.activeCommanders !== undefined && statCount) {
+            statCount.textContent = data.activeCommanders;
+        }
+        if (data.totalDiscovered5m !== undefined && cardDiscoveredTotal) {
+            cardDiscoveredTotal.textContent = data.totalDiscovered5m;
+        }
+        if (data.discovered5m) {
+            lastLiveDiscoveryData = { buckets: data.discovered5m, minuteFloor: data.minuteFloor };
+            renderDiscoveredChart(data.discovered5m, data.minuteFloor);
+        }
+    } catch (_) {}
+}
+
+function initPlanisphereControls() {
+    // Planisfério agora fica sempre ligado por padrão
+}
+
 let starSharedTexture = null;
 
 function getStarTexture() {
@@ -833,7 +1611,7 @@ function renderStarPointsAndRings() {
     starDataList.forEach(star => {
         const rx = star.x - cx;
         const ry = star.y - cy;
-        const rz = star.z - cz;
+        const rz = -(star.z - cz);
         positions.push(rx, ry, rz);
 
         const starColor = getStarColor(star.starType);
@@ -846,11 +1624,13 @@ function renderStarPointsAndRings() {
 
     const starMat = new THREE.PointsMaterial({
         size: 1.8,
+        sizeAttenuation: true, // Perspectiva natural 3D restaurada dentro do cubo (estrela perto é maior, estrela longe é pontinho)
         vertexColors: true,
         map: getStarTexture(),
         transparent: true,
         blending: THREE.AdditiveBlending,
-        depthWrite: false
+        depthWrite: false,
+        fog: false
     });
 
     starPointsMesh = new THREE.Points(starGeo, starMat);
@@ -865,7 +1645,7 @@ function renderStarPointsAndRings() {
         if (star.stratumCandidates && star.stratumCandidates.length > 0) {
             const rx = star.x - cx;
             const ry = star.y - cy;
-            const rz = star.z - cz;
+            const rz = -(star.z - cz);
             const ringMesh = createStratumRing(star, rx, ry, rz);
             stratumRingsGroup.add(ringMesh);
         }
@@ -903,6 +1683,14 @@ function renderGalaxyData(data) {
     const cubeSize = data.cubeSize;
     currentCubeCenter = { x: cx, y: cy, z: cz };
 
+    // Sincroniza a posição relativa do Heatmap 3D Global com o novo centro do cubo
+    if (globalTrafficData) {
+        renderGlobalTraffic3D(globalTrafficData);
+    }
+
+    // Reconstrói o Planisfério Galáctico concêntrico centrado em Sol
+    buildPlanisphere();
+
     // No primeiro carregamento ou ao alterar o tamanho do cubo, ajusta a câmera para enquadrar o cubo completo
     if (isFirstLoad) {
         isFirstLoad = false;
@@ -923,7 +1711,8 @@ function renderGalaxyData(data) {
     boundaryCubeMesh = new THREE.LineSegments(edgesGeo, new THREE.LineBasicMaterial({
         color: 0x00d4ff,
         transparent: true,
-        opacity: 0.25
+        opacity: 0.35,
+        fog: false
     }));
     scene.add(boundaryCubeMesh);
 
@@ -944,7 +1733,7 @@ function renderGalaxyData(data) {
     if (currentPinnedStarName && allReceivedStars && selectedTargetMarker) {
         const pinned = allReceivedStars.find(s => s.name.toLowerCase().trim() === currentPinnedStarName.toLowerCase().trim());
         if (pinned) {
-            selectedTargetMarker.position.set(pinned.x - cx, pinned.y - cy, pinned.z - cz);
+            selectedTargetMarker.position.set(pinned.x - cx, pinned.y - cy, -(pinned.z - cz));
             selectedTargetMarker.visible = true;
         } else {
             selectedTargetMarker.visible = false;
@@ -968,7 +1757,7 @@ function renderGalaxyData(data) {
         });
 
         const mesh = new THREE.Mesh(diamondGeo, diamondMat);
-        mesh.position.set(v.centerX - cx, v.centerY - cy, v.centerZ - cz);
+        mesh.position.set(v.centerX - cx, v.centerY - cy, -(v.centerZ - cz));
         mesh.userData = { isVoid: true, voidData: v, isGhostStar: true };
 
         // Núcleo central com leve glow
@@ -1004,7 +1793,7 @@ function renderGalaxyData(data) {
         const routePoints = [];
         data.activeRoute.forEach(pt => {
             // Converte coordenada global para local em relação ao centro (cx, cy, cz)
-            routePoints.push(new THREE.Vector3(pt.x - cx, pt.y - cy, pt.z - cz));
+            routePoints.push(new THREE.Vector3(pt.x - cx, pt.y - cy, -(pt.z - cz)));
         });
 
         const routeGeo = new THREE.BufferGeometry().setFromPoints(routePoints);
@@ -1234,7 +2023,7 @@ function focusRadarSystem(sysName) {
     if (star) {
         pinStarCard(star);
         if (currentCubeCenter && controls) {
-            controls.target.set(star.x - currentCubeCenter.x, star.y - currentCubeCenter.y, star.z - currentCubeCenter.z);
+            controls.target.set(star.x - currentCubeCenter.x, star.y - currentCubeCenter.y, -(star.z - currentCubeCenter.z));
         }
     }
 }
@@ -1296,7 +2085,7 @@ function focusGapSystem(gapIdOrName) {
     if (gap) {
         pinVoidCard(gap);
         if (currentCubeCenter && controls) {
-            controls.target.set(gap.centerX - currentCubeCenter.x, gap.centerY - currentCubeCenter.y, gap.centerZ - currentCubeCenter.z);
+            controls.target.set(gap.centerX - currentCubeCenter.x, gap.centerY - currentCubeCenter.y, -(gap.centerZ - currentCubeCenter.z));
         }
     }
 }
@@ -1632,13 +2421,20 @@ function formatTimeAgo(ts) {
 // Atualiza os marcadores de tempo relativo do card a cada 10 segundos
 setInterval(renderTrafficCard, 10000);
 
-// Polling de saltos de Comandantes ao vivo (EDDN) a cada 1.2 segundos
+// Polling de saltos de Comandantes ao vivo (EDDN) e Telemetria Live Discovery
 setInterval(pollTrafficEvents, 1200);
 setInterval(pollTrafficOnlineCount, 3000);
+setInterval(pollLiveDiscovery, 5000);
+setInterval(fetchGlobalTraffic3D, 20000);
 
-// Dispara checagem inicial de tráfego
+// Dispara checagem inicial de tráfego, Camada Global 3D e Planisfério
+initGlobal3DControls();
+initRecenterCubeButton();
+initPlanisphereControls();
 pollTrafficEvents();
 pollTrafficOnlineCount();
+pollLiveDiscovery();
+fetchGlobalTraffic3D();
 
 let lastTrafficOnlineCount = 0;
 
@@ -1646,7 +2442,11 @@ function renderTrafficOnlineCount(count) {
     lastTrafficOnlineCount = Number.isFinite(count) ? count : 0;
     const el = document.getElementById('trafficOnlineEstimate');
     if (el) {
-        el.textContent = tr('galaxy.traffic_online_estimate', lastTrafficOnlineCount);
+        if (globalTrafficData && globalTrafficData.totalCommanders) {
+            el.textContent = tr('galaxy.traffic_online_detailed', lastTrafficOnlineCount, globalTrafficData.totalCommanders, globalTrafficData.systemsCount || 0);
+        } else {
+            el.textContent = tr('galaxy.traffic_online_estimate', lastTrafficOnlineCount);
+        }
     }
 }
 
@@ -1706,7 +2506,7 @@ function triggerJumpBeam(ev) {
 
     const relX = ev.x - cx;
     const starY = ev.y - cy;
-    const relZ = ev.z - cz;
+    const relZ = -(ev.z - cz);
 
     const cubeSize = DEFAULT_CUBE_SIZE;
     const ceilingY = cubeSize / 2;
@@ -2010,6 +2810,10 @@ async function checkEdsmStatus() {
 window.addEventListener('elite:languageChanged', () => {
     updateToggleHabitedButton();
     updateTrafficAudioButton();
+    updateGlobalLayerButtons();
+    if (lastLiveDiscoveryData) {
+        renderDiscoveredChart(lastLiveDiscoveryData.buckets, lastLiveDiscoveryData.minuteFloor);
+    }
     renderTrafficOnlineCount(lastTrafficOnlineCount);
     if (lastGalaxyCubeData) {
         updateStatsSummary(lastGalaxyCubeData);
@@ -2029,9 +2833,18 @@ window.addEventListener('elite:languageChanged', () => {
     if (lastEdsmData) {
         renderEdsmStatus(lastEdsmData);
     }
-    if (currentPinnedStarName && allReceivedStars) {
-        const star = allReceivedStars.find(s => s.name === currentPinnedStarName);
-        if (star) pinStarCard(star);
+    if (currentPinnedStarName) {
+        let found = false;
+        if (allReceivedStars) {
+            const star = allReceivedStars.find(s => s.name && s.name.toLowerCase().trim() === currentPinnedStarName.toLowerCase().trim());
+            if (star) {
+                pinStarCard(star);
+                found = true;
+            }
+        }
+        if (!found && lastPinnedGlobalSys) {
+            pinGlobalTrafficCard(lastPinnedGlobalSys);
+        }
     } else if (currentPinnedVoidId && currentVoidSectors) {
         const v = currentVoidSectors.find(g => (g.systemName || g.id) === currentPinnedVoidId);
         if (v) pinVoidCard(v);

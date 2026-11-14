@@ -20,14 +20,17 @@ public class CopilotMarketService {
     private static final Logger log = LoggerFactory.getLogger(CopilotMarketService.class);
 
     private final JournalWatcherService journalWatcherService;
+    private final CmdrScanService cmdrScanService;
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
 
-    private static final String LOCAL_CMDRSCAN_URL = "http://localhost:8081/api/market/top";
     private static final String REMOTE_CMDRSCAN_URL = "http://j1scorpii.com.br:36058/api/market/top";
 
-    public CopilotMarketService(JournalWatcherService journalWatcherService, ObjectMapper objectMapper) {
+    public CopilotMarketService(JournalWatcherService journalWatcherService,
+                                CmdrScanService cmdrScanService,
+                                ObjectMapper objectMapper) {
         this.journalWatcherService = journalWatcherService;
+        this.cmdrScanService = cmdrScanService;
         this.objectMapper = objectMapper;
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(2))
@@ -92,7 +95,17 @@ public class CopilotMarketService {
     }
 
     private List<Map<String, Object>> fetchRawRoutesFromCmdrScan() {
-        return fetchFromUrl(LOCAL_CMDRSCAN_URL);
+        if (cmdrScanService != null) {
+            try {
+                List<Map<String, Object>> routes = cmdrScanService.getSingleHopTradeRoutes();
+                if (routes != null && !routes.isEmpty()) {
+                    return routes;
+                }
+            } catch (Exception e) {
+                log.debug("Erro ao consultar rotas direto do CmdrScanService local: {}", e.getMessage());
+            }
+        }
+        return Collections.emptyList();
     }
 
     private List<Map<String, Object>> fetchRawRoutesFromRemote() {

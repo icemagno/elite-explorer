@@ -136,7 +136,16 @@
                     <span id="navSurfaceBadge" class="nav-status-badge disabled" data-i18n="nav.status_offline">${tr('nav.status_offline')}</span>
                 </button>
 
-                <!-- 4. Mercado Single-Hop -->
+                <!-- 4. Commander Scan (Heatmap 2D) -->
+                <a href="/cmdrscan.html" class="sidebar-nav-item" id="navItemCmdrScan">
+                    <span class="nav-icon">🛰️</span>
+                    <div class="nav-label-group">
+                        <span class="nav-label" data-i18n="nav.cmdrscan">${tr('nav.cmdrscan')}</span>
+                        <span class="nav-desc" data-i18n="nav.desc_cmdrscan">${tr('nav.desc_cmdrscan')}</span>
+                    </div>
+                </a>
+
+                <!-- 5. Mercado Single-Hop -->
                 <a href="/market.html" class="sidebar-nav-item" id="navItemMarket">
                     <span class="nav-icon">🚀</span>
                     <div class="nav-label-group">
@@ -154,7 +163,14 @@
 
             <!-- Rodapé -->
             <div class="sidebar-footer">
-                <span class="version-badge">v0.0.1</span>
+                <div class="sidebar-footer-left">
+                    <span class="version-badge">v0.0.1</span>
+                    <a class="sidebar-github-link" href="https://github.com/icemagno/elite-explorer" target="_blank" rel="noopener noreferrer" title="GitHub: icemagno/elite-explorer" aria-label="GitHub">
+                        <svg viewBox="0 0 16 16" width="15" height="15" fill="currentColor">
+                            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+                        </svg>
+                    </a>
+                </div>
                 <div class="sidebar-author-info">
                     <span class="author-name">Carlos M. Abreu</span>
                     <a href="mailto:magno.mabreu@gmail.com" class="author-email">magno.mabreu@gmail.com</a>
@@ -215,14 +231,18 @@
         const btnGalaxy = document.getElementById('navItemGalaxyCube');
         const btnOrrery = document.getElementById('navItemOrrery');
         const btnSurface = document.getElementById('btnSwitchToSurface');
+        const btnCmdrScan = document.getElementById('navItemCmdrScan');
         const btnMarket = document.getElementById('navItemMarket');
 
         if (btnGalaxy) btnGalaxy.classList.remove('active');
         if (btnOrrery) btnOrrery.classList.remove('active');
         if (btnSurface) btnSurface.classList.remove('active');
+        if (btnCmdrScan) btnCmdrScan.classList.remove('active');
         if (btnMarket) btnMarket.classList.remove('active');
 
-        if (path.includes('market')) {
+        if (path.includes('cmdrscan')) {
+            if (btnCmdrScan) btnCmdrScan.classList.add('active');
+        } else if (path.includes('market')) {
             if (btnMarket) btnMarket.classList.add('active');
         } else if (path.includes('system-orrery')) {
             if (btnOrrery) btnOrrery.classList.add('active');
@@ -460,8 +480,10 @@
 
         // Links normais fecham a sidebar
         const btnOrrery = document.getElementById('navItemOrrery');
+        const btnCmdrScan = document.getElementById('navItemCmdrScan');
         const btnMarket = document.getElementById('navItemMarket');
         if (btnOrrery) btnOrrery.addEventListener('click', () => closeSidebar());
+        if (btnCmdrScan) btnCmdrScan.addEventListener('click', () => closeSidebar());
         if (btnMarket) btnMarket.addEventListener('click', () => closeSidebar());
 
         // Escuta mudança de idioma para atualizar badges e textos

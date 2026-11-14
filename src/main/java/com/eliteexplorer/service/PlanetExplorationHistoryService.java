@@ -28,6 +28,7 @@ public class PlanetExplorationHistoryService {
     private static final Logger log = LoggerFactory.getLogger(PlanetExplorationHistoryService.class);
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final CopilotDatabaseService databaseService;
     private final File historyFile = new File("cache/player_planet_history.json");
 
     private final Map<String, VisitedPlanetRecordDTO> historyByPlanetName = new ConcurrentHashMap<>();
@@ -35,6 +36,10 @@ public class PlanetExplorationHistoryService {
 
     @Value("${elite.journal.dir:}")
     private String customJournalDir;
+
+    public PlanetExplorationHistoryService(CopilotDatabaseService databaseService) {
+        this.databaseService = databaseService;
+    }
 
     @PostConstruct
     public void init() {
@@ -51,6 +56,14 @@ public class PlanetExplorationHistoryService {
     }
 
     private synchronized void loadHistoryFromDisk() {
+        if (databaseService != null) {
+            Map<String, VisitedPlanetRecordDTO> fromDb = databaseService.loadAllPlanetHistory();
+            if (fromDb != null && !fromDb.isEmpty()) {
+                historyByPlanetName.putAll(fromDb);
+                log.info("Carregado histórico de exploração planetária do SQLite: {} planetas lembrados.", fromDb.size());
+                return;
+            }
+        }
         if (!historyFile.exists()) return;
         try {
             Map<String, VisitedPlanetRecordDTO> loaded = objectMapper.readValue(
@@ -59,7 +72,7 @@ public class PlanetExplorationHistoryService {
             );
             if (loaded != null) {
                 historyByPlanetName.putAll(loaded);
-                log.info("Carregado histórico de exploração planetária: {} planetas lembrados.", loaded.size());
+                log.info("Carregado histórico de exploração planetária do JSON legado: {} planetas lembrados.", loaded.size());
             }
         } catch (Exception e) {
             log.warn("Erro ao ler histórico de planetas de {}: {}", historyFile.getAbsolutePath(), e.getMessage());
@@ -67,14 +80,9 @@ public class PlanetExplorationHistoryService {
     }
 
     public synchronized void saveHistoryToDisk() {
-        try {
-            if (historyFile.getParentFile() != null) {
-                historyFile.getParentFile().mkdirs();
-            }
-            objectMapper.writerWithDefaultPrettyPrinter().writeValue(historyFile, historyByPlanetName);
-            log.debug("Histórico de planetas persistido em disco ({} registros).", historyByPlanetName.size());
-        } catch (Exception e) {
-            log.warn("Erro ao salvar histórico de planetas: {}", e.getMessage());
+        if (databaseService != null) {
+            databaseService.saveAllPlanetHistory(historyByPlanetName);
+            log.debug("Histórico de planetas persistido no SQLite ({} registros).", historyByPlanetName.size());
         }
     }
 

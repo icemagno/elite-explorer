@@ -43,9 +43,12 @@ public class GalaxyExplorationService {
             .connectTimeout(Duration.ofSeconds(10))
             .build();
     private final PlanetExplorationHistoryService planetHistoryService;
+    private final CopilotDatabaseService databaseService;
 
-    public GalaxyExplorationService(PlanetExplorationHistoryService planetHistoryService) {
+    public GalaxyExplorationService(PlanetExplorationHistoryService planetHistoryService,
+                                   CopilotDatabaseService databaseService) {
         this.planetHistoryService = planetHistoryService;
+        this.databaseService = databaseService;
     }
 
     // Cache em memória e disco para evitar qualquer flood ao EDSM:
@@ -84,6 +87,17 @@ public class GalaxyExplorationService {
     }
 
     private void loadDiscoveredSystemsFromDisk() {
+        if (databaseService != null) {
+            Set<String> fromDb = databaseService.loadAllDiscoveredSystems();
+            if (fromDb != null && !fromDb.isEmpty()) {
+                for (String sys : fromDb) {
+                    locallyDiscoveredSystems.putIfAbsent(sys.toLowerCase().trim(),
+                            new StarSystemDTO(sys, 0.0, 0.0, 0.0, "K (Orange) Star", 0.0));
+                }
+                log.info("🌟 [DISCOVERY SQLITE] Carregados {} sistemas descobertos do SQLite.", fromDb.size());
+                return;
+            }
+        }
         if (!discoveredSystemsFile.exists() || discoveredSystemsFile.length() == 0) return;
         try {
             Map<String, StarSystemDTO> loaded = objectMapper.readValue(
@@ -100,12 +114,8 @@ public class GalaxyExplorationService {
     }
 
     private synchronized void saveDiscoveredSystemsToDisk() {
-        try {
-            File parent = discoveredSystemsFile.getParentFile();
-            if (parent != null && !parent.exists()) parent.mkdirs();
-            objectMapper.writeValue(discoveredSystemsFile, locallyDiscoveredSystems);
-        } catch (Exception e) {
-            log.warn("Erro ao salvar discovered_systems.json: {}", e.getMessage());
+        if (databaseService != null) {
+            locallyDiscoveredSystems.keySet().forEach(databaseService::saveDiscoveredSystem);
         }
     }
 
@@ -174,6 +184,20 @@ public class GalaxyExplorationService {
     }
 
     private void loadCacheFromDisk() {
+        if (databaseService != null) {
+            Map<String, String> fromDb = databaseService.loadAllStratumCandidates();
+            if (fromDb != null && !fromDb.isEmpty()) {
+                for (Map.Entry<String, String> e : fromDb.entrySet()) {
+                    try {
+                        List<StratumCandidateDTO> list = objectMapper.readValue(e.getValue(), new TypeReference<List<StratumCandidateDTO>>() {});
+                        if (list != null) systemBodiesCache.put(e.getKey(), list);
+                    } catch (Exception ignored) {}
+                }
+                log.info("Carregado cache permanente de corpos celestes do SQLite: {} sistemas conhecidos.", systemBodiesCache.size());
+                sanitizeLoadedCache();
+                return;
+            }
+        }
         if (!cacheFile.exists()) return;
         try {
             Map<String, List<StratumCandidateDTO>> loaded = objectMapper.readValue(
@@ -191,13 +215,12 @@ public class GalaxyExplorationService {
     }
 
     private synchronized void saveCacheToDisk() {
-        try {
-            if (cacheFile.getParentFile() != null) {
-                cacheFile.getParentFile().mkdirs();
+        if (databaseService != null) {
+            for (Map.Entry<String, List<StratumCandidateDTO>> entry : systemBodiesCache.entrySet()) {
+                try {
+                    databaseService.saveStratumCandidatesJson(entry.getKey(), objectMapper.writeValueAsString(entry.getValue()));
+                } catch (Exception ignored) {}
             }
-            objectMapper.writerWithDefaultPrettyPrinter().writeValue(cacheFile, systemBodiesCache);
-        } catch (Exception e) {
-            log.warn("Erro ao salvar cache de corpos em disco: {}", e.getMessage());
         }
     }
 
@@ -206,6 +229,29 @@ public class GalaxyExplorationService {
     }
 
     void loadCubeCacheFromDisk() {
+        if (databaseService != null) {
+            Map<String, String> fromDb = databaseService.loadAllCubeCaches();
+            if (fromDb != null && !fromDb.isEmpty()) {
+                int loadedCubes = 0;
+                int loadedStars = 0;
+                for (Map.Entry<String, String> e : fromDb.entrySet()) {
+                    try {
+                        CacheEntry entry = objectMapper.readValue(e.getValue(), CacheEntry.class);
+                        if (entry != null && entry.getSystems() != null && !entry.getSystems().isEmpty()) {
+                            systemsCache.put(e.getKey(), entry);
+                            loadedCubes++;
+                            loadedStars += entry.getSystems().size();
+                        }
+                    } catch (Exception ignored) {}
+                }
+                if (loadedCubes > 0) {
+                    log.info("🧊 [CUBE SQLITE CACHE] Carregados {} cubos galácticos do SQLite ({} sistemas estelares prontos sem consultar EDSM).",
+                            loadedCubes, loadedStars);
+                    return;
+                }
+            }
+        }
+
         if (cubeCacheDir == null || !cubeCacheDir.exists() || !cubeCacheDir.isDirectory()) {
             return;
         }
@@ -236,21 +282,26 @@ public class GalaxyExplorationService {
     }
 
     synchronized void saveCubeCacheEntryToDisk(String cacheKey, CacheEntry entry) {
-        if (cubeCacheDir == null || cacheKey == null || cacheKey.isBlank() || entry == null
+        if (cacheKey == null || cacheKey.isBlank() || entry == null
                 || entry.getSystems() == null || entry.getSystems().isEmpty()) {
             return;
         }
-        try {
-            if (!cubeCacheDir.exists()) {
-                cubeCacheDir.mkdirs();
+        if (databaseService != null) {
+            try {
+                String json = objectMapper.writeValueAsString(entry);
+                databaseService.saveCubeCacheJson(cacheKey, json, 7L * 24 * 3600 * 1000L);
+            } catch (Exception e) {
+                log.debug("Erro ao salvar cubo no SQLite: {}", e.getMessage());
             }
-            String safeKey = cacheKey.replaceAll("[^a-zA-Z0-9._-]", "_");
-            File target = new File(cubeCacheDir, safeKey + ".json");
-            File temp = new File(cubeCacheDir, safeKey + ".json.tmp");
-            objectMapper.writeValue(temp, entry);
-            Files.move(temp.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
-        } catch (Exception e) {
-            log.warn("Erro ao salvar cache do cubo galáctico '{}' em disco: {}", cacheKey, e.getMessage());
+        }
+        if (cubeCacheDir != null && cubeCacheDir.exists()) {
+            try {
+                String safeKey = cacheKey.replaceAll("[^a-zA-Z0-9._-]", "_");
+                File target = new File(cubeCacheDir, safeKey + ".json");
+                File temp = new File(cubeCacheDir, safeKey + ".json.tmp");
+                objectMapper.writeValue(temp, entry);
+                Files.move(temp.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            } catch (Exception ignored) {}
         }
     }
 
@@ -1445,7 +1496,7 @@ public class GalaxyExplorationService {
                     List<String> sibNames = siblings.stream().map(StarSystemDTO::getName).toList();
                     String sample = String.join(", ", sibNames.subList(0, Math.min(3, sibNames.size())));
                     if (sibNames.size() > 3) {
-                        sample += " (+" + (sibNames.size() - 3) + " mais)";
+                        sample += " (+" + (sibNames.size() - 3) + ")";
                     }
                     gap.setSiblingsSample(sample);
 

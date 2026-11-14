@@ -27,6 +27,7 @@ public class SurfaceFeatureService {
     private static final Logger log = LoggerFactory.getLogger(SurfaceFeatureService.class);
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final CopilotDatabaseService databaseService;
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(6))
             .build();
@@ -41,7 +42,8 @@ public class SurfaceFeatureService {
     // Catálogo de POIs Lendários da Galáxia com coordenadas GPS oficiais
     private final Map<String, List<SurfaceFeatureDTO>> legendarySites = new HashMap<>();
 
-    public SurfaceFeatureService() {
+    public SurfaceFeatureService(CopilotDatabaseService databaseService) {
+        this.databaseService = databaseService;
         initLegendarySites();
     }
 
@@ -51,6 +53,14 @@ public class SurfaceFeatureService {
     }
 
     private synchronized void loadFeaturesFromCache() {
+        if (databaseService != null) {
+            Map<String, List<SurfaceFeatureDTO>> fromDb = databaseService.loadAllSurfaceFeatures();
+            if (fromDb != null && !fromDb.isEmpty()) {
+                featuresByBody.putAll(fromDb);
+                log.info("🗺️ [SURFACE FEATURES] {} corpos com pontos de interesse carregados do SQLite.", featuresByBody.size());
+                return;
+            }
+        }
         if (!cacheFile.exists()) return;
         try {
             Map<String, List<SurfaceFeatureDTO>> loaded = objectMapper.readValue(
@@ -62,7 +72,7 @@ public class SurfaceFeatureService {
                         featuresByBody.put(k, new ArrayList<>(v));
                     }
                 });
-                log.info("🗺️ [SURFACE FEATURES] {} corpos com pontos de interesse carregados do cache.", featuresByBody.size());
+                log.info("🗺️ [SURFACE FEATURES] {} corpos com pontos de interesse carregados do cache JSON.", featuresByBody.size());
             }
         } catch (Exception e) {
             log.warn("Falha ao carregar cache de elementos em solo: {}", e.getMessage());
@@ -71,9 +81,6 @@ public class SurfaceFeatureService {
 
     private synchronized void saveFeaturesToCache() {
         try {
-            if (cacheFile.getParentFile() != null) {
-                cacheFile.getParentFile().mkdirs();
-            }
             Map<String, List<SurfaceFeatureDTO>> confirmedOnly = new HashMap<>();
             featuresByBody.forEach((k, list) -> {
                 List<SurfaceFeatureDTO> confirmed = list.stream()
@@ -83,9 +90,12 @@ public class SurfaceFeatureService {
                     confirmedOnly.put(k, new ArrayList<>(confirmed));
                 }
             });
-            objectMapper.writerWithDefaultPrettyPrinter().writeValue(cacheFile, confirmedOnly);
+            if (databaseService != null) {
+                databaseService.saveAllSurfaceFeatures(confirmedOnly);
+                log.debug("🗺️ [SURFACE FEATURES] POIs persistidos no SQLite ({} corpos).", confirmedOnly.size());
+            }
         } catch (Exception e) {
-            log.warn("Falha ao salvar cache de elementos em solo: {}", e.getMessage());
+            log.warn("Falha ao salvar cache de elementos em solo no SQLite: {}", e.getMessage());
         }
     }
 

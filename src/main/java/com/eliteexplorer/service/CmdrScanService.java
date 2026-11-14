@@ -1,4 +1,4 @@
-package com.cmdrscan.service;
+package com.eliteexplorer.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -45,12 +45,20 @@ public class CmdrScanService {
     private final AtomicBoolean running = new AtomicBoolean(false);
     private final String dbUrl = resolveDbUrl();
 
-    private static String resolveDbUrl() {
+    public static String resolveDbUrl() {
         File dir = new File("/cmdrscan");
         if (dir.exists() && dir.isDirectory()) {
             return "jdbc:sqlite:/cmdrscan/cmdrscan.db";
         }
-        return "jdbc:sqlite:cmdrscan.db";
+        File localCmdrscan = new File("cmdrscan/cmdrscan.db");
+        if (localCmdrscan.exists()) {
+            return "jdbc:sqlite:cmdrscan/cmdrscan.db";
+        }
+        File localDir = new File("cmdrscan");
+        if (!localDir.exists()) {
+            localDir.mkdirs();
+        }
+        return "jdbc:sqlite:cmdrscan/cmdrscan.db";
     }
 
     private final AtomicLong totalSignalsReceived = new AtomicLong(0);
@@ -817,6 +825,165 @@ public class CmdrScanService {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("systems", topSystems);
         result.put("stations", topStations);
+        return result;
+    }
+
+    public Map<String, Object> getGlobalTraffic3D() {
+        long cutoff = System.currentTimeMillis() - RETENTION_MILLIS;
+
+        // 1. Tráfego Global (Todos os sistemas com Comandantes ativos)
+        String sqlSys = """
+            SELECT system_name, x, y, z, COUNT(*) AS cmdr_count, MAX(timestamp) AS last_seen
+            FROM cmdr_live_traffic
+            WHERE timestamp >= ? AND (x != 0 OR y != 0 OR z != 0) AND system_name IS NOT NULL AND system_name != ''
+            GROUP BY system_name, x, y, z
+            ORDER BY cmdr_count DESC, last_seen DESC
+            LIMIT 3000
+        """;
+        List<Map<String, Object>> globalSystems = new ArrayList<>();
+        int totalCommanders = 0;
+
+        try (Connection conn = getConnection(); PreparedStatement ps = conn.prepareStatement(sqlSys)) {
+            ps.setLong(1, cutoff);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String sys = rs.getString("system_name");
+                    double x = rs.getDouble("x");
+                    double y = rs.getDouble("y");
+                    double z = rs.getDouble("z");
+                    int count = rs.getInt("cmdr_count");
+                    long lastSeen = rs.getLong("last_seen");
+                    totalCommanders += count;
+
+                    Map<String, Object> s = new LinkedHashMap<>();
+                    s.put("name", sys);
+                    s.put("x", Math.round(x * 100.0) / 100.0);
+                    s.put("y", Math.round(y * 100.0) / 100.0);
+                    s.put("z", Math.round(z * 100.0) / 100.0);
+                    s.put("count", count);
+                    s.put("lastSeen", lastSeen);
+                    globalSystems.add(s);
+                }
+            }
+        } catch (SQLException e) {
+            log.warn("Erro ao consultar tráfego global 3D: {}", e.getMessage());
+        }
+
+        // 2. Partidas (Departures)
+        String sqlDep = """
+            SELECT f.origin_system AS name, o.x, o.y, o.z, COUNT(*) AS count
+            FROM cmdr_latest_flow f
+            JOIN cmdr_system_coords o ON f.origin_system = o.system_name
+            WHERE f.timestamp >= ? AND (o.x != 0 OR o.y != 0 OR o.z != 0)
+            GROUP BY f.origin_system, o.x, o.y, o.z
+            ORDER BY count DESC
+            LIMIT 1000
+        """;
+        List<Map<String, Object>> departures = new ArrayList<>();
+        try (Connection conn = getConnection(); PreparedStatement ps = conn.prepareStatement(sqlDep)) {
+            ps.setLong(1, cutoff);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Map<String, Object> s = new LinkedHashMap<>();
+                    s.put("name", rs.getString("name"));
+                    s.put("x", Math.round(rs.getDouble("x") * 100.0) / 100.0);
+                    s.put("y", Math.round(rs.getDouble("y") * 100.0) / 100.0);
+                    s.put("z", Math.round(rs.getDouble("z") * 100.0) / 100.0);
+                    s.put("count", rs.getInt("count"));
+                    departures.add(s);
+                }
+            }
+        } catch (SQLException ignored) {}
+
+        // 3. Chegadas (Arrivals)
+        String sqlArr = """
+            SELECT f.dest_system AS name, d.x, d.y, d.z, COUNT(*) AS count
+            FROM cmdr_latest_flow f
+            JOIN cmdr_system_coords d ON f.dest_system = d.system_name
+            WHERE f.timestamp >= ? AND (d.x != 0 OR d.y != 0 OR d.z != 0)
+            GROUP BY f.dest_system, d.x, d.y, d.z
+            ORDER BY count DESC
+            LIMIT 1000
+        """;
+        List<Map<String, Object>> arrivals = new ArrayList<>();
+        try (Connection conn = getConnection(); PreparedStatement ps = conn.prepareStatement(sqlArr)) {
+            ps.setLong(1, cutoff);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Map<String, Object> s = new LinkedHashMap<>();
+                    s.put("name", rs.getString("name"));
+                    s.put("x", Math.round(rs.getDouble("x") * 100.0) / 100.0);
+                    s.put("y", Math.round(rs.getDouble("y") * 100.0) / 100.0);
+                    s.put("z", Math.round(rs.getDouble("z") * 100.0) / 100.0);
+                    s.put("count", rs.getInt("count"));
+                    arrivals.add(s);
+                }
+            }
+        } catch (SQLException ignored) {}
+
+        // 4. Scanners (Exploração e Escaneamento de Corpos)
+        String sqlScans = """
+            SELECT s.system_name AS name, c.x, c.y, c.z, s.scan_count AS count, s.last_body AS body
+            FROM cmdr_scan_events s
+            JOIN cmdr_system_coords c ON s.system_name = c.system_name
+            WHERE s.timestamp >= ? AND (c.x != 0 OR c.y != 0 OR c.z != 0)
+            ORDER BY s.scan_count DESC, s.timestamp DESC
+            LIMIT 1500
+        """;
+        List<Map<String, Object>> scans = new ArrayList<>();
+        try (Connection conn = getConnection(); PreparedStatement ps = conn.prepareStatement(sqlScans)) {
+            ps.setLong(1, cutoff);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Map<String, Object> s = new LinkedHashMap<>();
+                    s.put("name", rs.getString("name"));
+                    s.put("x", Math.round(rs.getDouble("x") * 100.0) / 100.0);
+                    s.put("y", Math.round(rs.getDouble("y") * 100.0) / 100.0);
+                    s.put("z", Math.round(rs.getDouble("z") * 100.0) / 100.0);
+                    s.put("count", rs.getInt("count"));
+                    s.put("body", rs.getString("body"));
+                    scans.add(s);
+                }
+            }
+        } catch (SQLException ignored) {}
+
+        // 5. Docagens (Estações e Portos)
+        String sqlDock = """
+            SELECT d.system_name AS name, c.x, c.y, c.z, d.dock_count AS count, d.last_station AS station, d.station_type AS type
+            FROM cmdr_docking_events d
+            JOIN cmdr_system_coords c ON d.system_name = c.system_name
+            WHERE d.timestamp >= ? AND (c.x != 0 OR c.y != 0 OR c.z != 0)
+            ORDER BY d.dock_count DESC, d.timestamp DESC
+            LIMIT 1500
+        """;
+        List<Map<String, Object>> docking = new ArrayList<>();
+        try (Connection conn = getConnection(); PreparedStatement ps = conn.prepareStatement(sqlDock)) {
+            ps.setLong(1, cutoff);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Map<String, Object> s = new LinkedHashMap<>();
+                    s.put("name", rs.getString("name"));
+                    s.put("x", Math.round(rs.getDouble("x") * 100.0) / 100.0);
+                    s.put("y", Math.round(rs.getDouble("y") * 100.0) / 100.0);
+                    s.put("z", Math.round(rs.getDouble("z") * 100.0) / 100.0);
+                    s.put("count", rs.getInt("count"));
+                    s.put("station", rs.getString("station"));
+                    s.put("type", rs.getString("type"));
+                    docking.add(s);
+                }
+            }
+        } catch (SQLException ignored) {}
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("global", globalSystems);
+        result.put("departures", departures);
+        result.put("arrivals", arrivals);
+        result.put("scans", scans);
+        result.put("docking", docking);
+        result.put("systemsCount", globalSystems.size());
+        result.put("totalCommanders", totalCommanders);
+        result.put("signalsPerSec", signalsPerSecond);
+        result.put("timestamp", System.currentTimeMillis());
         return result;
     }
 

@@ -36,10 +36,12 @@ public class SystemBodiesService {
     // Cache em memória: sistema (lowercase) -> SystemOrreryDTO
     private final Map<String, SystemOrreryDTO> orreryCache = new ConcurrentHashMap<>();
     private final File cacheDir = new File("cache/systems");
+    private final CopilotDatabaseService databaseService;
 
     @Autowired
-    public SystemBodiesService(SseNotificationService sseNotificationService) {
+    public SystemBodiesService(SseNotificationService sseNotificationService, CopilotDatabaseService databaseService) {
         this.sseNotificationService = sseNotificationService;
+        this.databaseService = databaseService;
         if (!cacheDir.exists()) {
             cacheDir.mkdirs();
         }
@@ -51,6 +53,10 @@ public class SystemBodiesService {
         if (orreryCache.containsKey(key)) {
             SystemOrreryDTO dto = orreryCache.get(key);
             return dto != null && dto.getBodies() != null && !dto.getBodies().isEmpty();
+        }
+        if (databaseService != null) {
+            String json = databaseService.getSystemBodiesJson(key);
+            if (json != null && !json.isBlank()) return true;
         }
         File f = new File(cacheDir, sanitizeFilename(key) + ".json");
         return f.exists() && f.length() > 0;
@@ -497,6 +503,14 @@ public class SystemBodiesService {
     }
 
     private SystemOrreryDTO loadFromDisk(String key) {
+        if (databaseService != null) {
+            String json = databaseService.getSystemBodiesJson(key);
+            if (json != null && !json.isBlank()) {
+                try {
+                    return objectMapper.readValue(json, SystemOrreryDTO.class);
+                } catch (Exception ignored) {}
+            }
+        }
         try {
             File f = new File(cacheDir, sanitizeFilename(key) + ".json");
             if (f.exists() && f.length() > 0) {
@@ -509,11 +523,12 @@ public class SystemBodiesService {
     }
 
     private void saveToDisk(String key, SystemOrreryDTO dto) {
-        try {
-            File f = new File(cacheDir, sanitizeFilename(key) + ".json");
-            objectMapper.writeValue(f, dto);
-        } catch (Exception e) {
-            log.debug("Erro ao gravar cache em disco para {}: {}", key, e.getMessage());
+        if (databaseService != null && dto != null) {
+            try {
+                databaseService.saveSystemBodiesJson(key, objectMapper.writeValueAsString(dto));
+            } catch (Exception e) {
+                log.debug("Erro ao gravar corpos de {} no SQLite: {}", key, e.getMessage());
+            }
         }
     }
 

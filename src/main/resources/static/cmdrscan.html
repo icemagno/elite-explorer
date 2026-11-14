@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Commander Scan — Live Galactic Heatmap</title>
+    <title data-i18n="nav.cmdrscan">Commander Scan</title>
+    <link rel="stylesheet" href="/css/style.css">
     <style>
         * {
             box-sizing: border-box;
@@ -22,17 +23,24 @@
             user-select: none;
         }
 
-        /* Top Header */
+        /* Top Header harmonized with Copilot floating trigger */
         header {
             background: rgba(8, 19, 38, 0.94);
             border-bottom: 1px solid rgba(0, 212, 255, 0.25);
             backdrop-filter: blur(10px);
-            padding: 8px 18px;
+            padding: 8px 18px 8px 290px;
             display: flex;
             align-items: center;
             justify-content: space-between;
             z-index: 100;
             flex-shrink: 0;
+            min-height: 52px;
+        }
+
+        @media (max-width: 900px) {
+            header {
+                padding-left: 210px;
+            }
         }
 
         .header-title {
@@ -842,13 +850,7 @@
 <body>
     <header>
         <div class="header-title">
-            <h1>🛰️ Commander Scan — Live Heatmap</h1>
             <span class="badge-live">LIVE 30-MIN WINDOW</span>
-            <a class="btn-github" href="https://github.com/icemagno/elite-explorer" target="_blank" rel="noopener noreferrer" title="GitHub: icemagno/elite-explorer">
-                <svg viewBox="0 0 16 16" width="15" height="15" fill="currentColor">
-                    <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
-                </svg>
-            </a>
         </div>
         <div class="header-controls">
             <!-- Mode Switcher: Global Traffic vs Arrivals/Departures vs System Scans vs Docking -->
@@ -1013,6 +1015,10 @@
                     <div class="marker-dot"></div>
                     <span class="marker-label">☉ Sol</span>
                 </div>
+                <div class="marker" id="markerCmdr" style="display:none; color: #ffd700;">
+                    <div class="marker-dot" style="background: #ffd700; box-shadow: 0 0 12px #ffd700;"></div>
+                    <span class="marker-label" id="markerCmdrLabel" style="color: #ffd700; font-weight: bold;">CMDR</span>
+                </div>
             </div>
         </main>
     </div>
@@ -1028,6 +1034,10 @@
             Retention: Rolling 30 minutes • Refresh: 30s
         </div>
     </footer>
+
+    <!-- Copilot Navigation & Internationalization -->
+    <script src="/js/i18n.js"></script>
+    <script src="/js/nav-sidebar.js"></script>
 
     <script>
         (function() {
@@ -2221,6 +2231,36 @@
                 }
             }
 
+            // Copilot Commander Marker on 2D Heatmap
+            const SAG_A_X = 25.21875;
+            const SAG_A_Z = 25899.96875;
+            const SCALE_PER_LY = 0.2032 / 25899.96875;
+            const markerCmdr = document.getElementById('markerCmdr');
+            const markerCmdrLabel = document.getElementById('markerCmdrLabel');
+
+            async function pollCmdrLocation() {
+                try {
+                    const res = await fetch('/api/player/status');
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data && data.x !== undefined && data.z !== undefined && data.x !== null) {
+                            const u = 0.50 + ((data.x - SAG_A_X) * SCALE_PER_LY);
+                            const v = 0.50 - ((data.z - SAG_A_Z) * SCALE_PER_LY);
+                            if (markerCmdr) {
+                                markerCmdr.style.left = `${(u * 100).toFixed(4)}%`;
+                                markerCmdr.style.top = `${(v * 100).toFixed(4)}%`;
+                                markerCmdr.style.display = 'flex';
+                            }
+                            if (markerCmdrLabel) {
+                                const name = data.commander ? (data.commander.startsWith('CMDR') ? data.commander : `CMDR ${data.commander}`) : 'CMDR';
+                                const sys = data.currentSystem ? ` (${data.currentSystem})` : '';
+                                markerCmdrLabel.textContent = `🚀 ${name}${sys}`;
+                            }
+                        }
+                    }
+                } catch (e) {}
+            }
+
             setInterval(() => {
                 // Heartbeat live stats every 1 second
                 fetchLiveStatus();
@@ -2232,6 +2272,9 @@
                 }
                 statTimer.textContent = `${secondsUntilRefresh}s`;
             }, 1000);
+
+            pollCmdrLocation();
+            setInterval(pollCmdrLocation, 3000);
 
             window.addEventListener('resize', () => {
                 // Preserve stage framing on window resize

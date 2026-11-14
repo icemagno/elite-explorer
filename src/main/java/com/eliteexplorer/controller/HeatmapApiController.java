@@ -1,6 +1,6 @@
-package com.cmdrscan.controller;
+package com.eliteexplorer.controller;
 
-import com.cmdrscan.service.CmdrScanService;
+import com.eliteexplorer.service.CmdrScanService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -38,11 +38,6 @@ public class HeatmapApiController {
     @GetMapping("/docking")
     public ResponseEntity<Map<String, Object>> getDocking() {
         return ResponseEntity.ok(cmdrScanService.getDockingData());
-    }
-
-    @GetMapping("/market/top")
-    public ResponseEntity<java.util.List<Map<String, Object>>> getMarketTop() {
-        return ResponseEntity.ok(cmdrScanService.getSingleHopTradeRoutes());
     }
 
     @GetMapping("/status")

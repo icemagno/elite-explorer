@@ -21,9 +21,10 @@ class GalaxyExplorationServiceCacheTest {
     @Test
     void persistsAndReloadsCubeCacheFromDiskAcrossRestarts() {
         File cacheDir = tempDir.resolve("cubes").toFile();
-        PlanetExplorationHistoryService historyService = new PlanetExplorationHistoryService();
+        CopilotDatabaseService dbService = new CopilotDatabaseService();
+        PlanetExplorationHistoryService historyService = new PlanetExplorationHistoryService(dbService);
 
-        GalaxyExplorationService writer = new GalaxyExplorationService(historyService);
+        GalaxyExplorationService writer = new GalaxyExplorationService(historyService, dbService);
         writer.setCubeCacheDirForTest(cacheDir);
 
         StarSystemDTO s1 = new StarSystemDTO("Synuefe OF-L d9-72", 305.15625, -42.65625, -231.25, 0.0, 12);
@@ -40,7 +41,7 @@ class GalaxyExplorationServiceCacheTest {
         assertTrue(persisted.exists() && persisted.length() > 0, "Cube JSON file should exist on disk");
 
         // Simula reinicialização do servidor com nova instância de serviço
-        GalaxyExplorationService reader = new GalaxyExplorationService(historyService);
+        GalaxyExplorationService reader = new GalaxyExplorationService(historyService, dbService);
         reader.setCubeCacheDirForTest(cacheDir);
         reader.loadCubeCacheFromDisk();
 

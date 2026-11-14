@@ -2,7 +2,6 @@ package com.eliteexplorer.controller;
 
 import com.eliteexplorer.dto.GalaxyCubeResponse;
 import com.eliteexplorer.dto.PlanetaryStatusDTO;
-import com.eliteexplorer.dto.RoutePointDTO;
 import com.eliteexplorer.dto.StationDTO;
 import com.eliteexplorer.dto.StratumCandidateDTO;
 import com.eliteexplorer.model.PlayerStatus;
@@ -17,7 +16,8 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api")
-public class TradeRouteController {
+@CrossOrigin(origins = "*")
+public class ExplorerApiController {
 
     private final JournalWatcherService journalWatcherService;
     private final GalaxyExplorationService galaxyExplorationService;
@@ -25,8 +25,8 @@ public class TradeRouteController {
     private final com.eliteexplorer.service.EddnTrafficListenerService eddnTrafficService;
     private final com.eliteexplorer.service.PlanetExplorationHistoryService planetHistoryService;
     private final com.eliteexplorer.service.SystemBodiesService systemBodiesService;
-    private final com.eliteexplorer.service.EddnPublisherService eddnPublisherService;
     private final com.eliteexplorer.service.SseNotificationService sseNotificationService;
+    private final com.eliteexplorer.service.CmdrScanService cmdrScanService;
 
     @Value("${edsm.commander.name:}")
     private String configuredCommanderName;
@@ -34,22 +34,22 @@ public class TradeRouteController {
     @Value("${spring.application.name:elite-explorer}")
     private String applicationName;
 
-    public TradeRouteController(JournalWatcherService journalWatcherService,
-                                GalaxyExplorationService galaxyExplorationService,
-                                com.eliteexplorer.service.EdsmSyncService edsmSyncService,
-                                com.eliteexplorer.service.EddnTrafficListenerService eddnTrafficService,
-                                com.eliteexplorer.service.PlanetExplorationHistoryService planetHistoryService,
-                                com.eliteexplorer.service.SystemBodiesService systemBodiesService,
-                                com.eliteexplorer.service.EddnPublisherService eddnPublisherService,
-                                com.eliteexplorer.service.SseNotificationService sseNotificationService) {
+    public ExplorerApiController(JournalWatcherService journalWatcherService,
+                                 GalaxyExplorationService galaxyExplorationService,
+                                 com.eliteexplorer.service.EdsmSyncService edsmSyncService,
+                                 com.eliteexplorer.service.EddnTrafficListenerService eddnTrafficService,
+                                 com.eliteexplorer.service.PlanetExplorationHistoryService planetHistoryService,
+                                 com.eliteexplorer.service.SystemBodiesService systemBodiesService,
+                                 com.eliteexplorer.service.SseNotificationService sseNotificationService,
+                                 com.eliteexplorer.service.CmdrScanService cmdrScanService) {
         this.journalWatcherService = journalWatcherService;
         this.galaxyExplorationService = galaxyExplorationService;
         this.edsmSyncService = edsmSyncService;
         this.eddnTrafficService = eddnTrafficService;
         this.planetHistoryService = planetHistoryService;
         this.systemBodiesService = systemBodiesService;
-        this.eddnPublisherService = eddnPublisherService;
         this.sseNotificationService = sseNotificationService;
+        this.cmdrScanService = cmdrScanService;
     }
 
     // Identidade do aplicativo e nome do comandante configurado
@@ -135,12 +135,6 @@ public class TradeRouteController {
         return ResponseEntity.ok(edsmSyncService.getStatus());
     }
 
-    // Status do publicador de dados para a rede EDDN
-    @GetMapping("/eddn/publish-status")
-    public ResponseEntity<Map<String, Object>> getEddnPublishStatus() {
-        return ResponseEntity.ok(eddnPublisherService.getStatus());
-    }
-
     // Stream SSE de eventos reativos em tempo real para o frontend
     @GetMapping(value = "/events/stream", produces = org.springframework.http.MediaType.TEXT_EVENT_STREAM_VALUE)
     public org.springframework.web.servlet.mvc.method.annotation.SseEmitter streamEvents() {
@@ -158,6 +152,12 @@ public class TradeRouteController {
     @GetMapping("/galaxy/traffic/online-count")
     public ResponseEntity<Map<String, Object>> getOnlineCommandersCount() {
         return ResponseEntity.ok(Map.of("count", eddnTrafficService.countActiveCommandersInCube()));
+    }
+
+    // Tráfego Global 3D / Heatmap 3D (Posições Reais x,y,z e Fluxos Galácticos do CmdrScan)
+    @GetMapping("/galaxy/traffic/global-3d")
+    public ResponseEntity<Map<String, Object>> getGlobalTraffic3D() {
+        return ResponseEntity.ok(cmdrScanService.getGlobalTraffic3D());
     }
 
     // Telemetria de Superfície e Pouso Planetário em Tempo Real
