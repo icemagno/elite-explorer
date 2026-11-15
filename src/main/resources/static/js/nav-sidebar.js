@@ -50,14 +50,28 @@
                 </span>
                 <span class="copilot-menu-text" data-i18n="nav.menu_btn">${tr('nav.menu_btn')}</span>
             </button>
-            <div id="copilotTriggerStatus" class="copilot-trigger-status" title="${tr('nav.menu_title')}">
+            <div id="copilotTriggerStatus" class="copilot-trigger-status" data-i18n-title="nav.menu_title" title="${tr('nav.menu_title')}">
                 <span class="trigger-cmdr" id="quickCmdrBadge">CMDR ...</span>
                 <span class="trigger-sep">•</span>
                 <span class="trigger-sys" id="quickSysBadge">...</span>
-                <span class="trigger-edsm" id="quickEdsmBadge" title="EDSM Telemetria">🛰️</span>
+                <span class="trigger-edsm" id="quickEdsmBadge" data-i18n-title="nav.edsm_telemetry" title="${tr('nav.edsm_telemetry')}">🛰️</span>
                 <!-- Compatibilidade para scripts existentes -->
                 <span id="playerCoordsDisplay" style="display:none;"></span>
                 <span id="edsmSyncDisplay" style="display:none;"></span>
+            </div>
+
+            <!-- Card do Anon ID do Piloto (EDDN) -->
+            <div id="copilotAnonCard" class="copilot-anon-card" data-i18n-title="nav.anon_card_title" title="${tr('nav.anon_card_title')}">
+                <span class="top-anon-icon">🆔</span>
+                <span class="top-anon-lbl" data-i18n="nav.anon_lbl">${tr('nav.anon_lbl')}</span>
+                <span class="top-anon-val" id="topAnonCode">---·---</span>
+                <button id="topBtnCopyAnon" class="top-btn-copy-anon" type="button" data-i18n-title="nav.copy_anon_title" title="${tr('nav.copy_anon_title')}">📋</button>
+            </div>
+
+            <!-- Campo de Busca de Amigo com Lupa -->
+            <div class="copilot-friend-search" id="copilotFriendSearch">
+                <input type="text" id="topFriendInput" data-i18n-placeholder="nav.friend_search_ph" placeholder="${tr('nav.friend_search_ph')}" maxlength="36" autocomplete="off" spellcheck="false" data-i18n-title="nav.friend_search_title" title="${tr('nav.friend_search_title')}">
+                <button id="topBtnFriendSearch" class="top-btn-friend-search" type="button" data-i18n-title="nav.friend_search_btn" title="${tr('nav.friend_search_btn')}">🔍</button>
             </div>
         `;
 
@@ -411,6 +425,183 @@
         }
     }
 
+    // =========================================================================
+    // Anon ID & Friend Locator (EDDN)
+    // =========================================================================
+    let myAnonIdentity = null;
+
+    function showToast(msg, isError = false) {
+        let toast = document.getElementById('cmdrToast');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'cmdrToast';
+            toast.className = 'cmdr-toast';
+            document.body.appendChild(toast);
+        }
+        toast.textContent = msg;
+        toast.className = 'cmdr-toast show' + (isError ? ' error' : '');
+        clearTimeout(toast._timer);
+        toast._timer = setTimeout(() => {
+            toast.className = 'cmdr-toast' + (isError ? ' error' : '');
+        }, 3600);
+    }
+    window.showToast = showToast;
+
+    async function loadMyAnonIdentity() {
+        try {
+            const res = await fetch('/api/my-anon-id');
+            if (!res.ok) return;
+            const data = await res.json();
+            myAnonIdentity = data;
+            const codeEl = document.getElementById('topAnonCode');
+            if (codeEl && data.shortId) {
+                codeEl.textContent = data.shortId;
+            }
+        } catch (e) {
+            console.warn('Could not load anon identity:', e);
+        }
+    }
+
+    function copyAnonId() {
+        const idToCopy = myAnonIdentity?.shortId || document.getElementById('topAnonCode')?.textContent;
+        if (!idToCopy || idToCopy.includes('---')) return;
+
+        const copyBtn = document.getElementById('topBtnCopyAnon');
+        const origText = copyBtn ? copyBtn.textContent : '📋';
+
+        navigator.clipboard.writeText(idToCopy).then(() => {
+            if (copyBtn) copyBtn.textContent = '✅';
+            showToast(tr('nav.anon_copied', idToCopy));
+            setTimeout(() => {
+                if (copyBtn) copyBtn.textContent = origText;
+            }, 1800);
+        }).catch(() => {
+            prompt(tr('nav.anon_prompt_copy'), idToCopy);
+        });
+    }
+
+    function showFriendHudCard(data) {
+        let existing = document.getElementById('friendFoundHudCard');
+        if (existing) existing.remove();
+
+        const card = document.createElement('div');
+        card.id = 'friendFoundHudCard';
+        card.className = 'friend-found-hud-card';
+
+        const shortId = data.shortId || (data.uploaderId ? data.uploaderId.substring(0, 6).toUpperCase() : 'CMDR');
+        const sys = data.systemName || tr('nav.friend_hud_unknown');
+        const ageMin = Math.round((data.ageSeconds || 0) / 60);
+        const timeStr = ageMin < 1 ? tr('nav.friend_time_now') : tr('nav.friend_time_ago', ageMin);
+        const coordsStr = (data.x != null && data.y != null && data.z != null)
+            ? `[${data.x.toFixed(1)}, ${data.y.toFixed(1)}, ${data.z.toFixed(1)}]`
+            : tr('nav.friend_hud_unknown_coords');
+
+        card.innerHTML = `
+            <div class="friend-hud-header">
+                <span class="friend-hud-title">${tr('nav.friend_hud_title')}</span>
+                <button type="button" class="friend-hud-close" id="btnCloseFriendHud">✕</button>
+            </div>
+            <div class="friend-hud-row">
+                <span>Anon ID:</span>
+                <span class="friend-hud-val" style="color: #2bfca8;">${shortId}</span>
+            </div>
+            <div class="friend-hud-row">
+                <span>${tr('nav.friend_hud_system')}</span>
+                <span class="friend-hud-val" style="color: #ffaa00;">${sys}</span>
+            </div>
+            <div class="friend-hud-row">
+                <span>${tr('nav.friend_hud_coords')}</span>
+                <span class="friend-hud-val">${coordsStr}</span>
+            </div>
+            <div class="friend-hud-row">
+                <span>${tr('nav.friend_hud_last_signal')}</span>
+                <span class="friend-hud-val" style="color: #8da4be;">${timeStr} (${data.event || 'EDDN'})</span>
+            </div>
+            <div class="friend-hud-actions">
+                <a href="/cmdrscan.html?friend=${encodeURIComponent(shortId)}" class="btn-friend-hud-view">${tr('nav.friend_hud_btn_map')}</a>
+            </div>
+        `;
+
+        const leftContainer = document.querySelector('.hud-left-column')
+                           || document.querySelector('.sidebar-col')
+                           || document.getElementById('sidebarPanel');
+        if (leftContainer) {
+            leftContainer.prepend(card);
+        } else {
+            document.body.appendChild(card);
+        }
+
+        const btnClose = card.querySelector('#btnCloseFriendHud');
+        if (btnClose) {
+            btnClose.addEventListener('click', () => card.remove());
+        }
+
+        // Auto fecha após 15 segundos se não houver interação
+        setTimeout(() => {
+            if (document.body.contains(card)) {
+                card.remove();
+            }
+        }, 15000);
+    }
+
+    async function searchFriend() {
+        const input = document.getElementById('topFriendInput');
+        const btn = document.getElementById('topBtnFriendSearch');
+        if (!input) return;
+        const q = input.value.trim();
+        if (!q) {
+            showToast(tr('nav.friend_empty_id'), true);
+            return;
+        }
+
+        const origText = btn ? btn.textContent : '🔍';
+        if (btn) {
+            btn.textContent = '⏳';
+            btn.disabled = true;
+        }
+
+        try {
+            const res = await fetch(`/api/search-friend?id=${encodeURIComponent(q)}`);
+            if (!res.ok) throw new Error('Falha na resposta do servidor');
+            const data = await res.json();
+
+            if (!data.found) {
+                showToast(tr('nav.friend_not_found', q), true);
+                return;
+            }
+
+            const sys = data.systemName;
+            const shortId = data.shortId || q;
+            const ageMin = Math.round((data.ageSeconds || 0) / 60);
+            const timeStr = ageMin < 1 ? tr('nav.friend_time_now') : tr('nav.friend_time_ago', ageMin);
+
+            showToast(tr('nav.friend_located', shortId, sys, timeStr));
+            showFriendHudCard(data);
+
+            // Se estiver no cmdrscan.html, centraliza imediatamente o mapa
+            if (typeof window._centerMapOn === 'function' && data.normU != null && data.normV != null) {
+                window._centerMapOn(data.normU, data.normV);
+                if (typeof window._showFriendMarker === 'function') {
+                    window._showFriendMarker(data);
+                }
+            } 
+            // Se estiver no index.html (Cubo 3D), foca a estrela do amigo (dentro ou fora do cubo local)
+            else if (typeof window.focusFriendSystem === 'function') {
+                window.focusFriendSystem(data);
+            } else if (typeof window.focusRadarSystem === 'function' && sys) {
+                window.focusRadarSystem(sys);
+            }
+        } catch (err) {
+            console.error('Erro na busca de amigo:', err);
+            showToast(tr('nav.friend_err_connection'), true);
+        } finally {
+            if (btn) {
+                btn.textContent = origText;
+                btn.disabled = false;
+            }
+        }
+    }
+
     function setupEventListeners() {
         // Toggle do Menu
         const btnOpen = document.getElementById('btnOpenCopilotSidebar');
@@ -496,6 +687,38 @@
         };
         window.addEventListener('elite:languageChanged', handleLangChange);
         document.addEventListener('elite-i18n-changed', handleLangChange);
+
+        // Anon ID Card & Copy
+        const anonCard = document.getElementById('copilotAnonCard');
+        const btnCopyAnon = document.getElementById('topBtnCopyAnon');
+        if (anonCard) {
+            anonCard.addEventListener('click', () => {
+                copyAnonId();
+            });
+        }
+        if (btnCopyAnon) {
+            btnCopyAnon.addEventListener('click', (e) => {
+                e.stopPropagation();
+                copyAnonId();
+            });
+        }
+
+        // Friend Search
+        const btnFriendSearch = document.getElementById('topBtnFriendSearch');
+        const inputFriend = document.getElementById('topFriendInput');
+        if (btnFriendSearch) {
+            btnFriendSearch.addEventListener('click', () => {
+                searchFriend();
+            });
+        }
+        if (inputFriend) {
+            inputFriend.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    searchFriend();
+                }
+            });
+        }
     }
 
     function init() {
@@ -506,6 +729,9 @@
         if (window.EliteI18n && typeof window.EliteI18n.apply === 'function') {
             window.EliteI18n.apply();
         }
+
+        // Carrega identidade anônima do comandante local
+        loadMyAnonIdentity();
 
         // Polling contínuo
         pollTelemetry();

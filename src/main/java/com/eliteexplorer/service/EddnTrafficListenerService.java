@@ -31,6 +31,7 @@ public class EddnTrafficListenerService {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final JournalWatcherService journalWatcherService;
+    private final CmdrScanService cmdrScanService;
     private final AtomicBoolean running = new AtomicBoolean(false);
     private final List<TrafficEventDTO> recentEvents = new CopyOnWriteArrayList<>();
     private final Map<String, CommanderTrack> knownCommanders = new ConcurrentHashMap<>();
@@ -38,8 +39,10 @@ public class EddnTrafficListenerService {
     private Thread listenerThread;
     private ZContext zContext;
 
-    public EddnTrafficListenerService(@Lazy JournalWatcherService journalWatcherService) {
+    public EddnTrafficListenerService(@Lazy JournalWatcherService journalWatcherService,
+                                      @Lazy CmdrScanService cmdrScanService) {
         this.journalWatcherService = journalWatcherService;
+        this.cmdrScanService = cmdrScanService;
     }
 
     @PostConstruct
@@ -153,71 +156,60 @@ public class EddnTrafficListenerService {
                     return;
                 }
 
-                PlayerStatus player = journalWatcherService.getPlayerStatus();
-                if (player.getPosX() == null || player.getPosY() == null || player.getPosZ() == null) {
-                    return;
-                }
-
-                double px = player.getPosX();
-                double py = player.getPosY();
-                double pz = player.getPosZ();
-
-                // 1. Checa se o Comandante pulou de um sistema anterior que estava dentro do nosso cubo (JUMP_OUT)
-                if (previous != null) {
-                    double distOldToPlayer = calculateDistance(previous.x, previous.y, previous.z, px, py, pz);
-                    if (distOldToPlayer <= DEFAULT_CUBE_RADIUS) {
-                        recordTrafficEvent(new TrafficEventDTO(
-                                UUID.randomUUID().toString(),
-                                "JUMP_OUT",
-                                previous.systemName,
-                                previous.x,
-                                previous.y,
-                                previous.z,
-                                now,
-                                software,
-                                "EDDN"
-                        ));
-                        log.info("🌌 [EDDN TRAFFIC] Comandante partiu de '{}' (JUMP_OUT, {:.1f} ly da nave) via {}",
-                                previous.systemName, distOldToPlayer, software);
-                    }
-                }
-
-                // 2. Checa se o sistema de destino (onde acabou de ingressar) está dentro do nosso cubo (JUMP_IN)
-                double distNewToPlayer = calculateDistance(targetX, targetY, targetZ, px, py, pz);
-                if (distNewToPlayer <= DEFAULT_CUBE_RADIUS) {
-                    recordTrafficEvent(new TrafficEventDTO(
+                // 1. Checa se o Comandante pulou de um sistema anterior (JUMP_OUT)
+                if (previous != null && !previous.systemName.equalsIgnoreCase(targetSystem)) {
+                    TrafficEventDTO dto = new TrafficEventDTO(
                             UUID.randomUUID().toString(),
-                            "JUMP_IN",
-                            targetSystem,
-                            targetX,
-                            targetY,
-                            targetZ,
+                            "JUMP_OUT",
+                            previous.systemName,
+                            previous.x,
+                            previous.y,
+                            previous.z,
                             now,
                             software,
                             "EDDN"
-                    ));
-                    log.info("⚡ [EDDN TRAFFIC] Comandante ingressou em '{}' (JUMP_IN, {:.1f} ly da nave) via {}",
-                            targetSystem, distNewToPlayer, software);
+                    );
+                    dto.setUploaderId(uploaderId);
+                    recordTrafficEvent(dto);
+                    log.debug("🌌 [EDDN TRAFFIC] Comandante partiu de '{}' (JUMP_OUT) via {}",
+                            previous.systemName, software);
                 }
+
+                // 2. Sistema de destino onde acabou de ingressar na galáxia (JUMP_IN)
+                TrafficEventDTO dto = new TrafficEventDTO(
+                        UUID.randomUUID().toString(),
+                        "JUMP_IN",
+                        targetSystem,
+                        targetX,
+                        targetY,
+                        targetZ,
+                        now,
+                        software,
+                        "EDDN"
+                );
+                dto.setUploaderId(uploaderId);
+                recordTrafficEvent(dto);
+                if (cmdrScanService != null && !uploaderId.isBlank()) {
+                    cmdrScanService.recordCommanderLocation(uploaderId, targetSystem, targetX, targetY, targetZ, now);
+                }
+                log.debug("⚡ [EDDN TRAFFIC] Comandante ingressou em '{}' (JUMP_IN) via {}",
+                        targetSystem, software);
             } else if (isJumpEvent) {
-                PlayerStatus player = journalWatcherService.getPlayerStatus();
-                if (player.getPosX() == null || player.getPosY() == null || player.getPosZ() == null) {
-                    return;
-                }
-                double distNewToPlayer = calculateDistance(targetX, targetY, targetZ,
-                        player.getPosX(), player.getPosY(), player.getPosZ());
-                if (distNewToPlayer <= DEFAULT_CUBE_RADIUS) {
-                    recordTrafficEvent(new TrafficEventDTO(
-                            UUID.randomUUID().toString(),
-                            "JUMP_IN",
-                            targetSystem,
-                            targetX,
-                            targetY,
-                            targetZ,
-                            now,
-                            software,
-                            "EDDN"
-                    ));
+                TrafficEventDTO dto = new TrafficEventDTO(
+                        UUID.randomUUID().toString(),
+                        "JUMP_IN",
+                        targetSystem,
+                        targetX,
+                        targetY,
+                        targetZ,
+                        now,
+                        software,
+                        "EDDN"
+                );
+                dto.setUploaderId(uploaderId);
+                recordTrafficEvent(dto);
+                if (cmdrScanService != null && !uploaderId.isBlank()) {
+                    cmdrScanService.recordCommanderLocation(uploaderId, targetSystem, targetX, targetY, targetZ, now);
                 }
             }
 
@@ -248,10 +240,10 @@ public class EddnTrafficListenerService {
 
     public synchronized void recordTrafficEvent(TrafficEventDTO event) {
         recentEvents.add(event);
-        // Mantém os últimos 50 eventos (janela de retenção de 30 minutos para o histórico do HUD)
+        // Mantém os últimos 100 eventos (janela de retenção de 30 minutos para o histórico do HUD)
         long cutoff = System.currentTimeMillis() - 1800000L;
         recentEvents.removeIf(e -> e.getTimestamp() < cutoff);
-        if (recentEvents.size() > 50) {
+        if (recentEvents.size() > 100) {
             recentEvents.remove(0);
         }
     }

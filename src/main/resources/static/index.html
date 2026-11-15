@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Elite Explorer Copilot - Explorador de Galáxia 3D & Caçador de Vazios</title>
-    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/style.css?v=20261114-3">
     <style>
         body, html {
             margin: 0;
@@ -176,7 +176,7 @@
             width: 100%;
             box-sizing: border-box;
             border-top: 2px solid #00d4ff;
-            max-height: 28vh;
+            max-height: 38vh;
             overflow-y: auto;
         }
 
@@ -552,7 +552,7 @@
 </head>
 <body>
     <!-- Splash Screen -->
-    <div id="app-splash-screen" title="Clique para entrar">
+    <div id="app-splash-screen" data-i18n-title="splash.click_to_enter" title="Click to enter">
         <div class="splash-card">
             <div class="splash-emblem-wrap">
                 <svg viewBox="0 0 180 180" width="156" height="156" xmlns="http://www.w3.org/2000/svg">
@@ -674,14 +674,13 @@
             </div>
         </div>
 
-        <!-- Left: Current System Stations (Safe Docking / Night Rest) -->
+        <!-- Left: Current System Stations (Where to Dock / Night Rest) -->
         <div id="current-stations-card" class="hud-panel-glass">
             <div class="card-header-row" style="margin-bottom: 4px;">
                 <div>
-                    <span style="font-size: 11px; background: rgba(255,170,51,0.2); color: #ffaa33; padding: 2px 6px; border-radius: 3px; font-weight: bold; letter-spacing: 0.5px;" data-i18n="galaxy.safe_docking">⚓ ANCORAGEM SEGURA</span>
+                    <span style="font-size: 11px; background: rgba(255,170,51,0.2); color: #ffaa33; padding: 2px 6px; border-radius: 3px; font-weight: bold; letter-spacing: 0.5px;" data-i18n="galaxy.safe_docking">⚓ WHERE TO DOCK</span>
                     <div id="stationsSystemTitle" style="font-size: 13px; font-weight: bold; color: #fff; margin-top: 3px;" data-i18n="galaxy.current_system">Sistema Atual</div>
                 </div>
-                <span id="stationsCountBadge" style="font-size: 10px; color: #8da4be; font-family: monospace;" data-i18n="galaxy.docks_zero">0 docas</span>
             </div>
             <div id="currentStationsList" style="display: flex; flex-direction: column; gap: 5px; margin-top: 6px;">
                 <div style="color: #6a88a8; font-size: 11px; font-style: italic;" data-i18n="galaxy.querying_stations">Consultando estações do sistema...</div>
@@ -754,10 +753,7 @@
                 </div>
             </div>
 
-            <div id="trafficOnlineEstimate" data-i18n="galaxy.traffic_online_init" style="font-size: 10.5px; color: #8da4be; margin-bottom: 6px; padding-bottom: 5px; border-bottom: 1px solid rgba(0,212,255,0.12);">
-                Cerca de 0 comandantes online na região
-            </div>
-            <div id="trafficEventsList" style="display: flex; flex-direction: column; gap: 5px;">
+            <div id="trafficEventsList" style="display: flex; flex-direction: column; gap: 4px;">
                 <div style="color: #6a88a8; font-size: 11px; font-style: italic; padding: 4px 0;" data-i18n="galaxy.waiting_sector_traffic">Aguardando tráfego no setor...</div>
             </div>
         </div>
@@ -1025,10 +1021,10 @@
         </div>
     </div>
 
-    <script src="/js/i18n.js?v=20261113-4"></script>
-    <script src="/js/nav-sidebar.js?v=20261113-4"></script>
-    <script src="/js/splash.js?v=20261113-4"></script>
-    <script src="/js/explorer.js?v=20261113-4"></script>
+    <script src="/js/i18n.js?v=20261114-3"></script>
+    <script src="/js/nav-sidebar.js?v=20261114-3"></script>
+    <script src="/js/splash.js?v=20261114-3"></script>
+    <script src="/js/explorer.js?v=20261114-3"></script>
     <script src="/js/surface-navigator.js?v=20261113-4"></script>
 </body>
 </html>

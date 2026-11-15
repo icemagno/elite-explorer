@@ -1,10 +1,12 @@
 package com.eliteexplorer.controller;
 
 import com.eliteexplorer.service.CmdrScanService;
+import com.eliteexplorer.service.EddnPublisherService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
@@ -15,9 +17,29 @@ import java.util.Map;
 public class HeatmapApiController {
 
     private final CmdrScanService cmdrScanService;
+    private final EddnPublisherService eddnPublisherService;
 
-    public HeatmapApiController(CmdrScanService cmdrScanService) {
+    public HeatmapApiController(CmdrScanService cmdrScanService, EddnPublisherService eddnPublisherService) {
         this.cmdrScanService = cmdrScanService;
+        this.eddnPublisherService = eddnPublisherService;
+    }
+
+    @GetMapping("/my-anon-id")
+    public ResponseEntity<Map<String, String>> getMyAnonId() {
+        String fullId = eddnPublisherService.getUploaderId();
+        String shortId = eddnPublisherService.getShortUploaderId();
+        String cmdr = eddnPublisherService.getCommanderName();
+        if (cmdr == null || cmdr.isBlank()) cmdr = "CMDR";
+        return ResponseEntity.ok(Map.of(
+                "commanderName", cmdr,
+                "fullId", fullId != null ? fullId : "",
+                "shortId", shortId != null ? shortId : "UNKNOWN"
+        ));
+    }
+
+    @GetMapping("/search-friend")
+    public ResponseEntity<Map<String, Object>> searchFriend(@RequestParam(value = "id", required = true) String id) {
+        return ResponseEntity.ok(cmdrScanService.searchCommanderByAnonId(id));
     }
 
     @GetMapping("/heatmap")

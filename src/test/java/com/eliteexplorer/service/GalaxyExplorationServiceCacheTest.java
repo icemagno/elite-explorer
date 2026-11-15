@@ -20,34 +20,35 @@ class GalaxyExplorationServiceCacheTest {
 
     @Test
     void persistsAndReloadsCubeCacheFromDiskAcrossRestarts() {
-        File cacheDir = tempDir.resolve("cubes").toFile();
-        CopilotDatabaseService dbService = new CopilotDatabaseService();
+        String testDbUrl = "jdbc:sqlite:" + tempDir.resolve("test_copilot.db").toString().replace("\\", "/");
+        CopilotDatabaseService dbService = new CopilotDatabaseService(testDbUrl);
+        dbService.init();
         PlanetExplorationHistoryService historyService = new PlanetExplorationHistoryService(dbService);
 
         GalaxyExplorationService writer = new GalaxyExplorationService(historyService, dbService);
-        writer.setCubeCacheDirForTest(cacheDir);
 
         StarSystemDTO s1 = new StarSystemDTO("Synuefe OF-L d9-72", 305.15625, -42.65625, -231.25, 0.0, 12);
         s1.setStarType("F (White) Star");
         s1.setIsScoopable(true);
         StarSystemDTO s2 = new StarSystemDTO("Synuefe BQ-W c18-5", 301.78125, -38.46875, -232.6875, 5.56, 8);
+        StarSystemDTO s3 = new StarSystemDTO("Synuefe CE-R c18-1", 300.0, -40.0, -230.0, 6.0, 5);
 
         GalaxyExplorationService.CacheEntry entry = new GalaxyExplorationService.CacheEntry(
-                305.16, -42.66, -231.25, 100.0, List.of(s1, s2));
+                305.16, -42.66, -231.25, 50.0, List.of(s1, s2, s3));
 
-        writer.saveCubeCacheEntryToDisk("305_-43_-231_100", entry);
+        writer.saveCubeCacheEntryToDisk("305_-43_-231_50", entry);
 
-        File persisted = new File(cacheDir, "305_-43_-231_100.json");
-        assertTrue(persisted.exists() && persisted.length() > 0, "Cube JSON file should exist on disk");
+        // Verifica que o cubo foi persistido no banco de dados SQLite isolado de teste
+        Map<String, String> persistedCubes = dbService.loadAllCubeCaches();
+        assertTrue(persistedCubes.containsKey("305_-43_-231_50"), "Cube should exist in SQLite database");
 
         // Simula reinicialização do servidor com nova instância de serviço
         GalaxyExplorationService reader = new GalaxyExplorationService(historyService, dbService);
-        reader.setCubeCacheDirForTest(cacheDir);
         reader.loadCubeCacheFromDisk();
 
         GalaxyExplorationService.CacheEntry hit = reader.findClosestCoveringEntry(306.0, -42.0, -231.0, 35.0, false);
         assertNotNull(hit, "Reloaded disk cache should cover nearby coordinates");
-        assertEquals(2, hit.getSystems().size());
+        assertEquals(3, hit.getSystems().size());
         assertEquals("Synuefe OF-L d9-72", hit.getSystems().get(0).getName());
     }
 

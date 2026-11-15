@@ -324,7 +324,7 @@ public class JournalWatcherService {
                     if (isLiveUpdate) {
                         String jumpType = root.path("JumpType").asText("");
                         if ("Hyperspace".equalsIgnoreCase(jumpType)) {
-                            eddnTrafficService.recordTrafficEvent(new com.eliteexplorer.dto.TrafficEventDTO(
+                            com.eliteexplorer.dto.TrafficEventDTO dto = new com.eliteexplorer.dto.TrafficEventDTO(
                                     java.util.UUID.randomUUID().toString(),
                                     "JUMP_OUT",
                                     status.getCurrentSystem(),
@@ -334,7 +334,11 @@ public class JournalWatcherService {
                                     System.currentTimeMillis(),
                                     status.getCommander() != null ? status.getCommander() : "Você",
                                     "LOCAL"
-                            ));
+                            );
+                            if (eddnPublisherService != null) {
+                                dto.setUploaderId(eddnPublisherService.getUploaderId());
+                            }
+                            eddnTrafficService.recordTrafficEvent(dto);
                         }
                     }
                 }
@@ -359,7 +363,7 @@ public class JournalWatcherService {
                     }
                     systemBodiesService.recordPrimaryStar(sys, sysAddr, status.getStarClass(), status.getPosX(), status.getPosY(), status.getPosZ());
                     if (isLiveUpdate) {
-                        eddnTrafficService.recordTrafficEvent(new com.eliteexplorer.dto.TrafficEventDTO(
+                        com.eliteexplorer.dto.TrafficEventDTO dto = new com.eliteexplorer.dto.TrafficEventDTO(
                                 java.util.UUID.randomUUID().toString(),
                                 "JUMP_IN",
                                 sys,
@@ -369,7 +373,11 @@ public class JournalWatcherService {
                                 System.currentTimeMillis(),
                                 status.getCommander() != null ? status.getCommander() : "Você",
                                 "LOCAL"
-                        ));
+                        );
+                        if (eddnPublisherService != null) {
+                            dto.setUploaderId(eddnPublisherService.getUploaderId());
+                        }
+                        eddnTrafficService.recordTrafficEvent(dto);
                     }
                 }
                 case "CarrierJump" -> {

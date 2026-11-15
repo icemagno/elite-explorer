@@ -10,6 +10,8 @@ public class TrafficEventDTO {
     private long timestamp;
     private String commander;
     private String source; // "EDDN" ou "LOCAL"
+    private String uploaderId;
+    private String shortAnonId;
 
     public TrafficEventDTO() {
     }
@@ -24,6 +26,37 @@ public class TrafficEventDTO {
         this.timestamp = timestamp;
         this.commander = commander;
         this.source = source;
+    }
+
+    public String getUploaderId() {
+        return uploaderId;
+    }
+
+    public void setUploaderId(String uploaderId) {
+        this.uploaderId = uploaderId;
+        if (uploaderId != null && !uploaderId.isBlank()) {
+            this.shortAnonId = computeShortId(uploaderId);
+        }
+    }
+
+    public String getShortAnonId() {
+        if (shortAnonId == null && uploaderId != null && !uploaderId.isBlank()) {
+            shortAnonId = computeShortId(uploaderId);
+        }
+        return shortAnonId;
+    }
+
+    public void setShortAnonId(String shortAnonId) {
+        this.shortAnonId = shortAnonId;
+    }
+
+    public static String computeShortId(String raw) {
+        if (raw == null || raw.isBlank()) return "";
+        String clean = raw.trim().replaceAll("[^a-zA-Z0-9]", "");
+        if (clean.length() >= 6) {
+            return (clean.substring(0, 3) + "-" + clean.substring(clean.length() - 3)).toUpperCase();
+        }
+        return clean.toUpperCase();
     }
 
     public String getId() {

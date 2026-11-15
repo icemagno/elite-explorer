@@ -50,15 +50,11 @@ public class CmdrScanService {
         if (dir.exists() && dir.isDirectory()) {
             return "jdbc:sqlite:/cmdrscan/cmdrscan.db";
         }
-        File localCmdrscan = new File("cmdrscan/cmdrscan.db");
-        if (localCmdrscan.exists()) {
-            return "jdbc:sqlite:cmdrscan/cmdrscan.db";
+        File cacheDir = new File("cache");
+        if (!cacheDir.exists()) {
+            cacheDir.mkdirs();
         }
-        File localDir = new File("cmdrscan");
-        if (!localDir.exists()) {
-            localDir.mkdirs();
-        }
-        return "jdbc:sqlite:cmdrscan/cmdrscan.db";
+        return "jdbc:sqlite:cache/cmdrscan.db";
     }
 
     private final AtomicLong totalSignalsReceived = new AtomicLong(0);
@@ -477,6 +473,13 @@ public class CmdrScanService {
         } catch (SQLException ignored) {}
     }
 
+    public void recordCommanderLocation(String uploaderId, String system, double x, double y, double z, long ts) {
+        if (uploaderId == null || uploaderId.isBlank() || system == null || system.isBlank()) return;
+        double normU = 0.50 + ((x - SAG_A_X) * SCALE_PER_LY);
+        double normV = 0.50 - ((z - SAG_A_Z) * SCALE_PER_LY);
+        upsertCommander(uploaderId, system, x, y, z, normU, normV, ts);
+    }
+
     private void upsertCommander(String uploaderId, String system, double x, double y, double z, double u, double v, long ts) {
         String sql = """
             INSERT INTO cmdr_live_traffic (uploader_id, system_name, x, y, z, norm_u, norm_v, first_seen, timestamp)
@@ -603,6 +606,74 @@ public class CmdrScanService {
         res.put("points", points);
         res.put("timestamp", System.currentTimeMillis());
         return res;
+    }
+
+    public Map<String, Object> searchCommanderByAnonId(String query) {
+        if (query == null || query.trim().length() < 3) {
+            return Map.of("found", false, "message", "ID inválido (digite ao menos 3 caracteres)");
+        }
+        String clean = query.trim().replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
+        long cutoff = System.currentTimeMillis() - RETENTION_MILLIS;
+
+        String sql;
+        String param;
+        if (clean.length() == 6) {
+            // 3 caracteres do início + 3 do final
+            String prefix = clean.substring(0, 3);
+            String suffix = clean.substring(3, 6);
+            sql = """
+                SELECT uploader_id, system_name, x, y, z, norm_u, norm_v, timestamp
+                FROM cmdr_live_traffic
+                WHERE timestamp >= ? AND LOWER(uploader_id) LIKE ?
+                ORDER BY timestamp DESC LIMIT 1
+            """;
+            param = prefix + "%" + suffix;
+        } else if (clean.length() >= 30) {
+            sql = """
+                SELECT uploader_id, system_name, x, y, z, norm_u, norm_v, timestamp
+                FROM cmdr_live_traffic
+                WHERE timestamp >= ? AND LOWER(uploader_id) = ?
+                ORDER BY timestamp DESC LIMIT 1
+            """;
+            param = clean;
+        } else {
+            sql = """
+                SELECT uploader_id, system_name, x, y, z, norm_u, norm_v, timestamp
+                FROM cmdr_live_traffic
+                WHERE timestamp >= ? AND LOWER(uploader_id) LIKE ?
+                ORDER BY timestamp DESC LIMIT 1
+            """;
+            param = clean + "%";
+        }
+
+        try (Connection conn = getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, cutoff);
+            ps.setString(2, param);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    String fullId = rs.getString("uploader_id");
+                    String shortId = (fullId.length() >= 6)
+                            ? (fullId.substring(0, 3) + "-" + fullId.substring(fullId.length() - 3)).toUpperCase()
+                            : fullId.toUpperCase();
+                    Map<String, Object> data = new HashMap<>();
+                    data.put("found", true);
+                    data.put("uploaderId", fullId);
+                    data.put("shortId", shortId);
+                    data.put("systemName", rs.getString("system_name"));
+                    data.put("x", rs.getDouble("x"));
+                    data.put("y", rs.getDouble("y"));
+                    data.put("z", rs.getDouble("z"));
+                    data.put("normU", rs.getDouble("norm_u"));
+                    data.put("normV", rs.getDouble("norm_v"));
+                    data.put("timestamp", rs.getLong("timestamp"));
+                    data.put("ageSeconds", (System.currentTimeMillis() - rs.getLong("timestamp")) / 1000);
+                    return data;
+                }
+            }
+        } catch (SQLException e) {
+            log.warn("Erro ao buscar comandante por anon ID: {}", e.getMessage());
+        }
+        return Map.of("found", false, "message", "Nenhum sinal recente encontrado para o ID informado nos últimos 30 minutos.");
     }
 
     public Map<String, Object> getFlowData() {

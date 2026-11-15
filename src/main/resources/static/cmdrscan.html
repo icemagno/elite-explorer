@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title data-i18n="nav.cmdrscan">Commander Scan</title>
-    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/style.css?v=20261114-3">
     <style>
         * {
             box-sizing: border-box;
@@ -28,33 +28,21 @@
             background: rgba(8, 19, 38, 0.94);
             border-bottom: 1px solid rgba(0, 212, 255, 0.25);
             backdrop-filter: blur(10px);
-            padding: 8px 18px 8px 290px;
+            padding: 8px 18px;
             display: flex;
             align-items: center;
-            justify-content: space-between;
+            justify-content: flex-end;
             z-index: 100;
             flex-shrink: 0;
             min-height: 52px;
         }
 
-        @media (max-width: 900px) {
-            header {
-                padding-left: 210px;
-            }
-        }
-
-        .header-title {
+        .header-controls {
             display: flex;
             align-items: center;
-            gap: 10px;
-        }
-
-        .header-title h1 {
-            font-size: 15px;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-            color: #00d4ff;
-            text-transform: uppercase;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
         }
 
         .badge-live {
@@ -107,6 +95,96 @@
             border-color: rgba(0, 212, 255, 0.5);
             box-shadow: 0 0 8px rgba(0, 212, 255, 0.35);
             transform: translateY(-1px);
+        }
+            transition: all 0.15s;
+        }
+        .btn-friend-search:hover {
+            background: rgba(0, 212, 255, 0.35);
+            color: #fff;
+        }
+
+        /* Toast HUD notification */
+        .cmdr-toast {
+            position: fixed;
+            bottom: 35px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: rgba(3, 14, 28, 0.95);
+            border: 1px solid #00d4ff;
+            color: #d4e8ff;
+            padding: 8px 18px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.35);
+            z-index: 1000;
+            pointer-events: none;
+            opacity: 0;
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .cmdr-toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+        .cmdr-toast.error {
+            border-color: #ff5555;
+            color: #ffb4b4;
+            box-shadow: 0 0 20px rgba(255, 85, 85, 0.35);
+        }
+
+        /* Marker Friend */
+        .marker-friend {
+            z-index: 25;
+            pointer-events: none;
+        }
+        .friend-dot {
+            background: #2bfca8 !important;
+            box-shadow: 0 0 12px #2bfca8, 0 0 24px #2bfca8 !important;
+            width: 10px !important;
+            height: 10px !important;
+        }
+        .friend-pulse {
+            position: absolute;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 2px solid #2bfca8;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            animation: pulseFriendRing 1.8s infinite ease-out;
+        }
+        @keyframes pulseFriendRing {
+            0% { transform: translate(-50%, -50%) scale(0.4); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(2.2); opacity: 0; }
+        }
+        .marker-friend-card {
+            margin-top: 6px;
+            background: rgba(3, 14, 28, 0.92);
+            border: 1px solid #2bfca8;
+            box-shadow: 0 0 16px rgba(43, 252, 168, 0.4);
+            border-radius: 5px;
+            padding: 4px 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            white-space: nowrap;
+        }
+        .friend-badge {
+            font-size: 8px;
+            font-weight: 800;
+            color: #2bfca8;
+            letter-spacing: 0.5px;
+        }
+        .friend-system {
+            font-size: 11.5px;
+            color: #ffffff;
+            font-weight: 700;
+        }
+        .friend-meta {
+            font-size: 9.5px;
+            color: #8da4be;
+            font-family: monospace;
         }
 
         .header-controls {
@@ -849,10 +927,8 @@
 </head>
 <body>
     <header>
-        <div class="header-title">
-            <span class="badge-live">LIVE 30-MIN WINDOW</span>
-        </div>
         <div class="header-controls">
+            <span class="badge-live">LIVE 30-MIN WINDOW</span>
             <!-- Mode Switcher: Global Traffic vs Arrivals/Departures vs System Scans vs Docking -->
             <div class="view-mode-group">
                 <button class="btn-mode active" id="btnModeGlobal" title="All Active Traffic Heatmap">Global</button>
@@ -1019,6 +1095,16 @@
                     <div class="marker-dot" style="background: #ffd700; box-shadow: 0 0 12px #ffd700;"></div>
                     <span class="marker-label" id="markerCmdrLabel" style="color: #ffd700; font-weight: bold;">CMDR</span>
                 </div>
+                <!-- Marker do Amigo Localizado (Friend Beacon) -->
+                <div class="marker marker-friend" id="markerFriend" style="display: none;">
+                    <div class="friend-pulse"></div>
+                    <div class="marker-dot friend-dot"></div>
+                    <div class="marker-friend-card" id="markerFriendCard">
+                        <span class="friend-badge">AMIGO LOCALIZADO</span>
+                        <strong class="friend-system" id="markerFriendSystem">System</strong>
+                        <span class="friend-meta" id="markerFriendMeta">ID: ---</span>
+                    </div>
+                </div>
             </div>
         </main>
     </div>
@@ -1036,8 +1122,8 @@
     </footer>
 
     <!-- Copilot Navigation & Internationalization -->
-    <script src="/js/i18n.js"></script>
-    <script src="/js/nav-sidebar.js"></script>
+    <script src="/js/i18n.js?v=20261114-3"></script>
+    <script src="/js/nav-sidebar.js?v=20261114-3"></script>
 
     <script>
         (function() {
@@ -2256,9 +2342,63 @@
                                 const sys = data.currentSystem ? ` (${data.currentSystem})` : '';
                                 markerCmdrLabel.textContent = `🚀 ${name}${sys}`;
                             }
+                            const headerCmdrName = document.getElementById('headerCmdrName');
+                            if (headerCmdrName && data.commander) {
+                                headerCmdrName.textContent = data.commander.startsWith('CMDR') ? data.commander : `CMDR ${data.commander}`;
+                            }
                         }
                     }
                 } catch (e) {}
+            }
+
+            // Toast HUD notification helper
+            function showToast(msg, isError = false) {
+                let toast = document.getElementById('cmdrToast');
+                if (!toast) {
+                    toast = document.createElement('div');
+                    toast.id = 'cmdrToast';
+                    toast.className = 'cmdr-toast';
+                    document.body.appendChild(toast);
+                }
+                toast.textContent = msg;
+                toast.className = 'cmdr-toast show' + (isError ? ' error' : '');
+                clearTimeout(toast._timer);
+                toast._timer = setTimeout(() => {
+                    toast.className = 'cmdr-toast';
+                }, 4000);
+            }
+
+            // Amigo Beacon & Centralização no Mapa
+            const markerFriend = document.getElementById('markerFriend');
+            const markerFriendSystem = document.getElementById('markerFriendSystem');
+            const markerFriendMeta = document.getElementById('markerFriendMeta');
+
+            window._centerMapOn = centerMapOn;
+            window._showFriendMarker = function(data) {
+                if (!markerFriend || !data) return;
+                const normU = data.normU;
+                const normV = data.normV;
+                const sys = data.systemName;
+                const shortId = data.shortId || '';
+                const ageSec = data.ageSeconds || 0;
+                const ageText = ageSec < 60 ? `${ageSec}s atrás` : `${Math.round(ageSec / 60)}m atrás`;
+                markerFriend.style.left = `${(normU * 100).toFixed(4)}%`;
+                markerFriend.style.top = `${(normV * 100).toFixed(4)}%`;
+                markerFriend.style.display = 'flex';
+                if (markerFriendSystem) markerFriendSystem.textContent = sys;
+                if (markerFriendMeta) markerFriendMeta.textContent = `ID: ${shortId} • ${ageText}`;
+            };
+
+            // Se a URL contiver ?friend=ID, busca automaticamente pelo campo universal do header
+            const urlParams = new URLSearchParams(window.location.search);
+            const friendParam = urlParams.get('friend');
+            if (friendParam) {
+                setTimeout(() => {
+                    const topInp = document.getElementById('topFriendInput');
+                    const topBtn = document.getElementById('topBtnFriendSearch');
+                    if (topInp) topInp.value = friendParam;
+                    if (topBtn) topBtn.click();
+                }, 600);
             }
 
             setInterval(() => {

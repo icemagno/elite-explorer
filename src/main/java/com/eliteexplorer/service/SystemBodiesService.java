@@ -42,9 +42,6 @@ public class SystemBodiesService {
     public SystemBodiesService(SseNotificationService sseNotificationService, CopilotDatabaseService databaseService) {
         this.sseNotificationService = sseNotificationService;
         this.databaseService = databaseService;
-        if (!cacheDir.exists()) {
-            cacheDir.mkdirs();
-        }
     }
 
     public boolean hasSystemData(String systemName) {

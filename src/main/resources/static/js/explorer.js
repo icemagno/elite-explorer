@@ -2027,6 +2027,28 @@ function focusRadarSystem(sysName) {
         }
     }
 }
+window.focusRadarSystem = focusRadarSystem;
+
+function focusFriendSystem(data) {
+    if (!data || !data.systemName) return;
+    const sysName = data.systemName;
+    const star = allReceivedStars && allReceivedStars.find(s => s.name.toLowerCase().trim() === sysName.toLowerCase().trim());
+    if (star) {
+        pinStarCard(star);
+        if (currentCubeCenter && controls) {
+            controls.target.set(star.x - currentCubeCenter.x, star.y - currentCubeCenter.y, -(star.z - currentCubeCenter.z));
+        }
+    } else if (typeof data.x === 'number' && typeof data.y === 'number' && typeof data.z === 'number') {
+        pinGlobalTrafficCard({
+            name: sysName,
+            x: data.x,
+            y: data.y,
+            z: data.z,
+            count: 1
+        });
+    }
+}
+window.focusFriendSystem = focusFriendSystem;
 
 // Radar Top 3 Gaps Procedurais (Quebras de Sequência Matemática Stellar Forge)
 function updateGapsRadar() {
@@ -2096,7 +2118,6 @@ let lastLoadedStationsSystem = null;
 function renderStationsList(sys, stations) {
     const listEl = document.getElementById('currentStationsList');
     const titleEl = document.getElementById('stationsSystemTitle');
-    const countBadge = document.getElementById('stationsCountBadge');
     if (!listEl) return;
 
     if (!sys || sys === 'Posição Atual' || sys === 'Desconhecido' || sys === tr('galaxy.cmdr_unknown')) {
@@ -2105,7 +2126,6 @@ function renderStationsList(sys, stations) {
     }
 
     if (titleEl) titleEl.textContent = sys;
-    if (countBadge) countBadge.textContent = tr('galaxy.docks_orbital_count', stations ? stations.length : 0);
 
     if (!stations || stations.length === 0) {
         listEl.innerHTML = `
@@ -2366,11 +2386,22 @@ function addTrafficEventToLog(ev) {
         return;
     }
     recentTrafficLog.unshift(ev);
-    if (recentTrafficLog.length > 4) {
-        recentTrafficLog.length = 4;
+    if (recentTrafficLog.length > 8) {
+        recentTrafficLog.length = 8;
     }
     renderTrafficCard();
 }
+
+function onTrafficItemClick(sysName, shortId) {
+    if (shortId) {
+        const topInput = document.getElementById('topFriendInput');
+        if (topInput) {
+            topInput.value = shortId;
+        }
+    }
+    focusRadarSystem(sysName);
+}
+window.onTrafficItemClick = onTrafficItemClick;
 
 function renderTrafficCard() {
     const listEl = document.getElementById('trafficEventsList');
@@ -2383,25 +2414,26 @@ function renderTrafficCard() {
 
     listEl.innerHTML = recentTrafficLog.map(ev => {
         const isArrival = (ev.type === 'JUMP_IN' || ev.type === 'IN');
-        const badgeColor = isArrival ? '#2bfca8' : '#ffaa00';
-        const icon = isArrival ? '📥' : '📤';
-        const actionLine = isArrival ? tr('galaxy.cmdr_arrived') : tr('galaxy.cmdr_departed');
+        const arrowIcon = isArrival ? '↓' : '↑';
+        const arrowColor = isArrival ? '#00d4ff' : '#ff4444';
         const timeAgo = formatTimeAgo(ev.timestamp);
+        const exactTime = ev.timestamp ? new Date(ev.timestamp).toLocaleTimeString() : '';
         const escapedSys = ev.systemName.replace(/'/g, "\\'");
+        const shortId = ev.shortAnonId || (ev.uploaderId && ev.uploaderId.length >= 6 ? (ev.uploaderId.substring(0, 3) + '-' + ev.uploaderId.substring(ev.uploaderId.length - 3)).toUpperCase() : '');
 
         return `
-            <div style="background: rgba(0,0,0,0.35); border-left: 2px solid ${badgeColor}; border-radius: 3px; padding: 5px 8px; font-size: 11px; cursor: pointer; transition: background 0.2s;"
+            <div style="background: rgba(0,0,0,0.35); border-left: 2px solid ${arrowColor}; border-radius: 3px; padding: 5px 8px; font-size: 11px; cursor: pointer; transition: background 0.2s; display: flex; justify-content: space-between; align-items: center;"
                  onmouseover="this.style.background='rgba(0,212,255,0.08)';"
                  onmouseout="this.style.background='rgba(0,0,0,0.35)';"
-                 onclick="focusRadarSystem('${escapedSys}')"
+                 onclick="onTrafficItemClick('${escapedSys}', '${shortId}')"
                  title="${tr('galaxy.focus_system_title', ev.systemName)}">
-                <div style="display: flex; justify-content: space-between; align-items: center; color: #a4bedc; font-size: 10.5px;">
-                    <span>${icon} ${actionLine}</span>
-                    <span style="font-size: 10px; color: #6a88a8; font-family: monospace;">${timeAgo}</span>
+                <div style="display: flex; align-items: center; gap: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;">
+                    <span style="color: ${arrowColor}; font-weight: 900; font-size: 13px; line-height: 1; flex-shrink: 0;">${arrowIcon}</span>
+                    <span style="font-weight: bold; font-size: 11.5px; color: ${arrowColor}; letter-spacing: 0.3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        ${ev.systemName}
+                    </span>
                 </div>
-                <div style="margin-top: 2px; padding-left: 18px; font-weight: bold; font-size: 12px; color: ${badgeColor}; letter-spacing: 0.3px;">
-                    ${ev.systemName}
-                </div>
+                <span style="font-size: 10px; color: #8da4be; font-family: monospace; white-space: nowrap; margin-left: 8px; flex-shrink: 0;" title="${exactTime}">${timeAgo}</span>
             </div>
         `;
     }).join('');
@@ -2442,11 +2474,7 @@ function renderTrafficOnlineCount(count) {
     lastTrafficOnlineCount = Number.isFinite(count) ? count : 0;
     const el = document.getElementById('trafficOnlineEstimate');
     if (el) {
-        if (globalTrafficData && globalTrafficData.totalCommanders) {
-            el.textContent = tr('galaxy.traffic_online_detailed', lastTrafficOnlineCount, globalTrafficData.totalCommanders, globalTrafficData.systemsCount || 0);
-        } else {
-            el.textContent = tr('galaxy.traffic_online_estimate', lastTrafficOnlineCount);
-        }
+        el.textContent = tr('galaxy.traffic_online_estimate', lastTrafficOnlineCount);
     }
 }
 
@@ -2459,6 +2487,15 @@ async function pollTrafficOnlineCount() {
             renderTrafficOnlineCount(data.count);
         }
     } catch (_) {}
+}
+
+function isTrafficEventInsideCube(ev) {
+    if (!currentCubeCenter || !ev) return false;
+    if (typeof ev.x !== 'number' || typeof ev.y !== 'number' || typeof ev.z !== 'number') return false;
+    const halfSize = (DEFAULT_CUBE_SIZE || 100.0) / 2;
+    return Math.abs(ev.x - currentCubeCenter.x) <= halfSize &&
+           Math.abs(ev.y - currentCubeCenter.y) <= halfSize &&
+           Math.abs(ev.z - currentCubeCenter.z) <= halfSize;
 }
 
 async function pollTrafficEvents() {
@@ -2474,7 +2511,17 @@ async function pollTrafficEvents() {
                     lastTrafficCheckTime = ev.timestamp;
                 }
                 addTrafficEventToLog(ev);
-                if (!isInitial || (Date.now() - ev.timestamp < 10000)) {
+
+                // Preenche o campo de busca com o ID reduzido do comandante recebido no evento
+                const shortId = ev.shortAnonId || (ev.uploaderId && ev.uploaderId.length >= 6 ? (ev.uploaderId.substring(0, 3) + '-' + ev.uploaderId.substring(ev.uploaderId.length - 3)).toUpperCase() : null);
+                if (shortId) {
+                    const topInput = document.getElementById('topFriendInput');
+                    if (topInput) {
+                        topInput.value = shortId;
+                    }
+                }
+                const insideCube = isTrafficEventInsideCube(ev);
+                if (insideCube && (!isInitial || (Date.now() - ev.timestamp < 10000))) {
                     triggerJumpBeam(ev);
                     const evSoundId = ev.id || `${ev.type || 'EV'}_${ev.systemName || ''}_${ev.timestamp || 0}`;
                     if (!isInitial && !playedTrafficSoundIds.has(evSoundId)) {
@@ -2499,7 +2546,7 @@ async function pollTrafficEvents() {
 }
 
 function triggerJumpBeam(ev) {
-    if (!currentCubeCenter) return;
+    if (!currentCubeCenter || !isTrafficEventInsideCube(ev)) return;
     const cx = currentCubeCenter.x;
     const cy = currentCubeCenter.y;
     const cz = currentCubeCenter.z;

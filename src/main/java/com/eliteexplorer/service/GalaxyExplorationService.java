@@ -57,7 +57,7 @@ public class GalaxyExplorationService {
     private static final long CACHE_TTL_MS = 7L * 24 * 60 * 60 * 1000L; // 7 dias
     private final Map<String, CacheEntry> systemsCache = new ConcurrentHashMap<>();
     private final Object cubeFetchLock = new Object();
-    private File cubeCacheDir = new File("cache/cubes");
+    private File cubeCacheDir = null; // Em produção utiliza exclusivamente SQLite (copilot_cube_cache); usado apenas em testes unitários via setCubeCacheDirForTest
     private final Map<String, List<StratumCandidateDTO>> systemBodiesCache = new ConcurrentHashMap<>();
     private final Map<String, List<SpanshConfirmedSystem>> spanshCache = new ConcurrentHashMap<>();
     private final Map<String, List<StationDTO>> stationsCache = new ConcurrentHashMap<>();
@@ -226,6 +226,9 @@ public class GalaxyExplorationService {
 
     void setCubeCacheDirForTest(File dir) {
         this.cubeCacheDir = dir;
+        if (dir != null && !dir.exists()) {
+            dir.mkdirs();
+        }
     }
 
     void loadCubeCacheFromDisk() {
@@ -238,6 +241,11 @@ public class GalaxyExplorationService {
                     try {
                         CacheEntry entry = objectMapper.readValue(e.getValue(), CacheEntry.class);
                         if (entry != null && entry.getSystems() != null && !entry.getSystems().isEmpty()) {
+                            if (entry.getSystems().size() <= 3 && entry.getSize() >= 80.0) {
+                                log.warn("Descartando cache de cubo suspeito/teste com apenas {} sistemas para chave {}",
+                                        entry.getSystems().size(), e.getKey());
+                                continue;
+                            }
                             systemsCache.put(e.getKey(), entry);
                             loadedCubes++;
                             loadedStars += entry.getSystems().size();
@@ -294,7 +302,10 @@ public class GalaxyExplorationService {
                 log.debug("Erro ao salvar cubo no SQLite: {}", e.getMessage());
             }
         }
-        if (cubeCacheDir != null && cubeCacheDir.exists()) {
+        if (cubeCacheDir != null) {
+            if (!cubeCacheDir.exists()) {
+                cubeCacheDir.mkdirs();
+            }
             try {
                 String safeKey = cacheKey.replaceAll("[^a-zA-Z0-9._-]", "_");
                 File target = new File(cubeCacheDir, safeKey + ".json");
@@ -1192,7 +1203,7 @@ public class GalaxyExplorationService {
         synchronized (cubeFetchLock) {
             // 1. Verifica cache válido (memória + carregado do disco) cobrindo a região atual (até 35 ly do centro)
             CacheEntry freshHit = findClosestCoveringEntry(cx, cy, cz, 35.0, false);
-            if (freshHit != null) {
+            if (freshHit != null && !(freshHit.systems.size() <= 3 && freshHit.size >= 80.0)) {
                 double dist = freshHit.distanceTo(cx, cy, cz);
                 log.info("Cubo galáctico reaproveitado do CACHE local (distância do centro: {} ly, {} sistemas). Zero requisições ao EDSM.",
                         String.format(Locale.US, "%.1f", dist), freshHit.systems.size());

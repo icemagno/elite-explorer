@@ -659,7 +659,9 @@ body {
     background: rgba(8, 20, 36, 0.92);
     border: 1px solid rgba(0, 212, 255, 0.45);
     color: #00d4ff;
-    padding: 7px 14px;
+    padding: 0 14px;
+    height: 34px;
+    box-sizing: border-box;
     border-radius: 6px;
     font-weight: 700;
     font-size: 13px;
@@ -702,7 +704,9 @@ body {
     background: rgba(8, 20, 36, 0.88);
     border: 1px solid rgba(255, 170, 0, 0.4);
     border-radius: 6px;
-    padding: 7px 14px;
+    padding: 0 14px;
+    height: 34px;
+    box-sizing: border-box;
     display: inline-flex;
     align-items: center;
     gap: 8px;
@@ -741,6 +745,267 @@ body {
     color: #00d4ff;
     font-size: 11px;
     margin-left: 2px;
+}
+
+/* ==========================================================================
+   Anon ID Card & Friend Search (Top Navigation Trigger Bar)
+   ========================================================================== */
+.copilot-anon-card {
+    background: rgba(8, 20, 36, 0.88);
+    border: 1px solid rgba(43, 252, 168, 0.45);
+    border-radius: 6px;
+    padding: 0 12px;
+    height: 34px;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-family: 'Consolas', monospace;
+    font-size: 12px;
+    color: #d8e5f2;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    user-select: none;
+}
+
+.copilot-anon-card:hover {
+    border-color: #2bfca8;
+    background: rgba(43, 252, 168, 0.15);
+    box-shadow: 0 0 12px rgba(43, 252, 168, 0.35);
+    transform: translateY(-1px);
+}
+
+.top-anon-icon {
+    font-size: 12px;
+    opacity: 0.9;
+}
+
+.top-anon-lbl {
+    color: #8da4be;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+}
+
+.top-anon-val {
+    color: #2bfca8;
+    font-weight: 700;
+    letter-spacing: 1px;
+    font-size: 12px;
+}
+
+.top-btn-copy-anon {
+    background: transparent;
+    border: none;
+    color: #2bfca8;
+    cursor: pointer;
+    font-size: 12px;
+    padding: 0 2px;
+    line-height: 1;
+    opacity: 0.75;
+    transition: all 0.15s ease;
+}
+
+.top-btn-copy-anon:hover {
+    opacity: 1;
+    transform: scale(1.18);
+}
+
+.copilot-friend-search {
+    display: inline-flex;
+    align-items: center;
+    background: rgba(8, 20, 36, 0.88);
+    border: 1px solid rgba(0, 212, 255, 0.4);
+    border-radius: 6px;
+    padding: 0 6px 0 10px;
+    height: 34px;
+    box-sizing: border-box;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+    transition: all 0.2s ease;
+}
+
+.copilot-friend-search:focus-within {
+    border-color: #00d4ff;
+    box-shadow: 0 0 14px rgba(0, 212, 255, 0.35);
+    background: rgba(8, 20, 36, 0.96);
+}
+
+.copilot-friend-search input {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #ffffff;
+    font-family: 'Consolas', monospace;
+    font-size: 12px;
+    width: 140px;
+    height: 24px;
+    line-height: 24px;
+    padding: 0;
+    transition: width 0.2s ease;
+}
+
+.copilot-friend-search input:focus {
+    width: 170px;
+}
+
+.copilot-friend-search input::placeholder {
+    color: #5d7796;
+    font-size: 11px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.top-btn-friend-search {
+    background: rgba(0, 212, 255, 0.15);
+    border: 1px solid rgba(0, 212, 255, 0.35);
+    color: #00d4ff;
+    border-radius: 4px;
+    height: 24px;
+    width: 26px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    font-size: 12px;
+    cursor: pointer;
+    line-height: 1;
+    transition: all 0.15s ease;
+}
+
+.top-btn-friend-search:hover {
+    background: rgba(0, 212, 255, 0.35);
+    border-color: #00d4ff;
+    color: #ffffff;
+    transform: scale(1.06);
+}
+
+/* Universal HUD Toast */
+.cmdr-toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(30px);
+    background: rgba(8, 20, 36, 0.94);
+    border: 1px solid #00d4ff;
+    color: #e2f1ff;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+    z-index: 100000;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.25s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.8), 0 0 15px rgba(0, 212, 255, 0.4);
+    backdrop-filter: blur(10px);
+    white-space: nowrap;
+}
+
+.cmdr-toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.cmdr-toast.error {
+    border-color: #ff4d6d;
+    color: #ffccd5;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.8), 0 0 15px rgba(255, 77, 109, 0.4);
+}
+
+/* Friend Located HUD Popup Card */
+.friend-found-hud-card {
+    position: relative;
+    width: 100%;
+    box-sizing: border-box;
+    background: rgba(8, 20, 36, 0.96);
+    border: 1px solid #00d4ff;
+    border-radius: 6px;
+    padding: 12px 14px;
+    box-shadow: 0 10px 35px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0, 212, 255, 0.35);
+    backdrop-filter: blur(12px);
+    animation: fadeInHud 0.25s ease;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    pointer-events: auto;
+}
+
+@keyframes fadeInHud {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.friend-hud-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    border-bottom: 1px solid rgba(0, 212, 255, 0.25);
+    padding-bottom: 6px;
+}
+
+.friend-hud-title {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #00d4ff;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.friend-hud-close {
+    background: transparent;
+    border: none;
+    color: #7b9bbd;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+}
+
+.friend-hud-close:hover {
+    color: #fff;
+}
+
+.friend-hud-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    margin-bottom: 4px;
+    color: #8da4be;
+}
+
+.friend-hud-val {
+    color: #fff;
+    font-weight: bold;
+    font-family: 'Consolas', monospace;
+}
+
+.friend-hud-actions {
+    margin-top: 10px;
+    display: flex;
+    gap: 8px;
+}
+
+.btn-friend-hud-view {
+    flex: 1;
+    background: rgba(0, 212, 255, 0.18);
+    border: 1px solid #00d4ff;
+    color: #00d4ff;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    text-align: center;
+    text-decoration: none;
+    transition: all 0.15s ease;
+}
+
+.btn-friend-hud-view:hover {
+    background: #00d4ff;
+    color: #02060e;
 }
 
 /* Backdrop Overlay */

@@ -26,7 +26,15 @@ public class CopilotDatabaseService {
 
     private static final Logger log = LoggerFactory.getLogger(CopilotDatabaseService.class);
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private final String dbUrl = CmdrScanService.resolveDbUrl();
+    private final String dbUrl;
+
+    public CopilotDatabaseService() {
+        this(CmdrScanService.resolveDbUrl());
+    }
+
+    public CopilotDatabaseService(String dbUrl) {
+        this.dbUrl = (dbUrl != null && !dbUrl.isBlank()) ? dbUrl : CmdrScanService.resolveDbUrl();
+    }
 
     @PostConstruct
     public void init() {
@@ -137,6 +145,35 @@ public class CopilotDatabaseService {
 
         // 6. Migra cache/stratum_candidates_cache.json
         migrateStratumCandidates();
+
+        // 7. Limpeza dos arquivos e pastas JSON legados já persistidos no SQLite
+        cleanupLegacyJsonFiles();
+    }
+
+    private void cleanupLegacyJsonFiles() {
+        String[] legacyFiles = {
+            "cache/discovered_systems.json",
+            "cache/player_planet_history.json",
+            "cache/surface_features_history.json",
+            "cache/stratum_candidates_cache.json"
+        };
+        for (String path : legacyFiles) {
+            File f = new File(path);
+            if (f.exists()) {
+                f.delete();
+            }
+        }
+        String[] legacyDirs = {"cache/systems", "cache/cubes"};
+        for (String dirPath : legacyDirs) {
+            File dir = new File(dirPath);
+            if (dir.exists() && dir.isDirectory()) {
+                File[] children = dir.listFiles();
+                if (children != null) {
+                    for (File c : children) c.delete();
+                }
+                dir.delete();
+            }
+        }
     }
 
     private void migrateDiscoveredSystems() {
@@ -631,6 +668,15 @@ public class CopilotDatabaseService {
             log.debug("Erro ao carregar cubos do SQLite: {}", e.getMessage());
         }
         return map;
+    }
+
+    public void clearCubeCache() {
+        try (Connection conn = getConnection(); Statement st = conn.createStatement()) {
+            st.executeUpdate("DELETE FROM copilot_cube_cache");
+            log.info("🧊 [CUBE CACHE] Cache de cubos estelares limpo no SQLite.");
+        } catch (SQLException e) {
+            log.warn("Erro ao limpar cache de cubos do SQLite: {}", e.getMessage());
+        }
     }
 
     // =========================================================================

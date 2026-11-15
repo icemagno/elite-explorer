@@ -215,6 +215,22 @@ public class EddnPublisherService {
         return message;
     }
 
+    public String getCommanderName() {
+        return commanderName;
+    }
+
+    public String getUploaderId() {
+        return computeUploaderId();
+    }
+
+    public String getShortUploaderId() {
+        String id = computeUploaderId();
+        if (id != null && id.length() >= 6) {
+            return (id.substring(0, 3) + "-" + id.substring(id.length() - 3)).toUpperCase();
+        }
+        return id != null ? id.toUpperCase() : "UNKNOWN";
+    }
+
     private String computeUploaderId() {
         String name = (commanderName != null && !commanderName.isBlank()) ? commanderName.trim() : "EliteExplorerCopilot";
         try {
