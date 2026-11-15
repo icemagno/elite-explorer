@@ -768,11 +768,8 @@ function pinStarCard(star) {
         <div style="font-size: 18px; font-weight: bold; color: #fff; margin-top: 4px;">
             ${star.name}
         </div>
-        <div style="display: flex; gap: 6px; margin-top: 6px;">
-            <button class="copy-btn" style="flex: 1; margin-top: 0;" onclick="navigator.clipboard.writeText('${star.name}')">
-                ${tr('galaxy.copy')}
-            </button>
-            <a href="/system-orrery.html?system=${encodeURIComponent(star.name)}" style="flex: 1; text-decoration: none; background: rgba(255,170,0,0.15); border: 1px solid rgba(255,170,0,0.45); color: #ffaa00; font-size: 11px; font-weight: bold; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; gap: 4px; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,170,0,0.28)'" onmouseout="this.style.background='rgba(255,170,0,0.15)'">
+        <div style="margin-top: 6px;">
+            <a href="/system-orrery.html?system=${encodeURIComponent(star.name)}" style="width: 100%; box-sizing: border-box; text-decoration: none; background: rgba(255,170,0,0.15); border: 1px solid rgba(255,170,0,0.45); color: #ffaa00; font-size: 11px; font-weight: bold; border-radius: 4px; padding: 6px 0; display: inline-flex; align-items: center; justify-content: center; gap: 4px; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,170,0,0.28)'" onmouseout="this.style.background='rgba(255,170,0,0.15)'">
                 ${tr('galaxy.system_3d')}
             </a>
         </div>
