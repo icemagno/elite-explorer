@@ -9,7 +9,8 @@
 ---
 <img width="1905" height="1065" alt="002" src="https://github.com/user-attachments/assets/809c7930-f137-4f99-97ed-1eb8f8535de0" />
 ---
-<img width="1907" height="1070" alt="003" src="https://github.com/user-attachments/assets/eac04c8f-a04c-4d34-86da-296bd72b8319" />
+<img width="1383" height="777" alt="scanner-3d" src="https://github.com/user-attachments/assets/950e356e-2897-4ff7-81db-7dba08dac9c4" />
+
 ---
 
 ## Key Features
