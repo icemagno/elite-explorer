@@ -60,14 +60,6 @@
                 <span id="edsmSyncDisplay" style="display:none;"></span>
             </div>
 
-            <!-- Card do Anon ID do Piloto (EDDN) -->
-            <div id="copilotAnonCard" class="copilot-anon-card" data-i18n-title="nav.anon_card_title" title="${tr('nav.anon_card_title')}">
-                <span class="top-anon-icon">🆔</span>
-                <span class="top-anon-lbl" data-i18n="nav.anon_lbl">${tr('nav.anon_lbl')}</span>
-                <span class="top-anon-val" id="topAnonCode">---·---</span>
-                <button id="topBtnCopyAnon" class="top-btn-copy-anon" type="button" data-i18n-title="nav.copy_anon_title" title="${tr('nav.copy_anon_title')}">📋</button>
-            </div>
-
             <!-- Campo de Busca de Amigo com Lupa -->
             <div class="copilot-friend-search" id="copilotFriendSearch">
                 <input type="text" id="topFriendInput" data-i18n-placeholder="nav.friend_search_ph" placeholder="${tr('nav.friend_search_ph')}" maxlength="36" autocomplete="off" spellcheck="false" data-i18n-title="nav.friend_search_title" title="${tr('nav.friend_search_title')}">
@@ -111,6 +103,13 @@
                 <div class="pilot-row">
                     <span class="pilot-label" data-i18n="nav.system_label">${tr('nav.system_label')}</span>
                     <span id="sidebarSysName" class="pilot-val sys-cyan">...</span>
+                </div>
+                <div class="pilot-row">
+                    <span class="pilot-label" data-i18n="nav.anon_lbl">${tr('nav.anon_lbl')}</span>
+                    <span class="pilot-val" style="display: inline-flex; align-items: center; justify-content: flex-end; gap: 6px;">
+                        <span id="sidebarAnonCode" style="color: #2bfca8; font-family: 'Consolas', monospace; font-weight: bold; font-size: 12px; letter-spacing: 0.5px;">---·---</span>
+                        <button id="sidebarBtnCopyAnon" class="top-btn-copy-anon" type="button" data-i18n-title="nav.copy_anon_title" title="${tr('nav.copy_anon_title')}" style="padding: 2px 6px; font-size: 11px; cursor: pointer; border-radius: 4px; background: rgba(0, 212, 255, 0.12); border: 1px solid rgba(0, 212, 255, 0.35); color: #00d4ff; line-height: 1;">📋</button>
+                    </span>
                 </div>
                 <div class="pilot-row">
                     <span class="pilot-label">EDSM</span>
@@ -453,7 +452,7 @@
             if (!res.ok) return;
             const data = await res.json();
             myAnonIdentity = data;
-            const codeEl = document.getElementById('topAnonCode');
+            const codeEl = document.getElementById('sidebarAnonCode') || document.getElementById('topAnonCode');
             if (codeEl && data.shortId) {
                 codeEl.textContent = data.shortId;
             }
@@ -463,10 +462,10 @@
     }
 
     function copyAnonId() {
-        const idToCopy = myAnonIdentity?.shortId || document.getElementById('topAnonCode')?.textContent;
+        const idToCopy = myAnonIdentity?.shortId || document.getElementById('sidebarAnonCode')?.textContent || document.getElementById('topAnonCode')?.textContent;
         if (!idToCopy || idToCopy.includes('---')) return;
 
-        const copyBtn = document.getElementById('topBtnCopyAnon');
+        const copyBtn = document.getElementById('sidebarBtnCopyAnon') || document.getElementById('topBtnCopyAnon');
         const origText = copyBtn ? copyBtn.textContent : '📋';
 
         navigator.clipboard.writeText(idToCopy).then(() => {
@@ -496,6 +495,11 @@
             ? `[${data.x.toFixed(1)}, ${data.y.toFixed(1)}, ${data.z.toFixed(1)}]`
             : tr('nav.friend_hud_unknown_coords');
 
+        const isCmdrScanPage = window.location.pathname.toLowerCase().includes('cmdrscan');
+        const actionBtnHtml = isCmdrScanPage
+            ? `<button type="button" class="btn-friend-hud-view" id="btnFocusFriendOnMap">${tr('nav.friend_hud_btn_focus')}</button>`
+            : `<a href="/cmdrscan.html?friend=${encodeURIComponent(shortId)}" class="btn-friend-hud-view">${tr('nav.friend_hud_btn_map')}</a>`;
+
         card.innerHTML = `
             <div class="friend-hud-header">
                 <span class="friend-hud-title">${tr('nav.friend_hud_title')}</span>
@@ -518,7 +522,7 @@
                 <span class="friend-hud-val" style="color: #8da4be;">${timeStr} (${data.event || 'EDDN'})</span>
             </div>
             <div class="friend-hud-actions">
-                <a href="/cmdrscan.html?friend=${encodeURIComponent(shortId)}" class="btn-friend-hud-view">${tr('nav.friend_hud_btn_map')}</a>
+                ${actionBtnHtml}
             </div>
         `;
 
@@ -534,6 +538,18 @@
         const btnClose = card.querySelector('#btnCloseFriendHud');
         if (btnClose) {
             btnClose.addEventListener('click', () => card.remove());
+        }
+
+        const btnFocus = card.querySelector('#btnFocusFriendOnMap');
+        if (btnFocus) {
+            btnFocus.addEventListener('click', () => {
+                if (typeof window._centerMapOn === 'function' && data.normU != null && data.normV != null) {
+                    window._centerMapOn(data.normU, data.normV);
+                    if (typeof window._showFriendMarker === 'function') {
+                        window._showFriendMarker(data);
+                    }
+                }
+            });
         }
 
         // Auto fecha após 15 segundos se não houver interação
@@ -689,15 +705,18 @@
         document.addEventListener('elite-i18n-changed', handleLangChange);
 
         // Anon ID Card & Copy
-        const anonCard = document.getElementById('copilotAnonCard');
-        const btnCopyAnon = document.getElementById('topBtnCopyAnon');
-        if (anonCard) {
-            anonCard.addEventListener('click', () => {
+        const btnCopyAnon = document.getElementById('sidebarBtnCopyAnon') || document.getElementById('topBtnCopyAnon');
+        if (btnCopyAnon) {
+            btnCopyAnon.addEventListener('click', (e) => {
+                e.stopPropagation();
                 copyAnonId();
             });
         }
-        if (btnCopyAnon) {
-            btnCopyAnon.addEventListener('click', (e) => {
+        const anonCodeEl = document.getElementById('sidebarAnonCode');
+        if (anonCodeEl) {
+            anonCodeEl.style.cursor = 'pointer';
+            anonCodeEl.title = tr('nav.anon_card_title');
+            anonCodeEl.addEventListener('click', (e) => {
                 e.stopPropagation();
                 copyAnonId();
             });

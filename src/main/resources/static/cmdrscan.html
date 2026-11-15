@@ -2062,11 +2062,15 @@
                 if (u === undefined || v === undefined) return;
                 const vw = viewport.clientWidth;
                 const vh = viewport.clientHeight;
-                scale = Math.max(scale, 2.2);
+                scale = Math.min(maxScale, Math.max(scale, baseFitScale * 4.5));
                 posX = (vw / 2) - (u * STAGE_SIZE * scale);
                 posY = (vh / 2) - (v * STAGE_SIZE * scale);
+                stage.style.transition = 'transform 0.45s cubic-bezier(0.16, 1, 0.3, 1)';
                 applyTransform();
-                scheduleHeatmapRerender();
+                scheduleHeatmapRerender(450);
+                setTimeout(() => {
+                    stage.style.transition = 'none';
+                }, 480);
             }
             window._centerMapOn = centerMapOn;
 

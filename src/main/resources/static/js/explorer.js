@@ -858,11 +858,8 @@ function pinGlobalTrafficCard(sys) {
         <div style="font-size: 18px; font-weight: bold; color: #ffcc00; margin-top: 4px;">
             ${sys.name}
         </div>
-        <div style="display: flex; gap: 6px; margin-top: 6px;">
-            <button class="copy-btn" style="flex: 1; margin-top: 0;" onclick="navigator.clipboard.writeText('${sys.name}')">
-                ${tr('galaxy.copy')}
-            </button>
-            <a href="/system-orrery.html?system=${encodeURIComponent(sys.name)}" style="flex: 1; text-decoration: none; background: rgba(255,170,0,0.15); border: 1px solid rgba(255,170,0,0.45); color: #ffaa00; font-size: 11px; font-weight: bold; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; gap: 4px; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,170,0,0.28)'" onmouseout="this.style.background='rgba(255,170,0,0.15)'">
+        <div style="margin-top: 6px;">
+            <a href="/system-orrery.html?system=${encodeURIComponent(sys.name)}" style="width: 100%; box-sizing: border-box; text-decoration: none; background: rgba(255,170,0,0.15); border: 1px solid rgba(255,170,0,0.45); color: #ffaa00; font-size: 11px; font-weight: bold; border-radius: 4px; padding: 6px 0; display: inline-flex; align-items: center; justify-content: center; gap: 4px; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,170,0,0.28)'" onmouseout="this.style.background='rgba(255,170,0,0.15)'">
                 ${tr('galaxy.system_3d')}
             </a>
         </div>
@@ -871,9 +868,6 @@ function pinGlobalTrafficCard(sys) {
         </div>
         <div style="color: #a4bedc; font-size: 12px; margin-top: 4px;">
             ${tr('galaxy.distance_ship')}: <b style="color: #fff;">${distPlayer.toFixed(1)} ly</b>
-        </div>
-        <div style="color: #6a88a8; font-size: 11px; font-family: monospace; margin-top: 4px;">
-            [X: ${sys.x.toFixed(1)}, Y: ${sys.y.toFixed(1)}, Z: ${sys.z.toFixed(1)}]
         </div>
     `;
     targetCardEl.style.display = 'block';
@@ -2392,14 +2386,29 @@ function addTrafficEventToLog(ev) {
     renderTrafficCard();
 }
 
-function onTrafficItemClick(sysName, shortId) {
-    if (shortId) {
-        const topInput = document.getElementById('topFriendInput');
-        if (topInput) {
-            topInput.value = shortId;
-        }
+function onTrafficItemClick(sysName, x, y, z) {
+    if (!sysName) return;
+    if (currentPinnedStarName && currentPinnedStarName.toLowerCase().trim() === sysName.toLowerCase().trim()) {
+        deselectTarget();
+        return;
     }
-    focusRadarSystem(sysName);
+    const star = allReceivedStars && allReceivedStars.find(s => s.name.toLowerCase().trim() === sysName.toLowerCase().trim());
+    if (star) {
+        pinStarCard(star);
+        if (currentCubeCenter && controls) {
+            controls.target.set(star.x - currentCubeCenter.x, star.y - currentCubeCenter.y, -(star.z - currentCubeCenter.z));
+        }
+    } else if (x != null && y != null && z != null) {
+        pinGlobalTrafficCard({
+            name: sysName,
+            x: Number(x),
+            y: Number(y),
+            z: Number(z),
+            count: 1
+        });
+    } else {
+        focusRadarSystem(sysName);
+    }
 }
 window.onTrafficItemClick = onTrafficItemClick;
 
@@ -2419,13 +2428,15 @@ function renderTrafficCard() {
         const timeAgo = formatTimeAgo(ev.timestamp);
         const exactTime = ev.timestamp ? new Date(ev.timestamp).toLocaleTimeString() : '';
         const escapedSys = ev.systemName.replace(/'/g, "\\'");
-        const shortId = ev.shortAnonId || (ev.uploaderId && ev.uploaderId.length >= 6 ? (ev.uploaderId.substring(0, 3) + '-' + ev.uploaderId.substring(ev.uploaderId.length - 3)).toUpperCase() : '');
+        const evX = (ev.x != null && !isNaN(ev.x)) ? Number(ev.x) : 'null';
+        const evY = (ev.y != null && !isNaN(ev.y)) ? Number(ev.y) : 'null';
+        const evZ = (ev.z != null && !isNaN(ev.z)) ? Number(ev.z) : 'null';
 
         return `
             <div style="background: rgba(0,0,0,0.35); border-left: 2px solid ${arrowColor}; border-radius: 3px; padding: 5px 8px; font-size: 11px; cursor: pointer; transition: background 0.2s; display: flex; justify-content: space-between; align-items: center;"
                  onmouseover="this.style.background='rgba(0,212,255,0.08)';"
                  onmouseout="this.style.background='rgba(0,0,0,0.35)';"
-                 onclick="onTrafficItemClick('${escapedSys}', '${shortId}')"
+                 onclick="onTrafficItemClick('${escapedSys}', ${evX}, ${evY}, ${evZ})"
                  title="${tr('galaxy.focus_system_title', ev.systemName)}">
                 <div style="display: flex; align-items: center; gap: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;">
                     <span style="color: ${arrowColor}; font-weight: 900; font-size: 13px; line-height: 1; flex-shrink: 0;">${arrowIcon}</span>
@@ -2512,14 +2523,6 @@ async function pollTrafficEvents() {
                 }
                 addTrafficEventToLog(ev);
 
-                // Preenche o campo de busca com o ID reduzido do comandante recebido no evento
-                const shortId = ev.shortAnonId || (ev.uploaderId && ev.uploaderId.length >= 6 ? (ev.uploaderId.substring(0, 3) + '-' + ev.uploaderId.substring(ev.uploaderId.length - 3)).toUpperCase() : null);
-                if (shortId) {
-                    const topInput = document.getElementById('topFriendInput');
-                    if (topInput) {
-                        topInput.value = shortId;
-                    }
-                }
                 const insideCube = isTrafficEventInsideCube(ev);
                 if (insideCube && (!isInitial || (Date.now() - ev.timestamp < 10000))) {
                     triggerJumpBeam(ev);

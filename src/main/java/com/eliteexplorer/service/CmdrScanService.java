@@ -655,16 +655,25 @@ public class CmdrScanService {
                     String shortId = (fullId.length() >= 6)
                             ? (fullId.substring(0, 3) + "-" + fullId.substring(fullId.length() - 3)).toUpperCase()
                             : fullId.toUpperCase();
+                    double x = rs.getDouble("x");
+                    double y = rs.getDouble("y");
+                    double z = rs.getDouble("z");
+                    double normU = rs.getDouble("norm_u");
+                    double normV = rs.getDouble("norm_v");
+                    if ((normU == 0.0 && normV == 0.0) && (x != 0.0 || z != 0.0)) {
+                        normU = 0.50 + ((x - SAG_A_X) * SCALE_PER_LY);
+                        normV = 0.50 - ((z - SAG_A_Z) * SCALE_PER_LY);
+                    }
                     Map<String, Object> data = new HashMap<>();
                     data.put("found", true);
                     data.put("uploaderId", fullId);
                     data.put("shortId", shortId);
                     data.put("systemName", rs.getString("system_name"));
-                    data.put("x", rs.getDouble("x"));
-                    data.put("y", rs.getDouble("y"));
-                    data.put("z", rs.getDouble("z"));
-                    data.put("normU", rs.getDouble("norm_u"));
-                    data.put("normV", rs.getDouble("norm_v"));
+                    data.put("x", x);
+                    data.put("y", y);
+                    data.put("z", z);
+                    data.put("normU", normU);
+                    data.put("normV", normV);
                     data.put("timestamp", rs.getLong("timestamp"));
                     data.put("ageSeconds", (System.currentTimeMillis() - rs.getLong("timestamp")) / 1000);
                     return data;
