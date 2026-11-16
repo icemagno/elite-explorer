@@ -144,11 +144,11 @@
             overflow-y: auto;
         }
 
-        /* Left Stations Card */
+        /* Left Stations & Stratum Card */
         #current-stations-card {
             width: 100%;
             box-sizing: border-box;
-            border-left: 3px solid #ffaa33;
+            border-left: 3px solid #00d4ff;
             max-height: calc(100vh - 160px);
             overflow-y: auto;
         }
@@ -674,16 +674,37 @@
             </div>
         </div>
 
-        <!-- Left: Current System Stations (Where to Dock / Night Rest) -->
+        <!-- Left: Current System (Stratum & Safe Docking) -->
         <div id="current-stations-card" class="hud-panel-glass">
-            <div class="card-header-row" style="margin-bottom: 4px;">
+            <div class="card-header-row" style="margin-bottom: 6px;">
                 <div>
-                    <span style="font-size: 11px; background: rgba(255,170,51,0.2); color: #ffaa33; padding: 2px 6px; border-radius: 3px; font-weight: bold; letter-spacing: 0.5px;" data-i18n="galaxy.safe_docking">⚓ WHERE TO DOCK</span>
-                    <div id="stationsSystemTitle" style="font-size: 13px; font-weight: bold; color: #fff; margin-top: 3px;" data-i18n="galaxy.current_system">Sistema Atual</div>
+                    <span style="font-size: 11px; background: rgba(0,212,255,0.2); color: #00d4ff; padding: 2px 6px; border-radius: 3px; font-weight: bold; letter-spacing: 0.5px;" data-i18n="galaxy.current_system_badge">📍 SISTEMA ATUAL</span>
+                    <div id="stationsSystemTitle" style="font-size: 14px; font-weight: bold; color: #fff; margin-top: 3px;" data-i18n="galaxy.current_system">Sistema Atual</div>
+                </div>
+                <a id="btnCurrentSystemOrrery" href="/system-orrery.html" style="font-size: 11px; color: #ffaa00; text-decoration: none; background: rgba(255,170,0,0.12); border: 1px solid rgba(255,170,0,0.35); padding: 3px 8px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,170,0,0.25)'" onmouseout="this.style.background='rgba(255,170,0,0.12)'" title="Abrir Orrery 3D do Sistema Atual">
+                    <span>🪐</span> <span>Orrery 3D</span>
+                </a>
+            </div>
+
+            <!-- Seção de Stratum no Sistema Atual -->
+            <div id="currentSystemStratumContainer" style="margin-top: 6px; border-top: 1px solid rgba(43,252,168,0.25); padding-top: 6px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                    <span style="font-size: 11px; font-weight: bold; color: #2bfca8; letter-spacing: 0.5px;" data-i18n="galaxy.stratum_in_system">🪐 STRATUM NO SISTEMA</span>
+                    <span id="currentSystemStratumCount" style="font-size: 10px; color: #8da4be; font-family: monospace;"></span>
+                </div>
+                <div id="currentSystemStratumList" style="display: flex; flex-direction: column; gap: 4px;">
+                    <div style="color: #6a88a8; font-size: 11px; font-style: italic;">Consultando corpos com Stratum...</div>
                 </div>
             </div>
-            <div id="currentStationsList" style="display: flex; flex-direction: column; gap: 5px; margin-top: 6px;">
-                <div style="color: #6a88a8; font-size: 11px; font-style: italic;" data-i18n="galaxy.querying_stations">Consultando estações do sistema...</div>
+
+            <!-- Seção Onde Docar (Estações Orbitais) -->
+            <div id="currentSystemDockingContainer" style="margin-top: 8px; border-top: 1px solid rgba(255,170,51,0.25); padding-top: 6px;">
+                <div style="font-size: 11px; font-weight: bold; color: #ffaa33; letter-spacing: 0.5px; margin-bottom: 4px;" data-i18n="galaxy.safe_docking">
+                    ⚓ ONDE DOCAR
+                </div>
+                <div id="currentStationsList" style="display: flex; flex-direction: column; gap: 5px;">
+                    <div style="color: #6a88a8; font-size: 11px; font-style: italic;" data-i18n="galaxy.querying_stations">Consultando estações do sistema...</div>
+                </div>
             </div>
         </div>
     </div>
@@ -704,7 +725,7 @@
         <div id="stratum-radar-card" class="hud-panel-glass">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                 <div style="font-size: 11px; font-weight: bold; color: #2bfca8; letter-spacing: 0.5px; text-transform: uppercase;" data-i18n="galaxy.top3_stratum">
-                    🪐 TOP 3 STRATUM PRÓXIMAS
+                    🪐 TOP 5 STRATUM PRÓXIMAS
                 </div>
                 <span id="radarCountBadge" style="font-size: 10px; color: #8da4be; font-family: monospace;">0 no cubo</span>
             </div>
@@ -803,28 +824,63 @@
             <canvas id="surface-three-canvas"></canvas>
         </div>
 
-        <!-- Topo Central: Bússola Holográfica & Barra de Modos de Visão -->
-        <div style="position: absolute; top: 14px; left: 50%; transform: translateX(-50%); z-index: 1010; display: flex; flex-direction: column; align-items: center; gap: 6px;">
-            <!-- Bússola Holográfica & Fita de Rumo -->
-            <div class="hud-panel-glass" style="width: 340px; padding: 5px 14px; border-top: 2px solid #2bfca8; border-radius: 6px; display: flex; flex-direction: column; align-items: center; gap: 3px;">
-                <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
-                    <span style="font-size: 9px; color: #8da4be; font-weight: bold; letter-spacing: 0.5px;" data-i18n="surface.compass_label">🧭 BÚSSOLA / RUMO</span>
-                    <span id="surfaceHeadingReadout" style="font-size: 13px; font-weight: bold; color: #2bfca8; font-family: monospace;">---</span>
-                </div>
-                <!-- Fita graduada da bússola com agulha central -->
-                <div style="width: 100%; height: 22px; background: rgba(0,0,0,0.5); border: 1px solid rgba(0,212,255,0.25); border-radius: 4px; position: relative; overflow: hidden;">
-                    <!-- Marcador central fixo -->
-                    <div style="position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; background: #2bfca8; box-shadow: 0 0 8px #2bfca8; z-index: 2; transform: translateX(-50%);"></div>
-                    <div style="position: absolute; top: 1px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 5px solid #2bfca8; z-index: 3;"></div>
-                    <!-- Fita de escala deslizante -->
-                    <div id="surfaceCompassTape" style="position: absolute; top: 0; height: 100%; width: 2400px; display: flex; align-items: center; font-family: monospace; font-size: 11px; color: #a4bedc; transition: transform 0.15s linear;">
-                        <!-- Gerado dinamicamente via JS -->
+        <!-- Topo Central: HUD Integrado de Superfície -->
+        <div style="position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 1010; display: flex; flex-direction: column; align-items: center; gap: 6px; width: max-content; max-width: 96vw;">
+            
+            <!-- Linha Superior: Esquerda (Planeta/Sistema + Gravidade) | Centro (Bússola) | Direita (Atmosfera + Pressão) -->
+            <div style="display: flex; align-items: stretch; justify-content: center; gap: 8px;">
+                
+                <!-- Lado Esquerdo da Bússola: Corpo Celeste / Sistema + Gravidade -->
+                <div class="hud-panel-glass" style="display: flex; align-items: center; gap: 10px; padding: 4px 12px; border-radius: 6px; border-top: 2px solid #00d4ff; min-height: 44px;">
+                    <div style="display: flex; flex-direction: column; justify-content: center; max-width: 220px;">
+                        <div style="display: flex; align-items: center; gap: 4px;">
+                            <span style="font-size: 8.5px; color: #8da4be; font-weight: bold; letter-spacing: 0.5px; text-transform: uppercase;" data-i18n="surface.body_label">🪐 CORPO CELESTE</span>
+                            <span id="surfaceSystemName" style="font-size: 8.5px; color: #00d4ff; font-family: monospace;"></span>
+                        </div>
+                        <span id="surfacePlanetName" style="font-size: 12.5px; font-weight: bold; color: #fff; font-family: monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">---</span>
+                    </div>
+                    <div style="width: 1px; height: 24px; background: rgba(255,255,255,0.15);"></div>
+                    <div style="display: flex; flex-direction: column; justify-content: center; min-width: 44px;">
+                        <span style="font-size: 8.5px; color: #8da4be; font-weight: bold; letter-spacing: 0.5px; text-transform: uppercase;" data-i18n="surface.gravity_label">⚖️ GRAVIDADE</span>
+                        <span id="surfaceGravityText" style="font-size: 12.5px; font-weight: bold; color: #ffaa00; font-family: monospace; white-space: nowrap;">---</span>
                     </div>
                 </div>
+
+                <!-- Centro: Bússola Holográfica & Fita de Rumo -->
+                <div class="hud-panel-glass" style="width: 320px; padding: 4px 12px; border-top: 2px solid #2bfca8; border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 44px;">
+                    <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+                        <span style="font-size: 8.5px; color: #8da4be; font-weight: bold; letter-spacing: 0.5px;" data-i18n="surface.compass_label">🧭 BÚSSOLA / RUMO</span>
+                        <span id="surfaceHeadingReadout" style="font-size: 12px; font-weight: bold; color: #2bfca8; font-family: monospace;">---</span>
+                    </div>
+                    <!-- Fita graduada da bússola com agulha central -->
+                    <div style="width: 100%; height: 20px; background: rgba(0,0,0,0.5); border: 1px solid rgba(0,212,255,0.25); border-radius: 4px; position: relative; overflow: hidden;">
+                        <!-- Marcador central fixo -->
+                        <div style="position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; background: #2bfca8; box-shadow: 0 0 8px #2bfca8; z-index: 2; transform: translateX(-50%);"></div>
+                        <div style="position: absolute; top: 1px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 5px solid #2bfca8; z-index: 3;"></div>
+                        <!-- Fita de escala deslizante -->
+                        <div id="surfaceCompassTape" style="position: absolute; top: 0; height: 100%; width: 2400px; display: flex; align-items: center; font-family: monospace; font-size: 11px; color: #a4bedc; transition: transform 0.15s linear;">
+                            <!-- Gerado dinamicamente via JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Lado Direito da Bússola: Atmosfera + Pressão -->
+                <div class="hud-panel-glass" style="display: flex; align-items: center; gap: 10px; padding: 4px 12px; border-radius: 6px; border-top: 2px solid #00d4ff; min-height: 44px;">
+                    <div style="display: flex; flex-direction: column; justify-content: center; max-width: 150px;">
+                        <span style="font-size: 8.5px; color: #8da4be; font-weight: bold; letter-spacing: 0.5px; text-transform: uppercase;" data-i18n="surface.atmosphere_label">💨 ATMOSFERA</span>
+                        <span id="surfaceAtmosphereText" style="font-size: 12px; font-weight: bold; color: #2bfca8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">---</span>
+                    </div>
+                    <div style="width: 1px; height: 24px; background: rgba(255,255,255,0.15);"></div>
+                    <div style="display: flex; flex-direction: column; justify-content: center; min-width: 48px;">
+                        <span style="font-size: 8.5px; color: #8da4be; font-weight: bold; letter-spacing: 0.5px; text-transform: uppercase;" data-i18n="surface.pressure_label">🌡️ PRESSÃO</span>
+                        <span id="surfacePressureText" style="font-size: 12px; font-weight: bold; color: #e0f4ff; font-family: monospace; white-space: nowrap;">---</span>
+                    </div>
+                </div>
+
             </div>
 
-            <!-- Modos de Escala & Foco de Câmera -->
-            <div class="hud-panel-glass" style="display: flex; gap: 5px; padding: 3px 6px; border-radius: 4px;">
+            <!-- Linha Inferior (Abaixo da Bússola): Demais Botões -->
+            <div class="hud-panel-glass" style="display: flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 4px;">
                 <button id="btnZoomGlobal" style="background: rgba(0,212,255,0.15); border: 1px solid rgba(0,212,255,0.4); color: #00d4ff; padding: 3px 8px; border-radius: 3px; font-size: 10px; font-weight: bold; cursor: pointer;" data-i18n="surface.zoom_global">
                     🌐 Global (-180°/+180°)
                 </button>
@@ -837,42 +893,20 @@
                 <button id="btnRecenterShip" data-i18n="surface.recenter_ship" data-i18n-title="surface.recenter_ship_title" title="Re-alinhar e focar a câmera na posição da nave/jogador" style="background: rgba(255,204,68,0.15); border: 1px solid rgba(255,204,68,0.4); color: #ffcc44; padding: 3px 8px; border-radius: 3px; font-size: 10px; font-weight: bold; cursor: pointer;">
                     📍 Focar Nave
                 </button>
-            </div>
-        </div>
-
-        <!-- Topo Direito: Cockpit Telemetria Planetária & Retorno ao Cubo -->
-        <div style="position: absolute; top: 14px; right: 20px; z-index: 1010; display: flex; align-items: center; gap: 8px;">
-            <!-- Painel Integrado: Corpo Celeste, Gravidade, Atmosfera e Pressão -->
-            <div class="hud-panel-glass" style="display: flex; align-items: center; gap: 12px; padding: 6px 14px; border-radius: 6px; border-bottom: 2px solid #00d4ff;">
-                <div style="display: flex; flex-direction: column;">
-                    <span style="font-size: 9px; color: #8da4be; font-weight: bold; letter-spacing: 0.5px;" data-i18n="surface.body_label">🪐 CORPO CELESTE</span>
-                    <span id="surfacePlanetName" style="font-size: 12.5px; font-weight: bold; color: #fff; font-family: monospace; white-space: nowrap;">---</span>
-                </div>
-                <div style="width: 1px; height: 24px; background: rgba(255,255,255,0.15);"></div>
-                <div style="display: flex; flex-direction: column;">
-                    <span style="font-size: 9px; color: #8da4be; font-weight: bold; letter-spacing: 0.5px;" data-i18n="surface.gravity_label">⚖️ GRAVIDADE</span>
-                    <span id="surfaceGravityText" style="font-size: 12.5px; font-weight: bold; color: #ffaa00; font-family: monospace;">---</span>
-                </div>
-                <div style="width: 1px; height: 24px; background: rgba(255,255,255,0.15);"></div>
-                <div style="display: flex; flex-direction: column;">
-                    <span style="font-size: 9px; color: #8da4be; font-weight: bold; letter-spacing: 0.5px;" data-i18n="surface.atmosphere_label">💨 ATMOSFERA</span>
-                    <span id="surfaceAtmosphereText" style="font-size: 12px; font-weight: bold; color: #2bfca8; white-space: nowrap; max-width: 130px; overflow: hidden; text-overflow: ellipsis;">---</span>
-                </div>
-                <div style="width: 1px; height: 24px; background: rgba(255,255,255,0.15);"></div>
-                <div style="display: flex; flex-direction: column;">
-                    <span style="font-size: 9px; color: #8da4be; font-weight: bold; letter-spacing: 0.5px;" data-i18n="surface.pressure_label">🌡️ PRESSÃO</span>
-                    <span id="surfacePressureText" style="font-size: 12px; font-weight: bold; color: #e0f4ff; font-family: monospace;">---</span>
-                </div>
+                <div style="width: 1px; height: 16px; background: rgba(255,255,255,0.2); margin: 0 2px;"></div>
+                <button id="btnToggleSurfaceVoice" data-i18n-title="surface.voice_title" title="Alternar avisos de voz de exobiologia" style="background: rgba(43,252,168,0.15); border: 1px solid rgba(43,252,168,0.45); color: #2bfca8; padding: 3px 8px; border-radius: 3px; font-size: 10px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: all 0.2s;">
+                    <span id="surfaceVoiceIcon">🔊</span> <span id="surfaceVoiceText" data-i18n="surface.voice_active">Voz Ativa</span>
+                </button>
+                <div style="width: 1px; height: 16px; background: rgba(255,255,255,0.2); margin: 0 2px;"></div>
+                <button id="btnBackToGalaxy" title="Voltar ao Cubo Galáctico 3D" style="color: #00d4ff; border: 1px solid rgba(0,212,255,0.45); background: rgba(0,212,255,0.15); font-weight: bold; cursor: pointer; padding: 3px 10px; border-radius: 3px; font-size: 10px; display: flex; align-items: center; gap: 5px; transition: all 0.2s; white-space: nowrap;" onmouseover="this.style.background='rgba(0,212,255,0.3)'" onmouseout="this.style.background='rgba(0,212,255,0.15)'">
+                    <span>🌌</span> <span data-i18n="nav.galaxy_cube">Cubo Galáctico</span>
+                </button>
             </div>
 
-            <!-- Botão de Voltar ao Cubo Galáctico 3D -->
-            <button id="btnBackToGalaxy" class="hud-panel-glass" title="Voltar ao Cubo Galáctico 3D" style="color: #00d4ff; border: 1px solid rgba(0,212,255,0.45); background: rgba(0,212,255,0.12); font-weight: bold; cursor: pointer; padding: 7px 12px; border-radius: 6px; font-size: 11px; display: flex; align-items: center; gap: 5px; transition: all 0.2s; white-space: nowrap;" onmouseover="this.style.background='rgba(0,212,255,0.25)'" onmouseout="this.style.background='rgba(0,212,255,0.12)'">
-                <span>🌌</span> <span data-i18n="nav.galaxy_cube">Cubo</span>
-            </button>
         </div>
 
         <!-- Esquerda: Altímetro & GPS de Superfície -->
-        <div class="hud-panel-glass" style="position: absolute; top: 65px; left: 20px; width: 260px; z-index: 1010; border-left: 3px solid #2bfca8;">
+        <div class="hud-panel-glass" style="position: absolute; top: 105px; left: 20px; width: 260px; z-index: 1010; border-left: 3px solid #2bfca8;">
             <div style="font-size: 11px; font-weight: bold; color: #2bfca8; margin-bottom: 8px; letter-spacing: 0.5px;" data-i18n="surface.altimeter_title">
                 📐 ALTÍMETRO & TELEMETRIA
             </div>
@@ -914,7 +948,7 @@
         </div>
 
         <!-- Esquerda Inferior: Hodômetro de Exobiologia & Diversidade Genética -->
-        <div id="surfaceBioPanel" class="hud-panel-glass" style="position: absolute; top: 330px; left: 20px; width: 260px; z-index: 1010; border-left: 3px solid #00ffaa;">
+        <div id="surfaceBioPanel" class="hud-panel-glass" style="position: absolute; top: 415px; left: 20px; width: 260px; z-index: 1010; border-left: 3px solid #00ffaa;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                 <div style="font-size: 11px; font-weight: bold; color: #00ffaa; letter-spacing: 0.5px;" data-i18n="surface.bio_title">
                     🧬 HODÔMETRO EXOBIOLOGIA

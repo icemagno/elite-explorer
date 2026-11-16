@@ -967,11 +967,26 @@ function updateSurfaceTelemetry(data) {
 
     // Telemetria do Topo (Ladeando a Bússola)
     const planetEl = document.getElementById('surfacePlanetName');
+    const systemEl = document.getElementById('surfaceSystemName');
     const gravEl = document.getElementById('surfaceGravityText');
     const atmEl = document.getElementById('surfaceAtmosphereText');
     const pressEl = document.getElementById('surfacePressureText');
 
-    if (planetEl) planetEl.textContent = data.bodyName || surfaceTr('surface.waiting_body');
+    if (planetEl) {
+        const bName = data.bodyName || surfaceTr('surface.waiting_body');
+        planetEl.textContent = bName;
+        planetEl.title = bName;
+    }
+    if (systemEl) {
+        const sys = data.currentSystem || data.starSystem || '';
+        if (sys && data.bodyName && !data.bodyName.toLowerCase().startsWith(sys.toLowerCase())) {
+            systemEl.textContent = `(${sys})`;
+            systemEl.title = sys;
+        } else {
+            systemEl.textContent = '';
+            systemEl.title = '';
+        }
+    }
     if (gravEl) gravEl.textContent = (data.surfaceGravity !== null && data.surfaceGravity !== undefined && data.surfaceGravity > 0)
         ? `${data.surfaceGravity.toFixed(2)} G`
         : '---';
@@ -990,6 +1005,7 @@ function updateSurfaceTelemetry(data) {
                 : '---';
         }
         atmEl.textContent = atm;
+        atmEl.title = atm;
     }
 
     // 7. Atualiza Exobiologia (Balizas, Círculos de Colônia e Hodômetro)
@@ -1079,38 +1095,144 @@ function createBioSampleBeacon(sample, pos) {
     return group;
 }
 
+// ==========================================
+// 🔊 SISTEMA DE ÁUDIO E VOZ DE SUPERFÍCIE (EXOBIOLOGIA)
+// ==========================================
+const SURFACE_VOICE_STORAGE_KEY = 'elite_explorer_surface_voice';
 let lastAnnouncedSampleKey = null;
 let wasOutsideSampleArea = null;
+let surfaceAudioCtx = null;
+let surfaceVoices = [];
 
 function isSurfaceAudioEnabled() {
     try {
-        return localStorage.getItem('elite_explorer_traffic_audio') !== '0';
+        const val = localStorage.getItem(SURFACE_VOICE_STORAGE_KEY);
+        if (val !== null) return val !== '0';
+        return true; // Padrão: sempre ativado
     } catch (_) {
         return true;
     }
 }
 
-function speakSurfaceAlert(text) {
-    if (!text || !isSurfaceAudioEnabled() || !('speechSynthesis' in window)) return;
+function setSurfaceAudioEnabled(enabled) {
     try {
-        const locale = window.i18n ? window.i18n.getLocale() : 'en-US';
-        window.speechSynthesis.cancel();
+        localStorage.setItem(SURFACE_VOICE_STORAGE_KEY, enabled ? '1' : '0');
+    } catch (_) {}
+    updateSurfaceVoiceButton();
+}
+
+function updateSurfaceVoiceButton() {
+    const btn = document.getElementById('btnToggleSurfaceVoice');
+    const icon = document.getElementById('surfaceVoiceIcon');
+    const text = document.getElementById('surfaceVoiceText');
+    if (!btn) return;
+    const enabled = isSurfaceAudioEnabled();
+    if (icon) icon.textContent = enabled ? '🔊' : '🔇';
+    if (text) {
+        text.textContent = enabled ? surfaceTr('surface.voice_active') : surfaceTr('surface.voice_muted');
+    }
+    btn.style.color = enabled ? '#2bfca8' : '#8da4be';
+    btn.style.borderColor = enabled ? 'rgba(43,252,168,0.5)' : 'rgba(255,255,255,0.15)';
+    btn.style.background = enabled ? 'rgba(43,252,168,0.15)' : 'rgba(255,255,255,0.05)';
+}
+
+function getSurfaceAudioContext() {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return null;
+    if (!surfaceAudioCtx) {
+        surfaceAudioCtx = new AudioCtx();
+    }
+    if (surfaceAudioCtx.state === 'suspended') {
+        surfaceAudioCtx.resume().catch(() => {});
+    }
+    return surfaceAudioCtx;
+}
+
+// Chime sonoro sci-fi imediato (Web Audio API) que sempre toca sem depender de voz instalada no SO
+function playSurfaceAlertChime() {
+    if (!isSurfaceAudioEnabled()) return;
+    try {
+        const ctx = getSurfaceAudioContext();
+        if (!ctx) return;
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        // Dois tons harmônicos de alerta HUD: D5 (587.33Hz) -> A5 (880.00Hz)
+        osc.frequency.setValueAtTime(587.33, now);
+        osc.frequency.setValueAtTime(880.00, now + 0.08);
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.exponentialRampToValueAtTime(0.22, now + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.30);
+    } catch (e) {
+        console.warn('Erro ao reproduzir chime sonoro de superfície:', e);
+    }
+}
+
+function initSurfaceVoices() {
+    if ('speechSynthesis' in window) {
+        surfaceVoices = window.speechSynthesis.getVoices() || [];
+        window.speechSynthesis.onvoiceschanged = () => {
+            surfaceVoices = window.speechSynthesis.getVoices() || [];
+        };
+    }
+}
+initSurfaceVoices();
+
+function speakSurfaceAlert(text) {
+    if (!text || !isSurfaceAudioEnabled()) return;
+
+    // Toca o chime HUD imediatamente como confirmação sonora instantânea
+    playSurfaceAlertChime();
+
+    if (!('speechSynthesis' in window)) return;
+    try {
         if (typeof window.speechSynthesis.resume === 'function') {
             window.speechSynthesis.resume();
         }
+
+        // Se já estiver falando a mesma mensagem, não duplica
+        if (window.__surfaceActiveUtterance && window.speechSynthesis.speaking) {
+            return;
+        }
+
+        const locale = window.i18n ? window.i18n.getLocale() : 'pt-BR';
         const utter = new SpeechSynthesisUtterance(text);
         utter.lang = locale;
-        const voices = window.speechSynthesis.getVoices ? window.speechSynthesis.getVoices() : [];
+
+        const voices = surfaceVoices.length ? surfaceVoices : (window.speechSynthesis.getVoices ? window.speechSynthesis.getVoices() : []);
         const langPrefix = locale.split('-')[0].toLowerCase();
-        const matchVoice = voices.find(v => v.lang && v.lang.toLowerCase() === locale.toLowerCase())
+        const matchVoice = voices.find(v => v.lang && v.lang.replace('_', '-').toLowerCase() === locale.toLowerCase())
             || voices.find(v => v.lang && v.lang.toLowerCase().startsWith(langPrefix));
-        if (matchVoice) utter.voice = matchVoice;
+        if (matchVoice) {
+            utter.voice = matchVoice;
+            utter.lang = matchVoice.lang;
+        }
+
         utter.rate = 1.05;
         utter.pitch = 1.0;
         utter.volume = 1.0;
+
+        // Mantém referência global persistente para prevenir o bug de Garbage Collection prematuro do Chromium
+        window.__surfaceActiveUtterance = utter;
+        utter.onend = () => {
+            if (window.__surfaceActiveUtterance === utter) {
+                window.__surfaceActiveUtterance = null;
+            }
+        };
+        utter.onerror = () => {
+            if (window.__surfaceActiveUtterance === utter) {
+                window.__surfaceActiveUtterance = null;
+            }
+        };
+
         window.speechSynthesis.speak(utter);
     } catch (e) {
-        console.warn('Erro na síntese de voz:', e);
+        console.warn('Erro na síntese de voz de superfície:', e);
     }
 }
 
@@ -1282,7 +1404,12 @@ function updateBioTelemetry(data, moved) {
             const sampleKey = `${lastSample.sampleNumber}_${lastSample.timestamp || ''}`;
             if (lastAnnouncedSampleKey !== sampleKey) {
                 lastAnnouncedSampleKey = sampleKey;
-                wasOutsideSampleArea = isOutsideArea;
+                if (isOutsideArea) {
+                    wasOutsideSampleArea = true;
+                    speakSurfaceAlert(surfaceTr('surface.bio_leaving_area_voice'));
+                } else {
+                    wasOutsideSampleArea = false;
+                }
             } else {
                 if (!wasOutsideSampleArea && isOutsideArea) {
                     speakSurfaceAlert(surfaceTr('surface.bio_leaving_area_voice'));
@@ -1565,9 +1692,11 @@ function showSurfaceView() {
     const cubeView = document.getElementById('viewport-container');
     const surfaceView = document.getElementById('surface-navigator-view');
     const btnSwitch = document.getElementById('btnSwitchToSurface');
+    const navTrigger = document.getElementById('copilotTopNavTrigger');
 
     if (cubeView) cubeView.style.display = 'none';
     if (surfaceView) surfaceView.style.display = 'block';
+    if (navTrigger) navTrigger.style.display = 'none';
     if (btnSwitch) {
         if (!document.getElementById('navSurfaceBadge')) {
             btnSwitch.innerHTML = `🪐 ${surfaceTr('nav.surface')}`;
@@ -1598,9 +1727,11 @@ function hideSurfaceView() {
     const cubeView = document.getElementById('viewport-container');
     const surfaceView = document.getElementById('surface-navigator-view');
     const btnSwitch = document.getElementById('btnSwitchToSurface');
+    const navTrigger = document.getElementById('copilotTopNavTrigger');
 
     if (surfaceView) surfaceView.style.display = 'none';
     if (cubeView) cubeView.style.display = 'block';
+    if (navTrigger) navTrigger.style.display = 'flex';
 
     if (window.location.search.includes('view=surface')) {
         try { history.replaceState(null, '', '/index.html'); } catch (e) {}
@@ -1794,6 +1925,19 @@ function initSurfaceNavigator() {
         btnRecenter.addEventListener('click', recenterCameraOnShip);
     }
 
+    const btnVoice = document.getElementById('btnToggleSurfaceVoice');
+    if (btnVoice) {
+        btnVoice.addEventListener('click', () => {
+            const newState = !isSurfaceAudioEnabled();
+            setSurfaceAudioEnabled(newState);
+            if (newState) {
+                getSurfaceAudioContext();
+                speakSurfaceAlert(surfaceTr('surface.voice_enabled_feedback'));
+            }
+        });
+    }
+    updateSurfaceVoiceButton();
+
     // Inicia stream SSE reativo instantâneo e polling de suporte
     setupSurfaceSseListener();
     setInterval(pollSurfaceTelemetry, 2500);
@@ -1801,6 +1945,7 @@ function initSurfaceNavigator() {
 
     window.addEventListener('elite:languageChanged', () => {
         updateLandingBeaconLabel();
+        updateSurfaceVoiceButton();
         if (lastSurfaceData) {
             handleSurfaceDataUpdate(lastSurfaceData);
         }

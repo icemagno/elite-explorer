@@ -51,7 +51,7 @@ public class StarSystemDTO {
     public boolean isHasStratumConfirmed() {
         if (stratumCandidates == null || stratumCandidates.isEmpty()) return false;
         for (StratumCandidateDTO c : stratumCandidates) {
-            if (c.isConfirmed()) return true;
+            if (c.isConfirmed() && !c.isAlreadyCollected() && !c.isAlreadyMapped()) return true;
         }
         return false;
     }
@@ -59,7 +59,7 @@ public class StarSystemDTO {
     public boolean isHasStratumCandidate() {
         if (stratumCandidates == null || stratumCandidates.isEmpty()) return false;
         for (StratumCandidateDTO c : stratumCandidates) {
-            if (!c.isConfirmed()) return true;
+            if (!c.isConfirmed() && !c.isAlreadyCollected() && !c.isAlreadyMapped()) return true;
         }
         return false;
     }

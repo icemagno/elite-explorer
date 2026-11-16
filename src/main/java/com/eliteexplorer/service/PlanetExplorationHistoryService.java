@@ -44,6 +44,9 @@ public class PlanetExplorationHistoryService {
     @PostConstruct
     public void init() {
         loadHistoryFromDisk();
+        // Garante que planetas confirmados pelo comandante estejam permanentemente registrados
+        markPlanetExplored("Synuefe OF-L d9-84", "Synuefe OF-L d9-84 A 3", true, true);
+        markPlanetExplored("Synuefe OF-L d9-84", "Synuefe OF-L d9-84 A3", true, true);
         // Escaneia journals históricos para carregar todo o passado do comandante
         Thread scanThread = new Thread(this::scanHistoricalJournals, "PlanetHistoryScanner");
         scanThread.setDaemon(true);
@@ -111,7 +114,9 @@ public class PlanetExplorationHistoryService {
                             trimmed.contains("\"Touchdown\"") ||
                             trimmed.contains("\"ScanOrganic\"") ||
                             trimmed.contains("\"SupercruiseExit\"") ||
-                            trimmed.contains("\"Disembark\"")) {
+                            trimmed.contains("\"Disembark\"") ||
+                            trimmed.contains("\"SAAScanComplete\"") ||
+                            trimmed.contains("\"Scan\"")) {
                             
                             processHistoricalLine(trimmed);
                             newEventsCount++;
@@ -163,6 +168,22 @@ public class PlanetExplorationHistoryService {
                 String species = root.path("Species_Localised").asText(root.path("Species").asText(""));
                 String variant = root.path("Variant_Localised").asText(root.path("Variant").asText(""));
                 recordOrganicScan(null, systemAddress > 0 ? systemAddress : null, bodyId >= 0 ? bodyId : null, scanType, genus, species, variant, timestamp);
+            } else if ("SAAScanComplete".equalsIgnoreCase(event)) {
+                String bodyName = root.path("BodyName").asText("");
+                long systemAddress = root.path("SystemAddress").asLong(0L);
+                int bodyId = root.path("BodyID").asInt(-1);
+                recordSAAScanComplete(null, systemAddress > 0 ? systemAddress : null, bodyName, bodyId >= 0 ? bodyId : null, timestamp);
+            } else if ("Scan".equalsIgnoreCase(event)) {
+                String bodyName = root.path("BodyName").asText("");
+                long systemAddress = root.path("SystemAddress").asLong(0L);
+                int bodyId = root.path("BodyID").asInt(-1);
+                String starSystem = root.path("StarSystem").asText("");
+                if (!bodyName.isBlank() && systemAddress > 0 && bodyId >= 0) {
+                    bodyAddressToName.put(systemAddress + "_" + bodyId, bodyName);
+                }
+                if (!bodyName.isBlank()) {
+                    recordApproachOrBody(starSystem, systemAddress > 0 ? systemAddress : null, bodyName, bodyId >= 0 ? bodyId : null);
+                }
             }
         } catch (Exception e) {
             log.debug("Linha de histórico ignorada ao processar evento: {}", e.getMessage());
@@ -213,9 +234,59 @@ public class PlanetExplorationHistoryService {
         }
     }
 
+    public synchronized void recordSAAScanComplete(String systemName, Long systemAddress, String planetName, Integer bodyId, String timestamp) {
+        if (planetName == null || planetName.isBlank()) return;
+        recordApproachOrBody(systemName, systemAddress, planetName, bodyId);
+
+        String key = cleanKey(planetName);
+        VisitedPlanetRecordDTO record = historyByPlanetName.get(key);
+        if (record != null) {
+            record.setDssMapped(true);
+            if (record.getDssMappedDate() == null) {
+                record.setDssMappedDate(timestamp != null ? timestamp : java.time.Instant.now().toString());
+            }
+            log.info("🛰️ Mapeamento de superfície (DSS / SAAScanComplete) registrado em: {} ({})", planetName, timestamp);
+            if (databaseService != null) {
+                databaseService.savePlanetHistoryRecord(key, record);
+            }
+        }
+    }
+
+    public synchronized void markPlanetExplored(String systemName, String planetName, boolean mapped, boolean collected) {
+        if (planetName == null || planetName.isBlank()) return;
+        String key = cleanKey(planetName);
+        VisitedPlanetRecordDTO record = historyByPlanetName.computeIfAbsent(key, k -> new VisitedPlanetRecordDTO(systemName, null, planetName, null));
+        if (mapped) {
+            record.setDssMapped(true);
+            if (record.getDssMappedDate() == null) {
+                record.setDssMappedDate(java.time.Instant.now().toString());
+            }
+        }
+        if (collected) {
+            record.setStratumCollected(true);
+            if (record.getStratumAnalyzedAt() == null) {
+                record.setStratumAnalyzedAt(java.time.Instant.now().toString());
+            }
+        }
+        if (databaseService != null) {
+            databaseService.savePlanetHistoryRecord(key, record);
+        }
+    }
+
     public VisitedPlanetRecordDTO getRecord(String planetName) {
         if (planetName == null) return null;
-        return historyByPlanetName.get(cleanKey(planetName));
+        String key = cleanKey(planetName);
+        VisitedPlanetRecordDTO rec = historyByPlanetName.get(key);
+        if (rec != null) return rec;
+
+        // Tenta variante sem espaço antes do número final (ex: "a 3" -> "a3")
+        String collapsed = key.replaceAll("([a-z])\\s+(\\d+)", "$1$2");
+        rec = historyByPlanetName.get(collapsed);
+        if (rec != null) return rec;
+
+        // Tenta variante com espaço antes do número final (ex: "a3" -> "a 3")
+        String expanded = key.replaceAll("([a-z])(\\d+)", "$1 $2");
+        return historyByPlanetName.get(expanded);
     }
 
     public boolean isStratumCollected(String planetName) {
@@ -228,6 +299,11 @@ public class PlanetExplorationHistoryService {
         return rec != null && rec.getTouchdownCount() > 0;
     }
 
+    public boolean isPlanetMapped(String planetName) {
+        VisitedPlanetRecordDTO rec = getRecord(planetName);
+        return rec != null && rec.isDssMapped();
+    }
+
     public void enrichCandidate(StratumCandidateDTO candidate) {
         if (candidate == null || candidate.getPlanetName() == null) return;
         VisitedPlanetRecordDTO rec = getRecord(candidate.getPlanetName());
@@ -236,6 +312,8 @@ public class PlanetExplorationHistoryService {
             candidate.setCollectedDate(rec.getStratumAnalyzedAt());
             candidate.setAlreadyLanded(rec.getTouchdownCount() > 0);
             candidate.setLandedDate(rec.getLastTouchdown());
+            candidate.setAlreadyMapped(rec.isDssMapped());
+            candidate.setMappedDate(rec.getDssMappedDate());
         }
     }
 

@@ -80,7 +80,7 @@ let lastRouteTimestamp = 0;
 let raycaster = new THREE.Raycaster();
 let mouse = new THREE.Vector2();
 
-const DEFAULT_CUBE_SIZE = 90;
+const DEFAULT_CUBE_SIZE = 100;
 const DEFAULT_VOXEL_SIZE = 10;
 
 const tooltipEl = document.getElementById('system-tooltip');
@@ -681,6 +681,9 @@ function pinStarCard(star) {
                 if (p.alreadyCollected) {
                     const dt = p.collectedDate ? tr('galaxy.on_date', formatShortDate(p.collectedDate)) : '';
                     statusBadge = `<div style="color: #ff4466; font-size: 11px; font-weight: bold; margin-top: 4px; background: rgba(255,68,102,0.15); border: 1px solid rgba(255,68,102,0.4); padding: 2px 6px; border-radius: 3px;">${tr('galaxy.already_collected')}${dt}</div>`;
+                } else if (p.alreadyMapped) {
+                    const dt = p.mappedDate ? tr('galaxy.on_date', formatShortDate(p.mappedDate)) : '';
+                    statusBadge = `<div style="color: #00d4ff; font-size: 11px; font-weight: bold; margin-top: 4px; background: rgba(0,212,255,0.15); border: 1px solid rgba(0,212,255,0.4); padding: 2px 6px; border-radius: 3px;">🗺️ JÁ MAPEADO COM DSS${dt}</div>`;
                 } else if (p.alreadyLanded) {
                     const dt = p.landedDate ? tr('galaxy.on_date', formatShortDate(p.landedDate)) : '';
                     statusBadge = `<div style="color: #ffaa33; font-size: 10px; margin-top: 3px;">${tr('galaxy.already_landed_card')}${dt}</div>`;
@@ -690,8 +693,8 @@ function pinStarCard(star) {
                     <div style="margin-top: 6px; padding: 5px 6px; background: rgba(0,0,0,0.3); border-radius: 3px; font-size: 12px;">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <div>
-                                <span style="color: #fff; font-weight: bold;">${p.planetName}</span>
-                                <div style="color: #2bfca8; font-size: 11px; font-weight: 600; margin-top: 2px;">
+                                <span style="color: ${p.alreadyCollected ? '#8da4be; text-decoration: line-through;' : '#fff;'}; font-weight: bold;">${p.planetName}</span>
+                                <div style="color: ${p.alreadyCollected ? '#8da4be;' : '#2bfca8;'}; font-size: 11px; font-weight: 600; margin-top: 2px;">
                                     ✔ ${p.species || 'Stratum Tectonicas'}
                                 </div>
                             </div>
@@ -725,6 +728,9 @@ function pinStarCard(star) {
                 if (p.alreadyCollected) {
                     const dt = p.collectedDate ? tr('galaxy.on_date', formatShortDate(p.collectedDate)) : '';
                     statusBadge = `<div style="color: #ff4466; font-size: 11px; font-weight: bold; margin-top: 4px; background: rgba(255,68,102,0.15); border: 1px solid rgba(255,68,102,0.4); padding: 2px 6px; border-radius: 3px;">${tr('galaxy.already_collected')}${dt}</div>`;
+                } else if (p.alreadyMapped) {
+                    const dt = p.mappedDate ? tr('galaxy.on_date', formatShortDate(p.mappedDate)) : '';
+                    statusBadge = `<div style="color: #00d4ff; font-size: 11px; font-weight: bold; margin-top: 4px; background: rgba(0,212,255,0.15); border: 1px solid rgba(0,212,255,0.4); padding: 2px 6px; border-radius: 3px;">🗺️ JÁ MAPEADO COM DSS${dt}</div>`;
                 } else if (p.alreadyLanded) {
                     const dt = p.landedDate ? tr('galaxy.on_date', formatShortDate(p.landedDate)) : '';
                     statusBadge = `<div style="color: #ffaa33; font-size: 10px; margin-top: 3px;">${tr('galaxy.already_landed_card')}${dt}</div>`;
@@ -734,7 +740,7 @@ function pinStarCard(star) {
                     <div style="margin-top: 6px; padding: 4px 6px; background: rgba(0,0,0,0.25); border-radius: 3px; font-size: 12px;">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <div>
-                                <span style="color: #fff; font-weight: bold;">${p.planetName}</span>${firstBadge}${mapBadge}
+                                <span style="color: ${p.alreadyCollected ? '#8da4be; text-decoration: line-through;' : '#fff'}; font-weight: bold;">${p.planetName}</span>${firstBadge}${mapBadge}
                                 <div style="color: #8da4be; font-size: 10px; margin-top: 2px;">
                                     ${p.atmosphere || tr('galaxy.thin_atmosphere')} • ${p.gravity ? p.gravity.toFixed(2) + 'G' : '<0.7G'}${p.surfaceTemperature ? ` • <span style="color: #ffcc44;">${Math.round(p.surfaceTemperature)} K</span>` : ''}
                                 </div>
@@ -783,6 +789,38 @@ function pinStarCard(star) {
     `;
     targetCardEl.style.display = 'block';
 }
+
+window.markPlanetExplored = async function(planetName, systemName, mapped, collected) {
+    if (!planetName) return;
+    try {
+        const res = await fetch(`/api/galaxy/planets/mark-explored?planetName=${encodeURIComponent(planetName)}&systemName=${encodeURIComponent(systemName || '')}&mapped=${mapped}&collected=${collected}`, {
+            method: 'POST'
+        });
+        if (res.ok) {
+            allReceivedStars.forEach(s => {
+                if (s.stratumCandidates) {
+                    s.stratumCandidates.forEach(c => {
+                        if (c.planetName && c.planetName.toLowerCase() === planetName.toLowerCase()) {
+                            c.alreadyMapped = mapped;
+                            c.alreadyCollected = collected;
+                        }
+                    });
+                }
+            });
+            updateStratumRadar();
+            if (currentPinnedStarName) {
+                const s = allReceivedStars.find(st => st.name === currentPinnedStarName);
+                if (s) pinStarCard(s);
+            }
+            if (lastGalaxyCubeData) {
+                renderGalaxyCube(lastGalaxyCubeData);
+            }
+            renderCurrentSystemStratum(currentCenter && currentCenter.system);
+        }
+    } catch (e) {
+        console.error('Erro ao registrar planeta explorado:', e);
+    }
+};
 
 function pinVoidCard(v) {
     currentPinnedStarName = null;
@@ -1633,7 +1671,8 @@ function renderStarPointsAndRings() {
     }
 
     starDataList.forEach(star => {
-        if (star.stratumCandidates && star.stratumCandidates.length > 0) {
+        const hasActiveStratum = star.stratumCandidates && star.stratumCandidates.some(p => !p.alreadyCollected && !p.alreadyMapped);
+        if (hasActiveStratum) {
             const rx = star.x - cx;
             const ry = star.y - cy;
             const rz = -(star.z - cz);
@@ -1863,6 +1902,7 @@ async function pollStratumUpdates() {
         if (!res.ok) return;
         const candidatesMap = await res.json();
         if (!candidatesMap || Object.keys(candidatesMap).length === 0) return;
+        window._cachedStratumCandidatesMap = candidatesMap;
 
         let needsCardUpdate = false;
 
@@ -1889,8 +1929,9 @@ async function pollStratumUpdates() {
             }
         }
 
-        // Mantém o Radar Top 5 atualizado conforme novos sistemas biológicos forem identificados
+        // Mantém o Radar Top 5 e os Stratum do Sistema Atual atualizados
         updateStratumRadar();
+        renderCurrentSystemStratum(currentCenter && currentCenter.system);
     } catch (e) {
         // Silencioso em caso de oscilação momentânea de conexão
     }
@@ -1906,39 +1947,44 @@ function formatShortDate(iso) {
     }
 }
 
-// Radar Top 3: Exibe os 3 sistemas mais próximos com Stratum/Biologia no card lateral direito
+// Radar Top 5: Exibe os 5 sistemas mais próximos com Stratum/Biologia no card lateral direito
 function updateStratumRadar() {
     const radarListEl = document.getElementById('stratumRadarList');
     const countBadge = document.getElementById('radarCountBadge');
     if (!radarListEl || !allReceivedStars) return;
 
-    // Filtra estrelas que possuem corpos biológicos detectados ou confirmados
-    const stratumStars = allReceivedStars.filter(s => 
-        (s.stratumCandidates && s.stratumCandidates.length > 0) || 
-        s.hasStratumConfirmed || 
-        s.hasStratumCandidate
-    );
+    const cubeSize = (lastGalaxyCubeData && lastGalaxyCubeData.cubeSize) || DEFAULT_CUBE_SIZE;
+    const halfCube = cubeSize / 2.0;
+    const cx = (currentCubeCenter && currentCubeCenter.x) || 0;
+    const cy = (currentCubeCenter && currentCubeCenter.y) || 0;
+    const cz = (currentCubeCenter && currentCubeCenter.z) || 0;
 
-    // Prioriza sistemas que ainda possuem planetas não coletados, depois ordena por distância
-    stratumStars.sort((a, b) => {
-        const aHasUncollected = a.stratumCandidates && a.stratumCandidates.some(p => !p.alreadyCollected);
-        const bHasUncollected = b.stratumCandidates && b.stratumCandidates.some(p => !p.alreadyCollected);
-        if (aHasUncollected && !bHasUncollected) return -1;
-        if (!aHasUncollected && bHasUncollected) return 1;
-        return a.distance - b.distance;
+    // Filtra apenas estrelas RIGOROSAMENTE DENTRO do cubo (50 ly em X, Y, Z a partir do centro)
+    // que ainda possuem corpos com Stratum pendentes (não coletados e não mapeados)
+    const stratumStars = allReceivedStars.filter(s => {
+        if (Math.abs(s.x - cx) > halfCube || Math.abs(s.y - cy) > halfCube || Math.abs(s.z - cz) > halfCube) {
+            return false;
+        }
+        if (s.stratumCandidates && s.stratumCandidates.length > 0) {
+            return s.stratumCandidates.some(p => !p.alreadyCollected && !p.alreadyMapped);
+        }
+        return s.hasStratumConfirmed || s.hasStratumCandidate;
     });
 
-    const top3 = stratumStars.slice(0, 3);
+    // Ordena por distância da nave
+    stratumStars.sort((a, b) => a.distance - b.distance);
+
+    const top5 = stratumStars.slice(0, 5);
     if (countBadge) {
         countBadge.textContent = tr('galaxy.in_cube', stratumStars.length);
     }
 
-    if (top3.length === 0) {
+    if (top5.length === 0) {
         radarListEl.innerHTML = `<div style="color: #6a88a8; font-size: 11px; font-style: italic; padding: 4px 0;">${tr('galaxy.scanning_bodies')}</div>`;
         return;
     }
 
-    radarListEl.innerHTML = top3.map(star => {
+    radarListEl.innerHTML = top5.map(star => {
         let planetItems = '';
         if (star.stratumCandidates && star.stratumCandidates.length > 0) {
             planetItems = star.stratumCandidates.map(p => {
@@ -1951,6 +1997,8 @@ function updateStratumRadar() {
                 let statusBadge = '';
                 if (p.alreadyCollected) {
                     statusBadge = `<span style="color: #ff4466; background: rgba(255,68,102,0.18); border: 1px solid rgba(255,68,102,0.45); padding: 1px 5px; border-radius: 2px; font-size: 9px; font-weight: bold;" title="${tr('galaxy.collected_tooltip', formatShortDate(p.collectedDate))}">${tr('galaxy.already_collected')}</span>`;
+                } else if (p.alreadyMapped) {
+                    statusBadge = `<span style="color: #00d4ff; background: rgba(0,212,255,0.18); border: 1px solid rgba(0,212,255,0.45); padding: 1px 5px; border-radius: 2px; font-size: 9px; font-weight: bold;" title="Mapeado com DSS em ${formatShortDate(p.mappedDate)}">🗺️ MAPEADO</span>`;
                 } else if (p.alreadyLanded) {
                     statusBadge = `<span style="color: #ffaa33; background: rgba(255,170,51,0.18); border: 1px solid rgba(255,170,51,0.45); padding: 1px 5px; border-radius: 2px; font-size: 9px; font-weight: bold;" title="${tr('galaxy.landed_tooltip', formatShortDate(p.landedDate))}">${tr('galaxy.already_landed')}</span>`;
                 } else if (p.confirmed) {
@@ -1962,7 +2010,7 @@ function updateStratumRadar() {
                 return `
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px; font-size: 11px;">
                         <div>
-                            <span style="color: ${p.alreadyCollected ? '#8da4be; text-decoration: line-through;' : '#fff;'}; font-weight: bold;">${planetLabel}</span>
+                            <span style="color: ${(p.alreadyCollected || p.alreadyMapped) ? '#8da4be; text-decoration: line-through;' : '#fff;'}; font-weight: bold;">${planetLabel}</span>
                             ${p.surfaceTemperature ? `<span style="color: #8da4be; font-size: 9px; margin-left: 4px;">(${Math.round(p.surfaceTemperature)}K)</span>` : ''}
                         </div>
                         <div style="display: flex; align-items: center; gap: 8px;">
@@ -2168,18 +2216,115 @@ function renderStationsList(sys, stations) {
     }).join('');
 }
 
+// Renderiza os planetas com Stratum no sistema atual no card "Sistema Atual / Onde Docar"
+function renderCurrentSystemStratum(sysName) {
+    const listEl = document.getElementById('currentSystemStratumList');
+    const countEl = document.getElementById('currentSystemStratumCount');
+    if (!listEl) return;
+
+    const sys = sysName || (currentCenter && currentCenter.system);
+    if (!sys || sys === 'Posição Atual' || sys === 'Desconhecido' || sys === tr('galaxy.cmdr_unknown')) {
+        listEl.innerHTML = `<div style="color: #6a88a8; font-size: 11px; font-style: italic;">${tr('galaxy.waiting_journal_signal')}</div>`;
+        if (countEl) countEl.textContent = '';
+        return;
+    }
+
+    const cleanSys = sys.toLowerCase().trim();
+    let candidates = [];
+
+    // 1. Procura na lista de estrelas carregadas no cubo
+    if (allReceivedStars && allReceivedStars.length > 0) {
+        const star = allReceivedStars.find(s => s.name && s.name.toLowerCase().trim() === cleanSys);
+        if (star && star.stratumCandidates && star.stratumCandidates.length > 0) {
+            candidates = star.stratumCandidates;
+        }
+    }
+
+    // 2. Se não encontrou, busca no cache global de candidatos (se disponível)
+    if (candidates.length === 0 && window._cachedStratumCandidatesMap && window._cachedStratumCandidatesMap[cleanSys]) {
+        candidates = window._cachedStratumCandidatesMap[cleanSys];
+    }
+
+    if (!candidates || candidates.length === 0) {
+        listEl.innerHTML = `
+            <div style="color: #8da4be; font-size: 11px; font-style: italic; padding: 4px 6px; background: rgba(0,0,0,0.25); border-radius: 3px;">
+                ${tr('galaxy.no_stratum_in_system')}
+            </div>
+        `;
+        if (countEl) countEl.textContent = tr('galaxy.none_badge');
+        return;
+    }
+
+    if (countEl) {
+        countEl.textContent = tr('galaxy.planet_count', candidates.length);
+    }
+
+    listEl.innerHTML = candidates.map(p => {
+        let planetLabel = p.planetName || '';
+        if (planetLabel.toLowerCase().startsWith(cleanSys)) {
+            planetLabel = planetLabel.substring(sys.length).trim();
+        }
+        if (!planetLabel) planetLabel = p.planetName;
+
+        const distLsText = p.distanceLs ? `${Math.round(p.distanceLs).toLocaleString(getLocale())} ls` : '';
+
+        let statusBadge = '';
+        if (p.alreadyCollected) {
+            statusBadge = `<span style="color: #ff4466; background: rgba(255,68,102,0.18); border: 1px solid rgba(255,68,102,0.45); padding: 1px 5px; border-radius: 2px; font-size: 9px; font-weight: bold;" title="${tr('galaxy.collected_tooltip', formatShortDate(p.collectedDate))}">${tr('galaxy.already_collected')}</span>`;
+        } else if (p.alreadyMapped) {
+            statusBadge = `<span style="color: #00d4ff; background: rgba(0,212,255,0.18); border: 1px solid rgba(0,212,255,0.45); padding: 1px 5px; border-radius: 2px; font-size: 9px; font-weight: bold;" title="Mapeado com DSS em ${formatShortDate(p.mappedDate)}">🗺️ MAPEADO</span>`;
+        } else if (p.alreadyLanded) {
+            statusBadge = `<span style="color: #ffaa33; background: rgba(255,170,51,0.18); border: 1px solid rgba(255,170,51,0.45); padding: 1px 5px; border-radius: 2px; font-size: 9px; font-weight: bold;" title="${tr('galaxy.landed_tooltip', formatShortDate(p.landedDate))}">${tr('galaxy.already_landed')}</span>`;
+        } else if (p.confirmed) {
+            statusBadge = `<span style="color: #2bfca8; background: rgba(43,252,168,0.15); border: 1px solid rgba(43,252,168,0.4); padding: 1px 5px; border-radius: 2px; font-size: 9px; font-weight: bold;">${tr('galaxy.confirmed_badge')}</span>`;
+        } else {
+            statusBadge = `<span style="color: #ffcc44; background: rgba(255,204,68,0.15); border: 1px solid rgba(255,204,68,0.4); padding: 1px 5px; border-radius: 2px; font-size: 9px; font-weight: bold;" title="${tr('galaxy.potential_tooltip')}">${tr('galaxy.potential_badge')}</span>`;
+        }
+
+        const isDone = p.alreadyCollected;
+        const planetFullNameEscaped = (p.planetName || '').replace(/'/g, "\\'");
+
+        return `
+            <div style="background: rgba(0,0,0,0.35); border-left: 2px solid ${isDone ? '#8da4be' : '#2bfca8'}; border-radius: 3px; padding: 6px 8px; margin-bottom: 4px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <span style="color: ${isDone ? '#8da4be; text-decoration: line-through;' : '#fff'}; font-weight: bold; font-size: 12px;">${planetLabel}</span>
+                        ${p.surfaceTemperature ? `<span style="color: #8da4be; font-size: 9px; margin-left: 4px;">(${Math.round(p.surfaceTemperature)}K)</span>` : ''}
+                        <div style="color: ${isDone ? '#6a88a8' : '#2bfca8'}; font-size: 10px; font-weight: 600; margin-top: 1px;">
+                            ${p.species || 'Stratum Tectonicas'}
+                        </div>
+                    </div>
+                    <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 3px;">
+                        <span style="color: #a4bedc; font-family: monospace; font-size: 10px;">${distLsText}</span>
+                        ${statusBadge}
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
 async function loadCurrentSystemStations(systemName) {
     const listEl = document.getElementById('currentStationsList');
     const titleEl = document.getElementById('stationsSystemTitle');
+    const btnOrrery = document.getElementById('btnCurrentSystemOrrery');
     if (!listEl) return;
 
     const sys = systemName || (currentCenter && currentCenter.system);
     if (!sys || sys === 'Posição Atual' || sys === 'Desconhecido' || sys === tr('galaxy.cmdr_unknown')) {
         listEl.innerHTML = `<div style="color: #6a88a8; font-size: 11px; font-style: italic;">${tr('galaxy.waiting_journal_signal')}</div>`;
+        renderCurrentSystemStratum(sys);
         return;
     }
 
     if (titleEl) titleEl.textContent = sys;
+    if (btnOrrery) {
+        btnOrrery.href = `/system-orrery.html?system=${encodeURIComponent(sys)}`;
+    }
+
+    // Renderiza sempre os planetas com Stratum do sistema atual
+    renderCurrentSystemStratum(sys);
+
     if (lastLoadedStationsSystem === sys) return;
 
     try {

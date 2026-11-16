@@ -15,6 +15,8 @@ public class VisitedPlanetRecordDTO {
     private String stratumSpecies;
     private String stratumVariant;
     private String stratumAnalyzedAt;
+    private boolean dssMapped = false;
+    private String dssMappedDate;
     private List<String> allOrganicsCollected = new ArrayList<>();
 
     public VisitedPlanetRecordDTO() {
@@ -121,6 +123,26 @@ public class VisitedPlanetRecordDTO {
 
     public void setStratumAnalyzedAt(String stratumAnalyzedAt) {
         this.stratumAnalyzedAt = stratumAnalyzedAt;
+    }
+
+    public boolean isDssMapped() {
+        return dssMapped;
+    }
+
+    public void setDssMapped(boolean dssMapped) {
+        this.dssMapped = dssMapped;
+    }
+
+    public String getDssMappedDate() {
+        return dssMappedDate;
+    }
+
+    public void setDssMappedDate(String dssMappedDate) {
+        this.dssMappedDate = dssMappedDate;
+    }
+
+    public boolean isExploredOrMapped() {
+        return stratumCollected || dssMapped || touchdownCount > 0;
     }
 
     public List<String> getAllOrganicsCollected() {

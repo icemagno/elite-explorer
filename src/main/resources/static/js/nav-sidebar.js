@@ -59,12 +59,6 @@
                 <span id="playerCoordsDisplay" style="display:none;"></span>
                 <span id="edsmSyncDisplay" style="display:none;"></span>
             </div>
-
-            <!-- Campo de Busca de Amigo com Lupa -->
-            <div class="copilot-friend-search" id="copilotFriendSearch">
-                <input type="text" id="topFriendInput" data-i18n-placeholder="nav.friend_search_ph" placeholder="${tr('nav.friend_search_ph')}" maxlength="36" autocomplete="off" spellcheck="false" data-i18n-title="nav.friend_search_title" title="${tr('nav.friend_search_title')}">
-                <button id="topBtnFriendSearch" class="top-btn-friend-search" type="button" data-i18n-title="nav.friend_search_btn" title="${tr('nav.friend_search_btn')}">🔍</button>
-            </div>
         `;
 
         // 2. Backdrop Overlay
@@ -382,6 +376,9 @@
             }
         } else {
             let label = data.statusCode || 'Conectando';
+            if (label === 'NOT_CONFIGURED') {
+                label = tr('galaxy.edsm_not_configured');
+            }
             if (quickBadge) {
                 quickBadge.textContent = '🛰️';
                 quickBadge.title = `EDSM: ${label}`;

@@ -529,14 +529,29 @@ public class JournalWatcherService {
                 }
                 case "Scan" -> {
                     systemBodiesService.recordJournalScan(root);
-                    PlanetaryStatusDTO ps = planetaryStatusRef.get();
                     String scannedBody = root.path("BodyName").asText("");
+                    long sysAddr = root.path("SystemAddress").asLong(0L);
+                    int bId = root.path("BodyID").asInt(-1);
+                    String sSys = root.path("StarSystem").asText(status.getCurrentSystem());
+                    if (!scannedBody.isBlank()) {
+                        planetHistoryService.recordApproachOrBody(sSys, sysAddr > 0 ? sysAddr : null, scannedBody, bId >= 0 ? bId : null);
+                    }
+
+                    PlanetaryStatusDTO ps = planetaryStatusRef.get();
                     if (!scannedBody.isBlank() && scannedBody.equalsIgnoreCase(ps.getBodyName())) {
                         enrichPlanetaryBodyInfo(ps);
                         if (isLiveUpdate) {
                             sseNotificationService.broadcastEvent("surface_status", ps);
                         }
                     }
+                }
+                case "SAAScanComplete" -> {
+                    String bodyName = root.path("BodyName").asText("");
+                    long systemAddress = root.path("SystemAddress").asLong(0L);
+                    int bodyId = root.path("BodyID").asInt(-1);
+                    String starSystem = root.path("StarSystem").asText(status.getCurrentSystem());
+                    planetHistoryService.recordSAAScanComplete(starSystem, systemAddress > 0 ? systemAddress : null, bodyName, bodyId >= 0 ? bodyId : null, timestamp);
+                    log.info("🛰️ SAAScanComplete ao vivo recebido: {} ({})", bodyName, starSystem);
                 }
                 case "LeaveBody" -> {
                     PlanetaryStatusDTO ps = planetaryStatusRef.get();

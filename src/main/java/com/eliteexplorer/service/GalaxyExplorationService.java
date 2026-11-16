@@ -700,10 +700,10 @@ public class GalaxyExplorationService {
 
         boolean covers(double x, double y, double z) {
             if (!hasSystems() || isExpired()) return false;
-            // O cubo baixado do EDSM tem 100 ly de extensão total (50 ly em cada direção a partir do centro).
-            // Se o jogador estiver a até 35 ly do centro do cubo baixado, todo o espaço visual de 90 ly
-            // já está coberto com dados do cache, sem necessidade de nova consulta ao servidor.
-            return distanceTo(x, y, z) <= 35.0;
+            // Para garantir que o cubo de 100 ly esteja sempre perfeitamente centrado no Comandante
+            // e nunca corte estrelas nas bordas, consideramos que cobre a mesma área apenas se estiver
+            // a até 5.0 ly do centro (mesmo sistema ou voo local).
+            return distanceTo(x, y, z) <= 5.0;
         }
 
         boolean overlapsWithin(double x, double y, double z, double maxRadiusLy) {
@@ -721,11 +721,10 @@ public class GalaxyExplorationService {
 
     public GalaxyCubeResponse analyzeCube(String systemName, Double x, Double y, Double z, double cubeSize, double voxelSize, List<RoutePointDTO> activeRoute) {
         // EDSM possui limite estrito no endpoint cube-systems de no máximo 100 ly.
-        // Consultamos o teto máximo de 100 ly para ter dados completos com buffer perimetral.
+        // Consultamos o teto máximo de 100 ly para ter dados completos em todo o cubo.
         double querySize = 100.0;
-        // O mapa visual é dimensionado em 90 ly (exatos 6 voxels de 15 ly cravados),
-        // gerando exatamente 5 ly de gutter/buffer em todas as 6 direções (45 + 5 = 50 ly).
-        double visualMapSize = (cubeSize > 0 && cubeSize <= 95.0) ? cubeSize : 90.0;
+        // O mapa visual é dimensionado exatamente em 100 ly (50 ly em cada direção a partir do centro)
+        double visualMapSize = (cubeSize >= 50.0 && cubeSize <= 100.0) ? cubeSize : 100.0;
         if (voxelSize <= 0) {
             voxelSize = 10.0;
         }
@@ -928,7 +927,7 @@ public class GalaxyExplorationService {
             sysMap.put(s.getName().toLowerCase().trim(), s);
         }
 
-        double halfCube = (cubeSize / 2.0) + 1.0;
+        double halfCube = cubeSize / 2.0;
         for (SpanshConfirmedSystem cs : confirmedList) {
             StarSystemDTO targetSys = sysMap.get(cs.name.toLowerCase().trim());
             if (targetSys != null) {
@@ -1201,8 +1200,8 @@ public class GalaxyExplorationService {
         double querySize = Math.min(100.0, Math.max(20.0, size));
 
         synchronized (cubeFetchLock) {
-            // 1. Verifica cache válido (memória + carregado do disco) cobrindo a região atual (até 35 ly do centro)
-            CacheEntry freshHit = findClosestCoveringEntry(cx, cy, cz, 35.0, false);
+            // 1. Verifica cache válido (memória + carregado do disco) cobrindo a região atual (até 5 ly do centro)
+            CacheEntry freshHit = findClosestCoveringEntry(cx, cy, cz, 5.0, false);
             if (freshHit != null && !(freshHit.systems.size() <= 3 && freshHit.size >= 80.0)) {
                 double dist = freshHit.distanceTo(cx, cy, cz);
                 log.info("Cubo galáctico reaproveitado do CACHE local (distância do centro: {} ly, {} sistemas). Zero requisições ao EDSM.",

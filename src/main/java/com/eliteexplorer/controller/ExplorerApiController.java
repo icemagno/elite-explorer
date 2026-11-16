@@ -120,6 +120,18 @@ public class ExplorerApiController {
         return ResponseEntity.ok(planetHistoryService.getAllHistory());
     }
 
+    // Marcação manual ou imediata de planeta como já explorado/mapeado/coletado (salvo no SQLite)
+    @PostMapping("/galaxy/planets/mark-explored")
+    public ResponseEntity<Map<String, Object>> markPlanetExplored(
+            @RequestParam String planetName,
+            @RequestParam(required = false) String systemName,
+            @RequestParam(defaultValue = "true") boolean mapped,
+            @RequestParam(defaultValue = "true") boolean collected
+    ) {
+        planetHistoryService.markPlanetExplored(systemName, planetName, mapped, collected);
+        return ResponseEntity.ok(Map.of("success", true, "planetName", planetName, "mapped", mapped, "collected", collected));
+    }
+
     // Consulta de estações espaciais e portos do sistema atual para ancoragem segura
     @GetMapping("/galaxy/stations")
     public ResponseEntity<List<StationDTO>> getSystemStations(@RequestParam(required = false) String system) {

@@ -20,6 +20,8 @@ public class StratumCandidateDTO {
     private String collectedDate;
     private boolean alreadyLanded = false;    // true se o comandante já pousou aqui
     private String landedDate;
+    private boolean alreadyMapped = false;    // true se o comandante já mapeou com DSS este planeta
+    private String mappedDate;
 
     public StratumCandidateDTO() {
     }
@@ -170,5 +172,21 @@ public class StratumCandidateDTO {
 
     public void setLandedDate(String landedDate) {
         this.landedDate = landedDate;
+    }
+
+    public boolean isAlreadyMapped() {
+        return alreadyMapped;
+    }
+
+    public void setAlreadyMapped(boolean alreadyMapped) {
+        this.alreadyMapped = alreadyMapped;
+    }
+
+    public String getMappedDate() {
+        return mappedDate;
+    }
+
+    public void setMappedDate(String mappedDate) {
+        this.mappedDate = mappedDate;
     }
 }
